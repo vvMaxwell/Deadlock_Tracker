@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Deadlock Tracker{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-copy">
+        <p class="eyebrow">Website + Discord Bot</p>
+        <h1>Deadlock stats in a clean black-and-beige tracker.</h1>
+        <p class="lede">Search by Steam name, vanity URL, or account ID to pull rank snapshots, hero performance, and recent matches in a public-ready layout.</p>
+        <form class="search-form" method="get" action="/">
+            <input type="text" name="query" value="{{ query }}" placeholder="Search player, profile URL, or account ID">
+            <button type="submit">Search</button>
+        </form>
+        {% if error_message %}
+        <p class="error-message">{{ error_message }}</p>
+        {% endif %}
+        <div class="hero-notes">
+            <span>Competitive rank snapshots</span>
+            <span>Hero performance breakdowns</span>
+            <span>Discord bot + website from one codebase</span>
+        </div>
+    </div>
+    <div class="hero-card">
+        <div class="stat-chip stat-chip-featured">
+            <span>Now shipping</span>
+            <strong>Professional Deadlock tracker</strong>
+        </div>
+        <div class="stat-chip">
+            <span>Public facing</span>
+            <strong>Website + Bot</strong>
+        </div>
+        <div class="stat-chip">
+            <span>Lookup flow</span>
+            <strong>Steam to Deadlock</strong>
+        </div>
+        <div class="stat-chip">
+            <span>Output</span>
+            <strong>Profiles, heroes, matches</strong>
+        </div>
+    </div>
+</section>
+
+<section class="platform-strip" id="platform">
+    <article class="platform-card">
+        <p class="eyebrow">Website</p>
+        <h2>Fast profile lookups and polished public pages.</h2>
+        <p>Built in Python with FastAPI, so we can reuse the same Deadlock service layer across the site and bot without splitting the stack.</p>
+    </article>
+    <article class="platform-card">
+        <p class="eyebrow">Discord Bot</p>
+        <h2>Public slash commands for search, profile, and recent matches.</h2>
+        <p>The bot uses the same API client and stat formatting as the website, which keeps results consistent across both products.</p>
+    </article>
+</section>
+
+{% if results %}
+<section class="results-section">
+    <div class="section-heading">
+        <h2>Search Results</h2>
+        <p>Choose a player to open the full stat page.</p>
+    </div>
+    <div class="results-grid">
+        {% for result in results %}
+        <a class="result-card" href="/players/{{ result.account_id }}">
+            <div class="result-head">
+                {% if result.avatarfull %}
+                <img src="{{ result.avatarfull }}" alt="{{ result.personaname }}">
+                {% else %}
+                <div class="avatar-fallback">{{ result.personaname[:2] }}</div>
+                {% endif %}
+                <div>
+                    <h3>{{ result.personaname }}</h3>
+                    <p>ID {{ result.account_id }}</p>
+                </div>
+            </div>
+            <div class="result-meta">
+                <span>{{ result.countrycode or "Unknown Country" }}</span>
+                <span>Open profile</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}

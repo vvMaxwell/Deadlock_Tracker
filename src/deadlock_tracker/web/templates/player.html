@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}{{ player.personaname }} | Deadlock Tracker{% endblock %}
+
+{% block content %}
+<section class="player-hero">
+    <div>
+        <a class="back-link" href="/">Back to search</a>
+        <p class="eyebrow">Player Overview</p>
+        <h1>{{ overview.personaname }}</h1>
+        <p class="lede">Rank {{ overview.rank_name }} with internal rating {{ overview.rating_text }}.</p>
+        <div class="meta-row">
+            <span>Account {{ overview.account_id }}</span>
+            <span>{{ overview.countrycode or "Unknown Country" }}</span>
+            <a href="{{ overview.profileurl }}" target="_blank" rel="noreferrer">Steam Profile</a>
+        </div>
+        <div class="hero-notes">
+            <span>Cache updated {{ overview.cache_updated_text }}</span>
+            <span>Website layout</span>
+            <span>Discord image card stays in bot</span>
+        </div>
+    </div>
+    {% if overview.avatarfull %}
+    <img class="player-avatar player-avatar-large" src="{{ overview.avatarfull }}" alt="{{ overview.personaname }}">
+    {% endif %}
+</section>
+
+{% if refresh_requested %}
+<section class="status-banner">
+    <strong>Refetched from Deadlock API.</strong>
+    <span>The page was refreshed on our side, but the upstream player cache may still stay old until Deadlock API ingests newer data.</span>
+</section>
+{% endif %}
+
+<section class="overview-grid">
+    <article class="overview-card">
+        <p class="eyebrow">Rank Snapshot</p>
+        <h2>{{ overview.rank_name }}</h2>
+        <p class="overview-stat">MMR {{ overview.rating_text }}</p>
+    </article>
+    <article class="overview-card">
+        <p class="eyebrow">Cache Status</p>
+        <h2>{{ overview.cache_updated_text }}</h2>
+        <p class="overview-stat">Source timestamp {% if overview.cache_updated_raw %}{{ overview.cache_updated_raw }}{% else %}unknown{% endif %}</p>
+    </article>
+    <article class="overview-card overview-card-actions">
+        <p class="eyebrow">Actions</p>
+        <div class="action-stack">
+            <a class="action-button" href="/players/{{ overview.account_id }}?refresh=1">Refresh From API</a>
+            <a class="action-button action-button-secondary" href="{{ overview.profileurl }}" target="_blank" rel="noreferrer">Open Steam Profile</a>
+        </div>
+        <p class="overview-note">This rechecks the public Deadlock API. If the timestamp still stays old, their upstream cache likely has not ingested newer data yet.</p>
+    </article>
+</section>
+
+<section class="content-grid">
+    <div class="panel">
+        <div class="section-heading">
+            <h2>Top Heroes</h2>
+            <p>Highest volume hero performance.</p>
+        </div>
+        <div class="table-list">
+            {% for hero in top_heroes %}
+            <article class="table-row">
+                <div>
+                    <h3>{{ hero.hero_name }}</h3>
+                    <p>{{ hero.matches_played }} matches | {{ hero.wins }} wins</p>
+                </div>
+                <div class="row-metrics">
+                    <span>{{ hero.win_rate_percent }}</span>
+                    <span>{{ hero.kda }}</span>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="panel">
+        <div class="section-heading">
+            <h2>Recent Matches</h2>
+            <p>Latest stored match history.</p>
+        </div>
+        <div class="table-list">
+            {% for match in recent_matches %}
+            <article class="table-row">
+                <div>
+                    <h3>{{ match.hero_name }} | Match {{ match.match_id }}</h3>
+                    <p>{{ match.result }} | {{ match.duration }} | KDA {{ match.kda }}</p>
+                </div>
+                <div class="row-metrics">
+                    <span>NW {{ match.net_worth }}</span>
+                    <span>LH {{ match.last_hits }}</span>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

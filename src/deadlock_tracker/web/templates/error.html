@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Error | Deadlock Tracker{% endblock %}
+
+{% block content %}
+<section class="error-panel">
+    <a class="back-link" href="/">Back to search</a>
+    <p class="eyebrow">Lookup Error</p>
+    <h1>We couldn't load that player.</h1>
+    <p class="lede">{{ message }}</p>
+    <div class="hero-notes">
+        <span>Try a Steam URL</span>
+        <span>Try a player name</span>
+        <span>Try an account ID</span>
+    </div>
+</section>
+{% endblock %}
