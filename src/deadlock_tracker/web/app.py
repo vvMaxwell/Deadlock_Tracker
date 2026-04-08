@@ -909,9 +909,11 @@ def _rank_badge_image_url(rank: int | None, rank_info: list) -> str | None:
     if rank is None:
         return None
     tier = rank // 10
+    division = rank % 10
     for item in rank_info:
         if getattr(item, "tier", None) == tier:
-            return getattr(item, "image_small", None)
+            by_division = getattr(item, "image_small_by_division", {}) or {}
+            return by_division.get(division) or getattr(item, "image_small", None)
     return None
 
 

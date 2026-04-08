@@ -118,6 +118,7 @@ class DeadlockRankInfo:
     name: str
     color: str | None
     image_small: str | None
+    image_small_by_division: dict[int, str]
 
 
 @dataclass(slots=True)

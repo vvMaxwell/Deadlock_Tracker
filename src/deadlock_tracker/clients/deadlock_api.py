@@ -343,6 +343,14 @@ class DeadlockAPI:
                 name=item["name"],
                 color=item.get("color"),
                 image_small=(item.get("images") or {}).get("small"),
+                image_small_by_division={
+                    division: image_url
+                    for division in range(1, 7)
+                    if (image_url := (
+                        (item.get("images") or {}).get(f"small_subrank{division}_webp")
+                        or (item.get("images") or {}).get(f"small_subrank{division}")
+                    ))
+                },
             )
             for item in payload
         ]

@@ -7,6 +7,7 @@ from deadlock_tracker.models import (
     DeadlockMatch,
     DeadlockPlayer,
     DeadlockRank,
+    DeadlockRankInfo,
     PlayerSummary,
 )
 from deadlock_tracker.web import app as web_app
@@ -41,7 +42,15 @@ def test_friendly_meta_error_message_bad_filters() -> None:
 def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
     class FakeApi:
         async def get_rank_info(self) -> list:
-            return []
+            return [
+                DeadlockRankInfo(
+                    tier=8,
+                    name="Oracle",
+                    color="#955138",
+                    image_small=None,
+                    image_small_by_division={1: "https://example.com/oracle-1.png"},
+                )
+            ]
 
     class FakePlayerService:
         api = FakeApi()
@@ -132,3 +141,4 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
     assert response.status_code == 200
     assert "Live refresh is temporarily limited." in response.text
     assert "Showing the latest cached match history instead" in response.text
+    assert "oracle-1.png" in response.text
