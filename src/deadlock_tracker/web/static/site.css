@@ -231,11 +231,19 @@ img {
 .rank-overview-row {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 18px;
+    flex-wrap: nowrap;
 }
 
+.rank-overview-copy {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.rank-overview-row h2,
 .rank-overview-row .overview-stat {
-    margin-top: 8px;
+    margin: 0;
 }
 
 .rank-badge-image {

@@ -11,12 +11,7 @@
         </div>
         <p class="eyebrow">Player Overview</p>
         <h1>{{ overview.personaname }}</h1>
-        <div class="rank-summary-inline">
-            {% if overview.rank_badge_image_url %}
-            <img class="rank-badge-image rank-badge-image-inline" src="{{ overview.rank_badge_image_url }}" alt="{{ overview.rank_name }}">
-            {% endif %}
-            <p class="lede">Estimated rank {{ overview.rank_name }}. Match history is shown newest first so the latest game appears at the top.</p>
-        </div>
+        <p class="lede">Match history is shown newest first so the latest game appears at the top.</p>
         <div class="meta-row">
             <span>Account {{ overview.account_id }}</span>
             <span>{{ overview.countrycode or "Unknown Country" }}</span>
@@ -58,7 +53,7 @@
             {% if overview.rank_badge_image_url %}
             <img class="rank-badge-image" src="{{ overview.rank_badge_image_url }}" alt="{{ overview.rank_name }}">
             {% endif %}
-            <div>
+            <div class="rank-overview-copy">
                 <h2>{{ overview.rank_name }}</h2>
                 <p class="overview-stat">Based on the latest available competitive rank data.</p>
             </div>
