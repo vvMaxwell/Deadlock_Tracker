@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 from time import time
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -51,12 +51,15 @@ def _html_response(response: HTMLResponse) -> HTMLResponse:
 def _base_context(request: Request, **context: object) -> dict[str, object]:
     site_name = "Deadlock Stat Tracker"
     path = request.url.path
-    canonical_url = context.pop("canonical_url", str(request.url.replace(query="")))
+    canonical_url = context.pop("canonical_url", _public_url(request, str(request.url.replace(query=""))))
     page_title = context.get("page_title") or site_name
     meta_description = context.get("meta_description") or (
         "Search Deadlock players, ranks, match history, hero performance, best heroes, best items, and Street Brawl builds."
     )
-    og_image = context.get("og_image") or str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
+    og_image = context.get("og_image") or _public_url(
+        request,
+        str(request.url_for("static", path="/community-assets/graphics/background-city.png")),
+    )
     meta_robots = context.get("meta_robots") or "index,follow"
     og_type = context.get("og_type") or "website"
     structured_data = context.get("structured_data")
@@ -84,7 +87,7 @@ async def healthcheck() -> dict[str, str]:
 
 @app.get("/robots.txt")
 async def robots_txt(request: Request) -> Response:
-    sitemap_url = str(request.url_for("sitemap_xml"))
+    sitemap_url = _public_url(request, str(request.url_for("sitemap_xml")))
     content = f"User-agent: *\nAllow: /\n\nSitemap: {sitemap_url}\n"
     return Response(content=content, media_type="text/plain")
 
@@ -92,14 +95,14 @@ async def robots_txt(request: Request) -> Response:
 @app.get("/sitemap.xml", name="sitemap_xml")
 async def sitemap_xml(request: Request) -> Response:
     urls = [
-        str(request.url_for("home")),
-        str(request.url_for("best_heroes")),
-        str(request.url_for("best_items")),
-        str(request.url_for("street_brawl_builds")),
-        str(request.url_for("faq")),
-        str(request.url_for("discord_bot")),
-        str(request.url_for("credits")),
-        str(request.url_for("disclaimers")),
+        _public_url(request, str(request.url_for("home"))),
+        _public_url(request, str(request.url_for("best_heroes"))),
+        _public_url(request, str(request.url_for("best_items"))),
+        _public_url(request, str(request.url_for("street_brawl_builds"))),
+        _public_url(request, str(request.url_for("faq"))),
+        _public_url(request, str(request.url_for("discord_bot"))),
+        _public_url(request, str(request.url_for("credits"))),
+        _public_url(request, str(request.url_for("disclaimers"))),
     ]
     body = "".join(f"<url><loc>{url}</loc></url>" for url in urls)
     xml = (
@@ -171,10 +174,10 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
                 "@context": "https://schema.org",
                 "@type": "WebSite",
                 "name": "Deadlock Stat Tracker",
-                "url": str(request.url_for("home")),
+                "url": _public_url(request, str(request.url_for("home"))),
                 "potentialAction": {
                     "@type": "SearchAction",
-                    "target": f"{request.url_for('home')}?query={{search_term_string}}",
+                    "target": f"{_public_url(request, str(request.url_for('home')))}?query={{search_term_string}}",
                     "query-input": "required name=search_term_string",
                 },
             },
@@ -221,7 +224,7 @@ async def faq(request: Request) -> HTMLResponse:
                     },
                 ],
             },
-            screenshot_url=str(request.url_for("static", path=screenshot_rel)) if screenshot_abs.exists() else None,
+            screenshot_url=_public_url(request, str(request.url_for("static", path=screenshot_rel))) if screenshot_abs.exists() else None,
         ),
     ))
 
@@ -742,13 +745,13 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             summary = await player_service.build_player_summary(resolved, refresh_matches=False)
             refresh_status = "fallback"
 
-        canonical_player_url = str(
+        canonical_player_url = _public_url(request, str(
             request.url_for(
                 "player_profile_canonical",
                 account_id=str(summary.player.account_id),
                 player_slug=_slugify(summary.player.personaname),
             )
-        )
+        ))
         if request.url.path != canonical_player_url.replace(str(request.base_url).rstrip("/"), ""):
             redirect_url = canonical_player_url
             if refresh_requested:
@@ -950,21 +953,21 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
             viewed_player_result=viewed_player_result,
             viewed_player_name=resolved.personaname,
         )
-        canonical_match_url = str(
+        canonical_match_url = _public_url(request, str(
             request.url_for(
                 "match_detail_canonical",
                 account_id=str(resolved.account_id),
                 player_slug=_slugify(resolved.personaname),
                 match_id=str(metadata.match_id),
             )
-        )
-        canonical_player_url = str(
+        ))
+        canonical_player_url = _public_url(request, str(
             request.url_for(
                 "player_profile_canonical",
                 account_id=str(resolved.account_id),
                 player_slug=_slugify(resolved.personaname),
             )
-        )
+        ))
         if request.url.path != canonical_match_url.replace(str(request.base_url).rstrip("/"), ""):
             return RedirectResponse(url=canonical_match_url, status_code=308)
     except DeadlockError as error:
@@ -1127,6 +1130,22 @@ def _friendly_meta_error_message(error: DeadlockError, *, topic: str) -> str:
 def _slugify(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
     return slug or "player"
+
+
+def _public_origin(request: Request) -> str:
+    host = request.headers.get("host", "testserver")
+    if host.startswith("testserver"):
+        return f"{request.url.scheme}://{host}"
+    return f"https://{host}"
+
+
+def _public_url(request: Request, url: str) -> str:
+    split = urlsplit(url)
+    query = f"?{split.query}" if split.query else ""
+    fragment = f"#{split.fragment}" if split.fragment else ""
+    if split.scheme and split.netloc:
+        return f"{_public_origin(request)}{split.path}{query}{fragment}"
+    return f"{_public_origin(request)}{url}{fragment}"
 
 
 def _build_player_rank_distribution_views(
