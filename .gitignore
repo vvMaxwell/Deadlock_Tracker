@@ -1,4 +1,5 @@
 .env
+deploy/app.env
 .venv/
 .runenv/
 __pycache__/

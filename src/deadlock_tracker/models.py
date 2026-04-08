@@ -50,6 +50,8 @@ class DeadlockHeroInfo:
     hero_id: int
     name: str
     icon_small: str | None
+    portrait_url: str | None
+    background_image_url: str | None
 
 
 @dataclass(slots=True)
@@ -68,6 +70,12 @@ class DeadlockBadgeDistribution:
 
 
 @dataclass(slots=True)
+class DeadlockPlayerRankDistribution:
+    rank: int
+    players: int
+
+
+@dataclass(slots=True)
 class DeadlockItemInfo:
     item_id: int
     name: str
@@ -77,6 +85,9 @@ class DeadlockItemInfo:
     item_tier: int | None
     cost: int | None
     is_active_item: bool
+    item_type: str | None
+    ability_type: str | None
+    hero_id: int | None
 
 
 @dataclass(slots=True)
@@ -90,6 +101,15 @@ class DeadlockItemStat:
     avg_sell_time_s: float | None
     avg_buy_time_relative: float | None
     avg_sell_time_relative: float | None
+
+
+@dataclass(slots=True)
+class DeadlockAbilityOrderStat:
+    abilities: list[int]
+    wins: int
+    losses: int
+    matches: int
+    players: int
 
 
 @dataclass(slots=True)
@@ -118,6 +138,13 @@ class DeadlockMatch:
 
 
 @dataclass(slots=True)
+class DeadlockMatchItem:
+    item_id: int
+    game_time_s: int | None
+    sold_time_s: int | None
+
+
+@dataclass(slots=True)
 class DeadlockMatchPlayer:
     account_id: int
     team: int | None
@@ -134,6 +161,7 @@ class DeadlockMatchPlayer:
     player_damage: int | None
     objective_damage: int | None
     healing: int | None
+    items: list[DeadlockMatchItem]
 
 
 @dataclass(slots=True)

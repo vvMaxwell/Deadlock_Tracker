@@ -15,6 +15,7 @@ from deadlock_tracker.web.view_models import (
     BestHeroView,
     FilterOptionView,
     HeroStatView,
+    MatchDetailItemView,
     MatchLaneView,
     MatchDetailOverviewView,
     MatchDetailPlayerView,
@@ -24,6 +25,10 @@ from deadlock_tracker.web.view_models import (
     RankDistributionBarView,
     RankDistributionTierView,
     SearchResultView,
+    StreetBrawlAbilityStepView,
+    StreetBrawlBuildItemView,
+    StreetBrawlGuideView,
+    StreetBrawlHeroCardView,
 )
 
 
@@ -38,6 +43,11 @@ def _html_response(response: HTMLResponse) -> HTMLResponse:
     response.headers["Cache-Control"] = "no-store, max-age=0"
     response.headers["Pragma"] = "no-cache"
     return response
+
+
+@app.get("/healthz")
+async def healthcheck() -> dict[str, str]:
+    return {"status": "ok"}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -72,9 +82,9 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
             error_message = str(error)
 
     try:
-        badge_distribution = await api.get_badge_distribution()
+        player_rank_distribution = await api.get_player_rank_distribution()
         rank_info = await api.get_rank_info()
-        rank_distribution = _build_rank_distribution_views(badge_distribution, rank_info)
+        rank_distribution = _build_player_rank_distribution_views(player_rank_distribution, rank_info)
     except DeadlockError:
         rank_distribution = []
 
@@ -101,6 +111,11 @@ async def faq(request: Request) -> HTMLResponse:
             "screenshot_url": str(request.url_for("static", path=screenshot_rel)) if screenshot_abs.exists() else None,
         },
     ))
+
+
+@app.get("/discord-bot", response_class=HTMLResponse)
+async def discord_bot(request: Request) -> HTMLResponse:
+    return _html_response(TEMPLATES.TemplateResponse(request, "discord_bot.html", {}))
 
 
 @app.get("/credits", response_class=HTMLResponse)
@@ -142,6 +157,8 @@ async def best_items(
         if parsed_rank_floor in {11, 21, 31, 41, 51, 61, 71, 81, 91, 101, 111}
         else None
     )
+    if selected_mode == "street_brawl":
+        selected_rank_floor = None
 
     hero_info = await api.get_hero_info()
     rank_options = _rank_floor_options()
@@ -184,7 +201,7 @@ async def best_items(
                 )
             )
     except DeadlockError as error:
-        error_message = str(error)
+        error_message = _friendly_meta_error_message(error, topic="item stats")
 
     return _html_response(TEMPLATES.TemplateResponse(
         request,
@@ -240,6 +257,8 @@ async def best_heroes(
         if parsed_rank_floor in {11, 21, 31, 41, 51, 61, 71, 81, 91, 101, 111}
         else None
     )
+    if selected_mode == "street_brawl":
+        selected_rank_floor = None
 
     hero_info = await api.get_hero_info()
     hero_rows: list[BestHeroView] = []
@@ -282,7 +301,7 @@ async def best_heroes(
                 )
             )
     except DeadlockError as error:
-        error_message = str(error)
+        error_message = _friendly_meta_error_message(error, topic="hero stats")
 
     return _html_response(TEMPLATES.TemplateResponse(
         request,
@@ -308,6 +327,209 @@ async def best_heroes(
     ))
 
 
+@app.get("/street-brawl-builds", response_class=HTMLResponse)
+async def street_brawl_builds(
+    request: Request,
+    hero_id: str | None = None,
+    item_level: str | None = "",
+    min_matches: str | None = "100",
+    window_days: int = 7,
+) -> HTMLResponse:
+    player_service = PlayerService()
+    api = player_service.api
+    error_message: str | None = None
+    selected_window_days = window_days if window_days in {7, 30, 90} else 7
+    parsed_min_matches = _parse_optional_int(min_matches)
+    selected_min_matches = parsed_min_matches if parsed_min_matches in {50, 100, 250, 500, 1000} else 100
+
+    hero_info = await api.get_hero_info()
+    sorted_heroes = sorted(hero_info.values(), key=lambda item: item.name.casefold())
+    parsed_hero_id = _parse_optional_int(hero_id)
+    selected_hero = hero_info.get(parsed_hero_id) if parsed_hero_id is not None else None
+    if not sorted_heroes:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            {"message": "No active heroes are currently available."},
+            status_code=404,
+        ))
+
+    selected_item_level = item_level.strip().lower() if item_level else ""
+    if selected_item_level not in {"", "1", "2", "3", "4", "legendary"}:
+        selected_item_level = ""
+
+    hero_cards = [
+        StreetBrawlHeroCardView(
+            hero_id=hero.hero_id,
+            hero_name=hero.name,
+            hero_icon_url=hero.icon_small,
+            hero_portrait_url=hero.portrait_url,
+            hero_background_image_url=hero.background_image_url,
+            build_url=(
+                f"{request.url_for('street_brawl_builds')}"
+                f"?hero_id={hero.hero_id}&item_level={selected_item_level}&window_days={selected_window_days}&min_matches={selected_min_matches}"
+            ),
+        )
+        for hero in sorted_heroes
+    ]
+
+    if selected_hero is None:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "street_brawl_builds.html",
+            {
+                "hero_options": [
+                    FilterOptionView(value=str(hero.hero_id), label=hero.name)
+                    for hero in sorted_heroes
+                ],
+                "item_level_options": [
+                    FilterOptionView(value="", label="All item levels"),
+                    FilterOptionView(value="1", label="Tier 1"),
+                    FilterOptionView(value="2", label="Tier 2"),
+                    FilterOptionView(value="3", label="Tier 3"),
+                    FilterOptionView(value="4", label="Tier 4"),
+                    FilterOptionView(value="legendary", label="Legendary"),
+                ],
+                "window_options": [
+                    FilterOptionView(value="7", label="Last 7 days"),
+                    FilterOptionView(value="30", label="Last 30 days"),
+                    FilterOptionView(value="90", label="Last 90 days"),
+                ],
+                "sample_options": [
+                    FilterOptionView(value="50", label="50+ matches"),
+                    FilterOptionView(value="100", label="100+ matches"),
+                    FilterOptionView(value="250", label="250+ matches"),
+                    FilterOptionView(value="500", label="500+ matches"),
+                    FilterOptionView(value="1000", label="1000+ matches"),
+                ],
+                "selected_hero_id": "",
+                "selected_item_level": selected_item_level,
+                "selected_window_days": str(selected_window_days),
+                "selected_min_matches": str(selected_min_matches),
+                "items": [],
+                "guide": None,
+                "hero_cards": hero_cards,
+                "error_message": None,
+            },
+        ))
+
+    item_rows: list[StreetBrawlBuildItemView] = []
+    guide: StreetBrawlGuideView | None = None
+
+    try:
+        item_stats = await api.get_item_stats(
+            hero_id=selected_hero.hero_id,
+            game_mode="street_brawl",
+            min_matches=selected_min_matches,
+            min_unix_timestamp=int(time()) - selected_window_days * 86400,
+        )
+        ability_orders = await api.get_ability_order_stats(
+            hero_id=selected_hero.hero_id,
+            game_mode="street_brawl",
+            min_matches=selected_min_matches,
+            min_unix_timestamp=int(time()) - selected_window_days * 86400,
+        )
+        item_info_map = await api.get_all_item_info()
+
+        filtered_items = []
+        for stat in item_stats:
+            item_info = item_info_map.get(stat.item_id)
+            if item_info is None or item_info.item_type != "upgrade":
+                continue
+            if selected_item_level and not _matches_item_level_filter(item_info.item_tier, selected_item_level):
+                continue
+            filtered_items.append((stat, item_info))
+
+        ranked_items = sorted(
+            filtered_items,
+            key=lambda entry: (
+                (entry[0].wins / entry[0].matches) if entry[0].matches else 0.0,
+                entry[0].matches,
+            ),
+            reverse=True,
+        )
+
+        for index, (stat, item_info) in enumerate(ranked_items, start=1):
+            item_rows.append(
+                StreetBrawlBuildItemView(
+                    rank_number=index,
+                    item_name=item_info.name,
+                    item_image_url=item_info.shop_image or item_info.image,
+                    slot_type=_friendly_slot_type(item_info.item_slot_type),
+                    tier_text=_friendly_item_tier_text(item_info.item_tier),
+                    cost_text=f"{item_info.cost:,} souls" if item_info.cost else "Cost Unknown",
+                    win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat.matches else "0.0%",
+                    matches_text=f"{stat.matches:,} matches",
+                    players_text=f"{stat.players:,} players",
+                    avg_buy_time_text=_friendly_time_seconds(stat.avg_buy_time_s),
+                    wins_text=f"{stat.wins:,} wins",
+                    losses_text=f"{stat.losses:,} losses",
+                )
+            )
+
+        most_common_path = max(ability_orders, key=lambda entry: entry.matches, default=None)
+        if most_common_path is not None:
+            guide = StreetBrawlGuideView(
+                hero_name=selected_hero.name,
+                hero_icon_url=selected_hero.icon_small,
+                hero_portrait_url=selected_hero.portrait_url,
+                hero_background_image_url=selected_hero.background_image_url,
+                ability_steps=[
+                    StreetBrawlAbilityStepView(
+                        step_number=index,
+                        ability_name=(item_info_map.get(ability_id).name if item_info_map.get(ability_id) else f"Ability {index}"),
+                        ability_image_url=item_info_map.get(ability_id).image if item_info_map.get(ability_id) else None,
+                        ability_type=_friendly_ability_type(item_info_map.get(ability_id).ability_type if item_info_map.get(ability_id) else None),
+                    )
+                    for index, ability_id in enumerate(most_common_path.abilities, start=1)
+                ],
+                path_matches_text=f"{most_common_path.matches:,} matches",
+                path_players_text=f"{most_common_path.players:,} players",
+                path_win_rate_percent=f"{(most_common_path.wins / most_common_path.matches):.1%}" if most_common_path.matches else "0.0%",
+            )
+    except DeadlockError as error:
+        error_message = str(error)
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "street_brawl_builds.html",
+        {
+            "hero_options": [
+                FilterOptionView(value=str(hero.hero_id), label=hero.name)
+                for hero in sorted_heroes
+            ],
+            "item_level_options": [
+                FilterOptionView(value="", label="All item levels"),
+                FilterOptionView(value="1", label="Tier 1"),
+                FilterOptionView(value="2", label="Tier 2"),
+                FilterOptionView(value="3", label="Tier 3"),
+                FilterOptionView(value="4", label="Tier 4"),
+                FilterOptionView(value="legendary", label="Legendary"),
+            ],
+            "window_options": [
+                FilterOptionView(value="7", label="Last 7 days"),
+                FilterOptionView(value="30", label="Last 30 days"),
+                FilterOptionView(value="90", label="Last 90 days"),
+            ],
+            "sample_options": [
+                FilterOptionView(value="50", label="50+ matches"),
+                FilterOptionView(value="100", label="100+ matches"),
+                FilterOptionView(value="250", label="250+ matches"),
+                FilterOptionView(value="500", label="500+ matches"),
+                FilterOptionView(value="1000", label="1000+ matches"),
+            ],
+            "selected_hero_id": str(selected_hero.hero_id),
+            "selected_item_level": selected_item_level,
+            "selected_window_days": str(selected_window_days),
+            "selected_min_matches": str(selected_min_matches),
+            "items": item_rows,
+            "guide": guide,
+            "hero_cards": hero_cards,
+            "error_message": error_message,
+        },
+    ))
+
+
 def _is_direct_player_lookup(query: str) -> bool:
     normalized = query.casefold()
     return (
@@ -320,6 +542,8 @@ def _is_direct_player_lookup(query: str) -> bool:
 @app.get("/players/{player_input}", response_class=HTMLResponse)
 async def player_profile(request: Request, player_input: str, refresh: int = 0) -> HTMLResponse:
     player_service = PlayerService()
+    refresh_requested = bool(refresh)
+    refresh_status: str | None = None
 
     try:
         resolved = await player_service.resolve_player(player_input)
@@ -333,7 +557,16 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
                 status_code=400,
             ))
 
-        summary = await player_service.build_player_summary(resolved, refresh_matches=bool(refresh))
+        try:
+            summary = await player_service.build_player_summary(resolved, refresh_matches=refresh_requested)
+            if refresh_requested:
+                refresh_status = "success"
+        except DeadlockError as refresh_error:
+            if not refresh_requested:
+                raise
+            summary = await player_service.build_player_summary(resolved, refresh_matches=False)
+            refresh_status = "fallback"
+
         rank_name = player_service.rank_name(summary)
         latest_match_ts = max((match.start_time for match in summary.recent_matches), default=None)
         rank_updated_ts = summary.rank.start_time if summary.rank else None
@@ -392,7 +625,8 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             "overview": overview,
             "top_heroes": top_heroes,
             "recent_matches": recent_matches,
-            "refresh_requested": bool(refresh),
+            "refresh_requested": refresh_requested,
+            "refresh_status": refresh_status,
         },
     ))
 
@@ -413,9 +647,11 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
 
         metadata = await player_service.api.get_match_metadata(int(match_id))
         hero_info = await player_service.api.get_hero_info()
+        item_info_map = await player_service.api.get_all_item_info()
         steam_profiles = await player_service.api.get_steam_profiles(
             [player.account_id for player in metadata.players if player.account_id]
         )
+        stat_leaders = _build_match_stat_leaders(metadata.players)
 
         player_rows: list[MatchDetailPlayerView] = []
         viewed_player_result = "Unknown"
@@ -449,6 +685,14 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
                     level=item.level or 0,
                     lane_number=item.assigned_lane,
                     lane_text=_lane_text(item.assigned_lane),
+                    items=_build_match_item_views(item.items, item_info_map),
+                    leads_souls=(item.net_worth or 0) == stat_leaders["souls"] and stat_leaders["souls"] > 0,
+                    leads_kills=(item.kills or 0) == stat_leaders["kills"] and stat_leaders["kills"] > 0,
+                    leads_assists=(item.assists or 0) == stat_leaders["assists"] and stat_leaders["assists"] > 0,
+                    leads_player_damage=(item.player_damage or 0) == stat_leaders["player_damage"] and stat_leaders["player_damage"] > 0,
+                    leads_objective_damage=(item.objective_damage or 0) == stat_leaders["objective_damage"] and stat_leaders["objective_damage"] > 0,
+                    leads_healing=(item.healing or 0) == stat_leaders["healing"] and stat_leaders["healing"] > 0,
+                    leads_last_hits=(item.last_hits or 0) == stat_leaders["last_hits"] and stat_leaders["last_hits"] > 0,
                 )
             )
 
@@ -535,6 +779,34 @@ def _friendly_slot_type(slot_type: str | None) -> str:
     return mapping.get(slot_type or "", "Utility")
 
 
+def _friendly_ability_type(ability_type: str | None) -> str:
+    mapping = {
+        "signature": "Skill",
+        "ultimate": "Ultimate",
+        "innate": "Innate",
+    }
+    return mapping.get(ability_type or "", "Ability")
+
+
+def _friendly_item_tier_text(item_tier: int | None) -> str:
+    if item_tier == 5:
+        return "Legendary"
+    if item_tier:
+        return f"Tier {item_tier}"
+    return "Tier Unknown"
+
+
+def _matches_item_level_filter(item_tier: int | None, selected_item_level: str) -> bool:
+    if not selected_item_level:
+        return True
+    if selected_item_level == "legendary":
+        return item_tier == 5
+    try:
+        return item_tier == int(selected_item_level)
+    except ValueError:
+        return False
+
+
 def _friendly_time_seconds(seconds: float | None) -> str:
     if seconds is None:
         return "Unknown timing"
@@ -554,24 +826,38 @@ def _parse_optional_int(raw: str | None) -> int | None:
         return None
 
 
-def _build_rank_distribution_views(
-    badge_distribution: list,
+def _friendly_meta_error_message(error: DeadlockError, *, topic: str) -> str:
+    message = str(error)
+    lowered = message.casefold()
+    if "rate limit" in lowered:
+        return f"Deadlock API is rate-limiting {topic} right now. Try again shortly."
+    if "took too long" in lowered or "timed out" in lowered:
+        return f"Deadlock API is taking longer than usual for {topic}. Try again in a moment."
+    if "http 400" in lowered:
+        return f"Those filters are not available for {topic} right now. Try broader filters or switch modes."
+    if "http 500" in lowered or "request failed" in lowered:
+        return f"Deadlock API is having trouble loading {topic} right now. Try again shortly."
+    return f"We couldn't load {topic} right now. Try again shortly."
+
+
+def _build_player_rank_distribution_views(
+    player_rank_distribution: list,
     rank_info: list,
 ) -> list[RankDistributionTierView]:
-    if not badge_distribution or not rank_info:
+    if not player_rank_distribution or not rank_info:
         return []
 
-    max_matches = max((entry.total_matches for entry in badge_distribution), default=0)
-    total_matches = sum(entry.total_matches for entry in badge_distribution)
-    if max_matches <= 0:
+    max_players = max((entry.players for entry in player_rank_distribution), default=0)
+    total_players = sum(entry.players for entry in player_rank_distribution)
+    if max_players <= 0:
         return []
 
     tiers_by_id = {item.tier: item for item in rank_info}
     grouped: dict[int, list[RankDistributionBarView]] = {}
 
-    for entry in sorted(badge_distribution, key=lambda item: item.badge_level):
-        tier = entry.badge_level // 10
-        division = entry.badge_level % 10
+    for entry in sorted(player_rank_distribution, key=lambda item: item.rank):
+        tier = entry.rank // 10
+        division = entry.rank % 10
         if tier <= 0 or division <= 0:
             continue
         rank = tiers_by_id.get(tier)
@@ -579,12 +865,12 @@ def _build_rank_distribution_views(
             continue
         grouped.setdefault(tier, []).append(
             RankDistributionBarView(
-                badge_level=entry.badge_level,
+                badge_level=entry.rank,
                 tier_name=rank.name,
                 division_label=str(division),
-                matches_text=f"{entry.total_matches:,} matches",
-                share_text=f"{((entry.total_matches / total_matches) * 100):.2f}% of tracked matches" if total_matches else "0.00% of tracked matches",
-                height_percent=max(8.0, (entry.total_matches / max_matches) * 100),
+                matches_text=f"{entry.players:,} tracked players",
+                share_text=f"{((entry.players / total_players) * 100):.2f}% of tracked players" if total_players else "0.00% of tracked players",
+                height_percent=max(8.0, (entry.players / max_players) * 100),
                 color=rank.color or "#d3b58a",
             )
         )
@@ -656,3 +942,43 @@ def _build_matchup_rows(players: list[MatchDetailPlayerView]) -> list[MatchupRow
                 )
             )
     return rows
+
+
+def _build_match_stat_leaders(players: list[DeadlockMatchPlayer]) -> dict[str, int]:
+    def _max_value(values: list[int | None]) -> int:
+        filtered = [int(value or 0) for value in values]
+        return max(filtered, default=0)
+
+    return {
+        "souls": _max_value([player.net_worth for player in players]),
+        "kills": _max_value([player.kills for player in players]),
+        "assists": _max_value([player.assists for player in players]),
+        "player_damage": _max_value([player.player_damage for player in players]),
+        "objective_damage": _max_value([player.objective_damage for player in players]),
+        "healing": _max_value([player.healing for player in players]),
+        "last_hits": _max_value([player.last_hits for player in players]),
+    }
+
+
+def _build_match_item_views(
+    items: list,
+    item_info_map: dict[int, object],
+) -> list[MatchDetailItemView]:
+    current_items = sorted(
+        [item for item in items if not item.sold_time_s],
+        key=lambda item: (item.game_time_s is None, item.game_time_s or 0, item.item_id),
+    )
+    views: list[MatchDetailItemView] = []
+    for item in current_items:
+        item_info = item_info_map.get(item.item_id)
+        if item_info is None:
+            continue
+        if getattr(item_info, "item_type", None) != "upgrade":
+            continue
+        views.append(
+            MatchDetailItemView(
+                item_name=item_info.name,
+                item_image_url=item_info.shop_image or item_info.image,
+            )
+        )
+    return views

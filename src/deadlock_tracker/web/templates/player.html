@@ -7,7 +7,7 @@
     <div>
         <div class="hero-actions">
             <a class="back-link" href="/">Back to search</a>
-            <a class="refresh-link" href="/players/{{ overview.account_id }}?refresh=1">Refresh Match History</a>
+            <a class="refresh-link" href="/players/{{ overview.account_id }}?refresh=1">Try Live Refresh</a>
         </div>
         <p class="eyebrow">Player Overview</p>
         <h1>{{ overview.personaname }}</h1>
@@ -19,6 +19,7 @@
         </div>
         <div class="hero-notes">
             <span>Latest match {{ overview.latest_match_text }}</span>
+            <span>Live refresh can be rate-limited, so cached history is the default.</span>
         </div>
     </div>
     {% if overview.avatarfull %}
@@ -26,10 +27,17 @@
     {% endif %}
 </section>
 
-{% if refresh_requested %}
+{% if refresh_status == "success" %}
 <section class="status-banner">
     <strong>Fresh match history loaded.</strong>
     <span>Recent matches were refreshed from the available API history.</span>
+</section>
+{% endif %}
+
+{% if refresh_status == "fallback" %}
+<section class="status-banner">
+    <strong>Live refresh is temporarily limited.</strong>
+    <span>Showing the latest cached match history instead so the page still loads normally.</span>
 </section>
 {% endif %}
 
@@ -51,7 +59,7 @@
         <div class="section-heading">
             <div class="section-heading-top">
                 <h2>Top Heroes</h2>
-                <span class="section-badge">Last 50 Matches</span>
+                <span class="section-badge">Recent Matches</span>
             </div>
             <p>Highest volume hero performance across the loaded history.</p>
         </div>

@@ -78,6 +78,52 @@ class BestHeroView:
 
 
 @dataclass(slots=True)
+class StreetBrawlBuildItemView:
+    rank_number: int
+    item_name: str
+    item_image_url: str | None
+    slot_type: str
+    tier_text: str
+    cost_text: str
+    win_rate_percent: str
+    matches_text: str
+    players_text: str
+    avg_buy_time_text: str
+    wins_text: str
+    losses_text: str
+
+
+@dataclass(slots=True)
+class StreetBrawlAbilityStepView:
+    step_number: int
+    ability_name: str
+    ability_image_url: str | None
+    ability_type: str
+
+
+@dataclass(slots=True)
+class StreetBrawlGuideView:
+    hero_name: str
+    hero_icon_url: str | None
+    hero_portrait_url: str | None
+    hero_background_image_url: str | None
+    ability_steps: list[StreetBrawlAbilityStepView]
+    path_matches_text: str
+    path_players_text: str
+    path_win_rate_percent: str
+
+
+@dataclass(slots=True)
+class StreetBrawlHeroCardView:
+    hero_id: int
+    hero_name: str
+    hero_icon_url: str | None
+    hero_portrait_url: str | None
+    hero_background_image_url: str | None
+    build_url: str
+
+
+@dataclass(slots=True)
 class RankDistributionBarView:
     badge_level: int
     tier_name: str
@@ -92,6 +138,12 @@ class RankDistributionBarView:
 class RankDistributionTierView:
     tier_name: str
     bars: list[RankDistributionBarView]
+
+
+@dataclass(slots=True)
+class MatchDetailItemView:
+    item_name: str
+    item_image_url: str | None
 
 
 @dataclass(slots=True)
@@ -132,6 +184,14 @@ class MatchDetailPlayerView:
     level: int
     lane_number: int | None
     lane_text: str
+    items: list[MatchDetailItemView]
+    leads_souls: bool = False
+    leads_kills: bool = False
+    leads_assists: bool = False
+    leads_player_damage: bool = False
+    leads_objective_damage: bool = False
+    leads_healing: bool = False
+    leads_last_hits: bool = False
 
 
 @dataclass(slots=True)

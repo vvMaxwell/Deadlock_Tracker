@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Street Brawl Builds | Deadlock Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell meta-shell">
+    <div class="section-heading">
+        <p class="eyebrow">Special Mode Guide</p>
+        <h1>Street Brawl Builds</h1>
+        <p class="lede">
+            {% if guide %}
+            Pick a hero and we’ll surface the highest win rate Street Brawl items on the left, then the most common ability upgrade path on the right.
+            {% else %}
+            Start on the hero splash below, then jump straight into a Street Brawl build page for any champion in the active roster.
+            {% endif %}
+        </p>
+    </div>
+
+    <form class="meta-filter-form meta-filter-form-builds" method="get" action="/street-brawl-builds" data-auto-submit>
+        <label>
+            <span>Hero</span>
+            <select name="hero_id">
+                <option value="">Choose a hero</option>
+                {% for option in hero_options %}
+                <option value="{{ option.value }}"{% if option.value == selected_hero_id %} selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>Sample Size</span>
+            <select name="min_matches">
+                {% for option in sample_options %}
+                <option value="{{ option.value }}"{% if option.value == selected_min_matches %} selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>Window</span>
+            <select name="window_days">
+                {% for option in window_options %}
+                <option value="{{ option.value }}"{% if option.value == selected_window_days %} selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <input type="hidden" name="item_level" value="{{ selected_item_level }}">
+        <button class="meta-filter-submit" type="submit">Show Build</button>
+    </form>
+    <p class="meta-filter-note">Default filtering hides anything under 100 matches. Builds with fewer than 50 matches, or any very low sample size, can be misleading.</p>
+
+    {% if error_message %}
+    <p class="error-message">{{ error_message }}</p>
+    {% endif %}
+
+    {% if not guide %}
+    <section class="street-brawl-splash">
+        <div class="section-heading">
+            <h2>Choose A Hero</h2>
+            <p>Alphabetical roster. Click any hero to open their current Street Brawl item board and most common level path.</p>
+        </div>
+        <div class="street-brawl-hero-grid">
+            {% for hero in hero_cards %}
+            <a class="street-brawl-hero-tile" href="{{ hero.build_url }}"{% if hero.hero_background_image_url %} style="background-image: linear-gradient(180deg, rgba(10, 8, 6, 0.3), rgba(10, 8, 6, 0.94)), url('{{ hero.hero_background_image_url }}');"{% endif %}>
+                <div class="street-brawl-hero-tile-copy">
+                    <strong>{{ hero.hero_name }}</strong>
+                    <span>Open build</span>
+                </div>
+                {% if hero.hero_portrait_url %}
+                <img class="street-brawl-hero-tile-portrait" src="{{ hero.hero_portrait_url }}" alt="{{ hero.hero_name }}">
+                {% elif hero.hero_icon_url %}
+                <img class="street-brawl-hero-tile-portrait street-brawl-hero-tile-portrait-fallback" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}">
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% else %}
+    <section class="street-brawl-layout">
+        <div class="street-brawl-item-panel">
+            <div class="section-heading">
+                <h2>Best Items By Win Rate</h2>
+                <p>Compact list for the current Street Brawl meta, sorted by win rate and grounded with live match counts.</p>
+            </div>
+            <div class="street-brawl-tier-filter" role="tablist" aria-label="Item tier filter">
+                {% for option in item_level_options if option.value %}
+                <a
+                    class="street-brawl-tier-pill{% if option.value == selected_item_level %} street-brawl-tier-pill-active{% endif %}"
+                    href="/street-brawl-builds?hero_id={{ selected_hero_id }}&item_level={{ option.value }}&window_days={{ selected_window_days }}&min_matches={% if option.value == 'legendary' %}50{% else %}100{% endif %}"
+                >
+                    {{ option.label }}
+                </a>
+                {% endfor %}
+            </div>
+
+            <div class="street-brawl-item-list">
+                {% for item in items %}
+                <article class="street-brawl-item-row">
+                    <div class="street-brawl-item-rank">{{ item.rank_number }}</div>
+                    <div class="street-brawl-item-main">
+                        {% if item.item_image_url %}
+                        <img class="street-brawl-item-icon" src="{{ item.item_image_url }}" alt="{{ item.item_name }}">
+                        {% endif %}
+                        <div class="street-brawl-item-copy">
+                            <strong>{{ item.item_name }}</strong>
+                            <div class="street-brawl-inline-meta">
+                                <span>{{ item.slot_type }}</span>
+                                <span>{{ item.tier_text }}</span>
+                                <span>{{ item.cost_text }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="street-brawl-item-metrics">
+                        <div>
+                            <span>Win Rate</span>
+                            <strong>{{ item.win_rate_percent }}</strong>
+                        </div>
+                        <div>
+                            <span>Matches</span>
+                            <strong>{{ item.matches_text }}</strong>
+                        </div>
+                        <div>
+                            <span>Players</span>
+                            <strong>{{ item.players_text }}</strong>
+                        </div>
+                        <div>
+                            <span>Timing</span>
+                            <strong>{{ item.avg_buy_time_text }}</strong>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+
+            {% if not items and not error_message %}
+            <p class="empty-state">No Street Brawl item rows matched this filter yet. Try a different hero, item level, or a wider window.</p>
+            {% endif %}
+        </div>
+
+        <aside class="street-brawl-guide-panel">
+            {% if guide %}
+            <article class="street-brawl-hero-card"{% if guide.hero_background_image_url %} style="background-image: linear-gradient(180deg, rgba(8, 6, 4, 0.3), rgba(8, 6, 4, 0.96)), url('{{ guide.hero_background_image_url }}');"{% endif %}>
+                <div class="street-brawl-hero-card-head">
+                    <div>
+                        <p class="eyebrow">Selected Hero</p>
+                        <h2>{{ guide.hero_name }}</h2>
+                        <div class="street-brawl-inline-meta">
+                            <span>{{ guide.path_win_rate_percent }} top path win rate</span>
+                            <span>{{ guide.path_matches_text }}</span>
+                            <span>{{ guide.path_players_text }}</span>
+                        </div>
+                    </div>
+                    {% if guide.hero_portrait_url %}
+                    <img class="street-brawl-hero-portrait" src="{{ guide.hero_portrait_url }}" alt="{{ guide.hero_name }}">
+                    {% elif guide.hero_icon_url %}
+                    <img class="street-brawl-hero-portrait street-brawl-hero-portrait-fallback" src="{{ guide.hero_icon_url }}" alt="{{ guide.hero_name }}">
+                    {% endif %}
+                </div>
+            </article>
+
+            <section class="street-brawl-ability-guide">
+                <div class="section-heading">
+                    <h2>Most Common Level Path</h2>
+                    <p>Ordered by the ability sequence with the most tracked Street Brawl matches for this hero.</p>
+                </div>
+                <div class="street-brawl-steps">
+                    {% for step in guide.ability_steps %}
+                    <article class="street-brawl-step">
+                        <div class="street-brawl-step-number">{{ step.step_number }}</div>
+                        {% if step.ability_image_url %}
+                        <img class="street-brawl-step-icon" src="{{ step.ability_image_url }}" alt="{{ step.ability_name }}">
+                        {% endif %}
+                        <div class="street-brawl-step-copy">
+                            <strong>{{ step.ability_name }}</strong>
+                            <span>{{ step.ability_type }}</span>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+        </aside>
+    </section>
+    {% endif %}
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector("[data-auto-submit]");
+    if (!form) {
+        return;
+    }
+
+    const heroSelect = form.querySelector('select[name="hero_id"]');
+    const autoFields = form.querySelectorAll("select");
+
+    autoFields.forEach(function (field) {
+        field.addEventListener("change", function () {
+            if (field !== heroSelect && heroSelect && !heroSelect.value) {
+                return;
+            }
+            form.requestSubmit();
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -8,6 +8,7 @@ import aiohttp
 
 from deadlock_tracker.config import get_settings
 from deadlock_tracker.models import (
+    DeadlockAbilityOrderStat,
     DeadlockBadgeDistribution,
     DeadlockHeroAnalytics,
     DeadlockHeroInfo,
@@ -15,9 +16,11 @@ from deadlock_tracker.models import (
     DeadlockItemStat,
     DeadlockHeroStat,
     DeadlockMatch,
+    DeadlockMatchItem,
     DeadlockMatchMetadata,
     DeadlockMatchPlayer,
     DeadlockPlayer,
+    DeadlockPlayerRankDistribution,
     DeadlockRank,
     DeadlockRankInfo,
     DeadlockSteamProfile,
@@ -268,7 +271,9 @@ class DeadlockAPI:
             item["id"]: DeadlockHeroInfo(
                 hero_id=item["id"],
                 name=item["name"],
-                icon_small=(item.get("images") or {}).get("icon_image_small"),
+                icon_small=(item.get("images") or {}).get("icon_image_small_webp") or (item.get("images") or {}).get("icon_image_small"),
+                portrait_url=(item.get("images") or {}).get("top_bar_vertical_image_webp") or (item.get("images") or {}).get("top_bar_vertical_image"),
+                background_image_url=(item.get("images") or {}).get("background_image_webp") or (item.get("images") or {}).get("background_image"),
             )
             for item in payload
             if item.get("player_selectable", True)
@@ -297,6 +302,9 @@ class DeadlockAPI:
             item_tier=payload.get("item_tier"),
             cost=payload.get("cost"),
             is_active_item=bool(payload.get("is_active_item")),
+            item_type=payload.get("type"),
+            ability_type=payload.get("ability_type"),
+            hero_id=payload.get("hero"),
         )
         self._item_info[item_id] = item
         return item
@@ -316,6 +324,9 @@ class DeadlockAPI:
                 item_tier=item.get("item_tier"),
                 cost=item.get("cost"),
                 is_active_item=bool(item.get("is_active_item")),
+                item_type=item.get("type"),
+                ability_type=item.get("ability_type"),
+                hero_id=item.get("hero"),
             )
             for item in payload
         }
@@ -415,6 +426,49 @@ class DeadlockAPI:
             for item in payload
         ]
 
+    async def get_player_rank_distribution(self) -> list[DeadlockPlayerRankDistribution]:
+        payload = await self._get_json(f"{self.base_url}/v1/players/mmr/distribution")
+        return [
+            DeadlockPlayerRankDistribution(
+                rank=item["rank"],
+                players=item["players"],
+            )
+            for item in payload
+            if item.get("rank") is not None and item.get("players") is not None
+        ]
+
+    async def get_ability_order_stats(
+        self,
+        *,
+        hero_id: int,
+        game_mode: str = "normal",
+        min_matches: int = 20,
+        min_average_badge: int | None = None,
+        min_unix_timestamp: int | None = None,
+    ) -> list[DeadlockAbilityOrderStat]:
+        params: dict[str, str] = {
+            "hero_id": str(hero_id),
+            "game_mode": game_mode,
+            "min_matches": str(min_matches),
+        }
+        if min_average_badge is not None:
+            params["min_average_badge"] = str(min_average_badge)
+        if min_unix_timestamp is not None:
+            params["min_unix_timestamp"] = str(min_unix_timestamp)
+
+        payload = await self._get_json(f"{self.base_url}/v1/analytics/ability-order-stats", params=params)
+        return [
+            DeadlockAbilityOrderStat(
+                abilities=item["abilities"],
+                wins=item["wins"],
+                losses=item["losses"],
+                matches=item["matches"],
+                players=item["players"],
+            )
+            for item in payload
+            if item.get("abilities")
+        ]
+
     async def get_match_metadata(self, match_id: int) -> DeadlockMatchMetadata:
         payload = await self._get_json(f"{self.base_url}/v1/matches/{match_id}/metadata")
         match_info = payload.get("match_info") or {}
@@ -435,6 +489,15 @@ class DeadlockAPI:
                 player_damage=_final_stat_value(item.get("stats"), "player_damage"),
                 objective_damage=_final_stat_value(item.get("stats"), "boss_damage"),
                 healing=_final_stat_value(item.get("stats"), "player_healing"),
+                items=[
+                    DeadlockMatchItem(
+                        item_id=entry["item_id"],
+                        game_time_s=entry.get("game_time_s"),
+                        sold_time_s=entry.get("sold_time_s"),
+                    )
+                    for entry in item.get("items", [])
+                    if entry.get("item_id") is not None
+                ],
             )
             for item in match_info.get("players", [])
         ]

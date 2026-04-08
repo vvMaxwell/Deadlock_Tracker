@@ -44,41 +44,6 @@
     </div>
 </section>
 
-{% if rank_distribution %}
-<section class="guide-shell rank-distribution-shell">
-    <div class="section-heading">
-        <p class="eyebrow">Meta Snapshot</p>
-        <h2>Match Rank Distribution</h2>
-        <p>Average match distribution across the current rank ladder, grouped by badge tier.</p>
-    </div>
-    <div class="rank-distribution-chart">
-        {% for tier in rank_distribution %}
-        <div class="rank-tier-group">
-            <div class="rank-tier-bars">
-                {% for bar in tier.bars %}
-                <div class="rank-bar-wrap">
-                    <div
-                        class="rank-bar"
-                        style="height: {{ '%.2f'|format(bar.height_percent) }}%; --rank-bar-color: {{ bar.color }};"
-                        aria-label="{{ bar.tier_name }} {{ bar.division_label }} - {{ bar.matches_text }} - {{ bar.share_text }}"
-                    >
-                        <div class="rank-bar-tooltip">
-                            <strong>{{ bar.tier_name }} {{ bar.division_label }}</strong>
-                            <span>{{ bar.matches_text }}</span>
-                            <span>{{ bar.share_text }}</span>
-                        </div>
-                    </div>
-                    <span>{{ bar.division_label }}</span>
-                </div>
-                {% endfor %}
-            </div>
-            <p class="rank-tier-label">{{ tier.tier_name }}</p>
-        </div>
-        {% endfor %}
-    </div>
-</section>
-{% endif %}
-
 {% if results %}
 <section class="results-section">
     <div class="section-heading">
@@ -104,6 +69,41 @@
                 <span>Open profile</span>
             </div>
         </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if rank_distribution %}
+<section class="guide-shell rank-distribution-shell">
+    <div class="section-heading">
+        <p class="eyebrow">Meta Snapshot</p>
+        <h2>Estimated Player Rank Distribution</h2>
+        <p>Tracked-player estimate of the current rank ladder, grouped by badge tier. This is not the full global playerbase.</p>
+    </div>
+    <div class="rank-distribution-chart">
+        {% for tier in rank_distribution %}
+        <div class="rank-tier-group">
+            <div class="rank-tier-bars">
+                {% for bar in tier.bars %}
+                <div class="rank-bar-wrap">
+                    <div
+                        class="rank-bar"
+                        style="height: {{ '%.2f'|format(bar.height_percent) }}%; --rank-bar-color: {{ bar.color }};"
+                        aria-label="{{ bar.tier_name }} {{ bar.division_label }} - {{ bar.matches_text }} - {{ bar.share_text }}"
+                    >
+                        <div class="rank-bar-tooltip">
+                            <strong>{{ bar.tier_name }} {{ bar.division_label }}</strong>
+                            <span>{{ bar.matches_text }}</span>
+                            <span>{{ bar.share_text }}</span>
+                        </div>
+                    </div>
+                    <span>{{ bar.division_label }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="rank-tier-label">{{ tier.tier_name }}</p>
+        </div>
         {% endfor %}
     </div>
 </section>

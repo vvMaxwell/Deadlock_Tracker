@@ -58,13 +58,33 @@
                         </div>
                     </div>
                     <div class="lane-player-stats">
-                        <span>Souls {{ "{:,}".format(row.left_player.souls) }}</span>
+                        <span class="{% if row.left_player.leads_souls %}stat-leader{% endif %}">Souls {{ "{:,}".format(row.left_player.souls) }}</span>
                         <span>KDA {{ row.left_player.kda }}</span>
-                        <span>Dmg {{ "{:,}".format(row.left_player.player_damage) }}</span>
-                        <span>Obj {{ "{:,}".format(row.left_player.objective_damage) }}</span>
-                        <span>Heal {{ "{:,}".format(row.left_player.healing) }}</span>
-                        <span>LH {{ row.left_player.last_hits }}</span>
+                        <span class="{% if row.left_player.leads_kills %}stat-leader{% endif %}">Kills {{ row.left_player.kills }}</span>
+                        <span class="{% if row.left_player.leads_assists %}stat-leader{% endif %}">Assists {{ row.left_player.assists }}</span>
+                        <span class="{% if row.left_player.leads_player_damage %}stat-leader{% endif %}">Dmg {{ "{:,}".format(row.left_player.player_damage) }}</span>
+                        <span class="{% if row.left_player.leads_objective_damage %}stat-leader{% endif %}">Obj {{ "{:,}".format(row.left_player.objective_damage) }}</span>
+                        <span class="{% if row.left_player.leads_healing %}stat-leader{% endif %}">Heal {{ "{:,}".format(row.left_player.healing) }}</span>
+                        <span class="{% if row.left_player.leads_last_hits %}stat-leader{% endif %}">Last Hits {{ row.left_player.last_hits }}</span>
                     </div>
+                    {% if row.left_player.items %}
+                    <details class="lane-player-items">
+                        <summary>
+                            <span class="lane-player-items-arrow" aria-hidden="true">▾</span>
+                            <span>Show items</span>
+                        </summary>
+                        <div class="lane-player-item-grid">
+                            {% for item in row.left_player.items %}
+                            <div class="lane-player-item-pill">
+                                {% if item.item_image_url %}
+                                <img src="{{ item.item_image_url }}" alt="{{ item.item_name }}">
+                                {% endif %}
+                                <span>{{ item.item_name }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% endif %}
                 </article>
                 {% endif %}
             </div>
@@ -94,13 +114,33 @@
                         </div>
                     </div>
                     <div class="lane-player-stats">
-                        <span>Souls {{ "{:,}".format(row.right_player.souls) }}</span>
+                        <span class="{% if row.right_player.leads_souls %}stat-leader{% endif %}">Souls {{ "{:,}".format(row.right_player.souls) }}</span>
                         <span>KDA {{ row.right_player.kda }}</span>
-                        <span>Dmg {{ "{:,}".format(row.right_player.player_damage) }}</span>
-                        <span>Obj {{ "{:,}".format(row.right_player.objective_damage) }}</span>
-                        <span>Heal {{ "{:,}".format(row.right_player.healing) }}</span>
-                        <span>LH {{ row.right_player.last_hits }}</span>
+                        <span class="{% if row.right_player.leads_kills %}stat-leader{% endif %}">Kills {{ row.right_player.kills }}</span>
+                        <span class="{% if row.right_player.leads_assists %}stat-leader{% endif %}">Assists {{ row.right_player.assists }}</span>
+                        <span class="{% if row.right_player.leads_player_damage %}stat-leader{% endif %}">Dmg {{ "{:,}".format(row.right_player.player_damage) }}</span>
+                        <span class="{% if row.right_player.leads_objective_damage %}stat-leader{% endif %}">Obj {{ "{:,}".format(row.right_player.objective_damage) }}</span>
+                        <span class="{% if row.right_player.leads_healing %}stat-leader{% endif %}">Heal {{ "{:,}".format(row.right_player.healing) }}</span>
+                        <span class="{% if row.right_player.leads_last_hits %}stat-leader{% endif %}">Last Hits {{ row.right_player.last_hits }}</span>
                     </div>
+                    {% if row.right_player.items %}
+                    <details class="lane-player-items">
+                        <summary>
+                            <span class="lane-player-items-arrow" aria-hidden="true">▾</span>
+                            <span>Show items</span>
+                        </summary>
+                        <div class="lane-player-item-grid">
+                            {% for item in row.right_player.items %}
+                            <div class="lane-player-item-pill">
+                                {% if item.item_image_url %}
+                                <img src="{{ item.item_image_url }}" alt="{{ item.item_name }}">
+                                {% endif %}
+                                <span>{{ item.item_name }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% endif %}
                 </article>
                 {% endif %}
             </div>

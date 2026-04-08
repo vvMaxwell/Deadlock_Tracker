@@ -10,10 +10,10 @@
         <p class="lede">Track the strongest heroes by win rate and pick rate across the current active roster. Filter by rank floor, mode, time window, and minimum matches.</p>
     </div>
 
-    <form class="meta-filter-form meta-filter-form-compact" method="get" action="/best-heroes">
+    <form class="meta-filter-form meta-filter-form-compact" method="get" action="/best-heroes" data-street-brawl-rank-lock>
         <label>
             <span>Rank Floor</span>
-            <select name="rank_floor">
+            <select name="rank_floor" data-rank-floor-select>
                 {% for option in rank_options %}
                 <option value="{{ option.value }}"{% if option.value == selected_rank_floor %} selected{% endif %}>{{ option.label }}</option>
                 {% endfor %}
@@ -52,6 +52,9 @@
         <button class="meta-filter-submit" type="submit">Apply Filters</button>
     </form>
     <p class="meta-filter-note" id="hero-min-matches-help">Enter a value from 100 to 5000. Heroes below that threshold are excluded from the list.</p>
+    <p class="meta-filter-note meta-filter-note-street-brawl{% if selected_mode != 'street_brawl' %} is-hidden{% endif %}" data-street-brawl-rank-note>
+        Street Brawl can only be filtered by <strong>All ranks</strong>, so rank filtering is locked for this mode.
+    </p>
 
     {% if error_message %}
     <p class="error-message">{{ error_message }}</p>
@@ -114,4 +117,37 @@
         {% endif %}
     </section>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+    const form = document.querySelector('[data-street-brawl-rank-lock]');
+    if (!form) return;
+    const modeSelect = form.querySelector('select[name="mode"]');
+    const rankSelect = form.querySelector('[data-rank-floor-select]');
+    if (!modeSelect || !rankSelect) return;
+
+    const syncRankLock = () => {
+        const isStreetBrawl = modeSelect.value === 'street_brawl';
+        if (isStreetBrawl) {
+            rankSelect.value = '';
+        } else if (!rankSelect.value) {
+            rankSelect.value = '81';
+        }
+        rankSelect.disabled = isStreetBrawl;
+        rankSelect.setAttribute('aria-disabled', isStreetBrawl ? 'true' : 'false');
+        rankSelect.title = isStreetBrawl
+            ? 'Street Brawl can only be filtered by All ranks.'
+            : '';
+        const note = form.parentElement.querySelector('[data-street-brawl-rank-note]');
+        if (note) {
+            note.classList.toggle('is-hidden', !isStreetBrawl);
+        }
+    };
+
+    modeSelect.addEventListener('change', syncRankLock);
+    syncRankLock();
+})();
+</script>
 {% endblock %}

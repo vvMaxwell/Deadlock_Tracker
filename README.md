@@ -51,3 +51,25 @@ docker run --rm -p 8000:8000 deadlock-tracker-web
 ```
 
 If Docker does not start, make sure Docker Desktop is running first.
+
+## VPS Deployment
+
+This repo includes a production deployment path for a Linux VPS:
+
+- `deploy/bootstrap-vps.sh` installs Docker, Compose, Git, and opens ports `22` and `80`
+- `deploy/docker-compose.yml` runs the FastAPI app behind Nginx
+- `.github/workflows/deploy.yml` deploys the latest `main` branch over SSH
+
+Initial server bootstrap:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vvMaxwell/Deadlock_Tracker/main/deploy/bootstrap-vps.sh | sudo bash
+```
+
+GitHub Actions secrets expected by the deploy workflow:
+
+- `DEPLOY_HOST`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
+- `DEPLOY_PORT` (optional, defaults to `22`)
+- `DEPLOY_PATH` (optional, defaults to `/opt/deadlock-tracker`)
