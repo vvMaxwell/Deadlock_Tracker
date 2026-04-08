@@ -52,7 +52,7 @@
     </div>
     <div class="results-grid">
         {% for result in results %}
-        <a class="result-card" href="/players/{{ result.account_id }}">
+        <a class="result-card" href="{{ result.detail_url }}">
             <div class="result-head">
                 {% if result.avatarfull %}
                 <img src="{{ result.avatarfull }}" alt="{{ result.personaname }}">

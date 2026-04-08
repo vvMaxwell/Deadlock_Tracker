@@ -24,6 +24,26 @@ def test_healthcheck_returns_ok() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_robots_txt_lists_sitemap() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/robots.txt")
+
+    assert response.status_code == 200
+    assert "User-agent: *" in response.text
+    assert "Sitemap:" in response.text
+
+
+def test_sitemap_lists_core_pages() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/sitemap.xml")
+
+    assert response.status_code == 200
+    assert "<loc>http://testserver/</loc>" in response.text
+    assert "<loc>http://testserver/best-heroes</loc>" in response.text
+    assert "<loc>http://testserver/best-items</loc>" in response.text
+    assert "<loc>http://testserver/street-brawl-builds</loc>" in response.text
+
+
 def test_friendly_meta_error_message_rate_limit() -> None:
     message = web_app._friendly_meta_error_message(
         DeadlockError("Deadlock API rate limit hit. Try again shortly."),
@@ -145,6 +165,7 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
     assert "Live refresh is temporarily limited." in response.text
     assert "Showing the latest cached match history instead" in response.text
     assert "oracle-1.png" in response.text
+    assert '<link rel="canonical" href="http://testserver/players/123/tester">' in response.text
 
 
 def test_street_brawl_selected_hero_stays_on_build_page_without_guide(monkeypatch) -> None:
@@ -209,3 +230,54 @@ def test_street_brawl_selected_hero_stays_on_build_page_without_guide(monkeypatc
     assert "Best Items By Win Rate" in response.text
     assert "Mystic Shot" in response.text
     assert "We do not have enough tracked Street Brawl ability-order data for Bebop yet" in response.text
+
+
+def test_legacy_player_url_redirects_to_canonical_slug(monkeypatch) -> None:
+    class FakeApi:
+        async def get_rank_info(self) -> list:
+            return []
+
+    class FakePlayerService:
+        api = FakeApi()
+
+        def rank_name(self, summary: PlayerSummary) -> str:
+            return "Unknown"
+
+        def win_rate(self, stat: DeadlockHeroStat) -> float:
+            return 0.0
+
+        def match_result_label(self, match: DeadlockMatch) -> str:
+            return "Loss"
+
+        def format_match_duration(self, seconds: int | None) -> str:
+            return "0:00"
+
+        def format_kda(self, kills: int | None, deaths: int | None, assists: int | None) -> str:
+            return "0/0/0"
+
+        async def resolve_player(self, raw_input: str) -> DeadlockPlayer:
+            return DeadlockPlayer(
+                account_id=123,
+                personaname="Test Player",
+                profileurl="https://steamcommunity.com/profiles/123",
+                avatarfull=None,
+                countrycode="CA",
+                last_updated=None,
+            )
+
+        async def build_player_summary(self, player: DeadlockPlayer, *, refresh_matches: bool = False) -> PlayerSummary:
+            return PlayerSummary(
+                player=player,
+                rank=None,
+                hero_stats=[],
+                recent_matches=[],
+                hero_info={},
+            )
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app, follow_redirects=False)
+    response = client.get("/players/123")
+
+    assert response.status_code == 308
+    assert response.headers["location"] == "http://testserver/players/123/test-player"

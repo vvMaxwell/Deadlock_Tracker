@@ -37,6 +37,7 @@ class ModeSummaryView:
 class SearchResultView:
     account_id: int
     personaname: str
+    detail_url: str
     profileurl: str
     avatarfull: str | None
     countrycode: str | None

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import json
+import re
 from pathlib import Path
 from time import time
+from urllib.parse import urlencode
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -45,9 +48,67 @@ def _html_response(response: HTMLResponse) -> HTMLResponse:
     return response
 
 
+def _base_context(request: Request, **context: object) -> dict[str, object]:
+    site_name = "Deadlock Stat Tracker"
+    path = request.url.path
+    canonical_url = context.pop("canonical_url", str(request.url.replace(query="")))
+    page_title = context.get("page_title") or site_name
+    meta_description = context.get("meta_description") or (
+        "Search Deadlock players, ranks, match history, hero performance, best heroes, best items, and Street Brawl builds."
+    )
+    og_image = context.get("og_image") or str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
+    meta_robots = context.get("meta_robots") or "index,follow"
+    og_type = context.get("og_type") or "website"
+    structured_data = context.get("structured_data")
+    if structured_data is not None:
+        structured_data = json.dumps(structured_data, separators=(",", ":"))
+
+    return {
+        "site_name": site_name,
+        "canonical_url": canonical_url,
+        "page_title": page_title,
+        "meta_description": meta_description,
+        "meta_robots": meta_robots,
+        "og_type": og_type,
+        "og_image": og_image,
+        "structured_data": structured_data,
+        "request_path": path,
+        **context,
+    }
+
+
 @app.get("/healthz")
 async def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/robots.txt")
+async def robots_txt(request: Request) -> Response:
+    sitemap_url = str(request.url_for("sitemap_xml"))
+    content = f"User-agent: *\nAllow: /\n\nSitemap: {sitemap_url}\n"
+    return Response(content=content, media_type="text/plain")
+
+
+@app.get("/sitemap.xml", name="sitemap_xml")
+async def sitemap_xml(request: Request) -> Response:
+    urls = [
+        str(request.url_for("home")),
+        str(request.url_for("best_heroes")),
+        str(request.url_for("best_items")),
+        str(request.url_for("street_brawl_builds")),
+        str(request.url_for("faq")),
+        str(request.url_for("discord_bot")),
+        str(request.url_for("credits")),
+        str(request.url_for("disclaimers")),
+    ]
+    body = "".join(f"<url><loc>{url}</loc></url>" for url in urls)
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{body}"
+        "</urlset>"
+    )
+    return Response(content=xml, media_type="application/xml")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -72,6 +133,13 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
                 SearchResultView(
                     account_id=player.account_id,
                     personaname=player.personaname,
+                    detail_url=str(
+                        request.url_for(
+                            "player_profile_canonical",
+                            account_id=str(player.account_id),
+                            player_slug=_slugify(player.personaname),
+                        )
+                    ),
                     profileurl=player.profileurl,
                     avatarfull=player.avatarfull,
                     countrycode=player.countrycode,
@@ -91,12 +159,30 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
     return _html_response(TEMPLATES.TemplateResponse(
         request,
         "index.html",
-        {
-            "query": query or "",
-            "results": search_results,
-            "error_message": error_message,
-            "rank_distribution": rank_distribution,
-        },
+        _base_context(
+            request,
+            page_title="Deadlock Stat Tracker",
+            meta_description=(
+                "Deadlock Stat Tracker lets you search players by Steam name, profile URL, or account ID "
+                "to view ranks, match history, hero stats, best heroes, best items, and Street Brawl builds."
+            ),
+            meta_robots="noindex,follow" if query else "index,follow",
+            structured_data={
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                "name": "Deadlock Stat Tracker",
+                "url": str(request.url_for("home")),
+                "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": f"{request.url_for('home')}?query={{search_term_string}}",
+                    "query-input": "required name=search_term_string",
+                },
+            },
+            query=query or "",
+            results=search_results,
+            error_message=error_message,
+            rank_distribution=rank_distribution,
+        ),
     ))
 
 
@@ -107,25 +193,76 @@ async def faq(request: Request) -> HTMLResponse:
     return _html_response(TEMPLATES.TemplateResponse(
         request,
         "faq.html",
-        {
-            "screenshot_url": str(request.url_for("static", path=screenshot_rel)) if screenshot_abs.exists() else None,
-        },
+        _base_context(
+            request,
+            page_title="FAQ | Deadlock Stat Tracker",
+            meta_description=(
+                "Learn how to search Deadlock players by Steam name, profile URL, or account ID, and how to use Deadlock Stat Tracker."
+            ),
+            structured_data={
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": "How do I get my Steam account URL?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "Open your Steam profile page and copy the full URL from the address bar. Both numeric profile URLs and custom Steam ID URLs work.",
+                        },
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "What can I search?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "You can search by Steam Name, Steam Account URL, or Account ID.",
+                        },
+                    },
+                ],
+            },
+            screenshot_url=str(request.url_for("static", path=screenshot_rel)) if screenshot_abs.exists() else None,
+        ),
     ))
 
 
 @app.get("/discord-bot", response_class=HTMLResponse)
 async def discord_bot(request: Request) -> HTMLResponse:
-    return _html_response(TEMPLATES.TemplateResponse(request, "discord_bot.html", {}))
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "discord_bot.html",
+        _base_context(
+            request,
+            page_title="Discord Bot | Deadlock Stat Tracker",
+            meta_description="Follow the upcoming Deadlock Stat Tracker Discord bot for match lookups, stat snapshots, and future automation features.",
+        ),
+    ))
 
 
 @app.get("/credits", response_class=HTMLResponse)
 async def credits(request: Request) -> HTMLResponse:
-    return _html_response(TEMPLATES.TemplateResponse(request, "credits.html", {}))
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "credits.html",
+        _base_context(
+            request,
+            page_title="Credits | Deadlock Stat Tracker",
+            meta_description="Credits and acknowledgements for the data, assets, and tools behind Deadlock Stat Tracker.",
+        ),
+    ))
 
 
 @app.get("/disclaimers", response_class=HTMLResponse)
 async def disclaimers(request: Request) -> HTMLResponse:
-    return _html_response(TEMPLATES.TemplateResponse(request, "disclaimers.html", {}))
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "disclaimers.html",
+        _base_context(
+            request,
+            page_title="Disclaimers | Deadlock Stat Tracker",
+            meta_description="Read the disclaimers and usage notes for Deadlock Stat Tracker, including data availability and third-party attribution.",
+        ),
+    ))
 
 
 @app.get("/help/steam-account-url", response_class=HTMLResponse)
@@ -206,32 +343,37 @@ async def best_items(
     return _html_response(TEMPLATES.TemplateResponse(
         request,
         "best_items.html",
-        {
-            "hero_options": [
+        _base_context(
+            request,
+            page_title="Best Deadlock Items | Deadlock Stat Tracker",
+            meta_description=(
+                "Browse the best Deadlock items by win rate, hero, rank floor, mode, and time window using live meta analytics."
+            ),
+            hero_options=[
                 FilterOptionView(value="", label="All heroes"),
                 *[
                     FilterOptionView(value=str(hero.hero_id), label=hero.name)
                     for hero in sorted(hero_info.values(), key=lambda item: item.name.casefold())
                 ],
             ],
-            "rank_options": rank_options,
-            "mode_options": [
+            rank_options=rank_options,
+            mode_options=[
                 FilterOptionView(value="normal", label="Normal"),
                 FilterOptionView(value="street_brawl", label="Street Brawl"),
             ],
-            "window_options": [
+            window_options=[
                 FilterOptionView(value="7", label="Last 7 days"),
                 FilterOptionView(value="30", label="Last 30 days"),
                 FilterOptionView(value="90", label="Last 90 days"),
             ],
-            "selected_hero_id": str(selected_hero_id) if selected_hero_id is not None else "",
-            "selected_rank_floor": str(selected_rank_floor) if selected_rank_floor is not None else "",
-            "selected_mode": selected_mode,
-            "selected_window_days": str(selected_window_days),
-            "selected_min_matches": selected_min_matches,
-            "items": best_item_rows,
-            "error_message": error_message,
-        },
+            selected_hero_id=str(selected_hero_id) if selected_hero_id is not None else "",
+            selected_rank_floor=str(selected_rank_floor) if selected_rank_floor is not None else "",
+            selected_mode=selected_mode,
+            selected_window_days=str(selected_window_days),
+            selected_min_matches=selected_min_matches,
+            items=best_item_rows,
+            error_message=error_message,
+        ),
     ))
 
 
@@ -306,24 +448,29 @@ async def best_heroes(
     return _html_response(TEMPLATES.TemplateResponse(
         request,
         "best_heroes.html",
-        {
-            "rank_options": _rank_floor_options(),
-            "mode_options": [
+        _base_context(
+            request,
+            page_title="Best Deadlock Heroes | Deadlock Stat Tracker",
+            meta_description=(
+                "Track the best Deadlock heroes by win rate, pick rate, rank floor, mode, and time window with live meta data."
+            ),
+            rank_options=_rank_floor_options(),
+            mode_options=[
                 FilterOptionView(value="normal", label="Normal"),
                 FilterOptionView(value="street_brawl", label="Street Brawl"),
             ],
-            "window_options": [
+            window_options=[
                 FilterOptionView(value="7", label="Last 7 days"),
                 FilterOptionView(value="30", label="Last 30 days"),
                 FilterOptionView(value="90", label="Last 90 days"),
             ],
-            "selected_rank_floor": str(selected_rank_floor) if selected_rank_floor is not None else "",
-            "selected_mode": selected_mode,
-            "selected_window_days": str(selected_window_days),
-            "selected_min_matches": selected_min_matches,
-            "heroes": hero_rows,
-            "error_message": error_message,
-        },
+            selected_rank_floor=str(selected_rank_floor) if selected_rank_floor is not None else "",
+            selected_mode=selected_mode,
+            selected_window_days=str(selected_window_days),
+            selected_min_matches=selected_min_matches,
+            heroes=hero_rows,
+            error_message=error_message,
+        ),
     ))
 
 
@@ -350,7 +497,13 @@ async def street_brawl_builds(
         return _html_response(TEMPLATES.TemplateResponse(
             request,
             "error.html",
-            {"message": "No active heroes are currently available."},
+            _base_context(
+                request,
+                page_title="Street Brawl Builds Unavailable | Deadlock Stat Tracker",
+                meta_description="Street Brawl builds are temporarily unavailable because no active heroes were returned.",
+                meta_robots="noindex,follow",
+                message="No active heroes are currently available.",
+            ),
             status_code=404,
         ))
 
@@ -377,12 +530,17 @@ async def street_brawl_builds(
         return _html_response(TEMPLATES.TemplateResponse(
             request,
             "street_brawl_builds.html",
-            {
-                "hero_options": [
+            _base_context(
+                request,
+                page_title="Street Brawl Builds | Deadlock Stat Tracker",
+                meta_description=(
+                    "Find the best Street Brawl builds in Deadlock, including high-win-rate items and common ability paths by hero."
+                ),
+                hero_options=[
                     FilterOptionView(value=str(hero.hero_id), label=hero.name)
                     for hero in sorted_heroes
                 ],
-                "item_level_options": [
+                item_level_options=[
                     FilterOptionView(value="", label="All item levels"),
                     FilterOptionView(value="1", label="Tier 1"),
                     FilterOptionView(value="2", label="Tier 2"),
@@ -390,28 +548,28 @@ async def street_brawl_builds(
                     FilterOptionView(value="4", label="Tier 4"),
                     FilterOptionView(value="legendary", label="Legendary"),
                 ],
-                "window_options": [
+                window_options=[
                     FilterOptionView(value="7", label="Last 7 days"),
                     FilterOptionView(value="30", label="Last 30 days"),
                     FilterOptionView(value="90", label="Last 90 days"),
                 ],
-                "sample_options": [
+                sample_options=[
                     FilterOptionView(value="50", label="50+ matches"),
                     FilterOptionView(value="100", label="100+ matches"),
                     FilterOptionView(value="250", label="250+ matches"),
                     FilterOptionView(value="500", label="500+ matches"),
                     FilterOptionView(value="1000", label="1000+ matches"),
                 ],
-                "selected_hero_id": "",
-                "selected_item_level": selected_item_level,
-                "selected_window_days": str(selected_window_days),
-                "selected_min_matches": str(selected_min_matches),
-                "items": [],
-                "guide": None,
-                "selected_hero_name": None,
-                "hero_cards": hero_cards,
-                "error_message": None,
-            },
+                selected_hero_id="",
+                selected_item_level=selected_item_level,
+                selected_window_days=str(selected_window_days),
+                selected_min_matches=str(selected_min_matches),
+                items=[],
+                guide=None,
+                selected_hero_name=None,
+                hero_cards=hero_cards,
+                error_message=None,
+            ),
         ))
 
     item_rows: list[StreetBrawlBuildItemView] = []
@@ -494,12 +652,23 @@ async def street_brawl_builds(
     return _html_response(TEMPLATES.TemplateResponse(
         request,
         "street_brawl_builds.html",
-        {
-            "hero_options": [
+        _base_context(
+            request,
+            page_title=(
+                f"{selected_hero.name} Street Brawl Build | Deadlock Stat Tracker"
+                if selected_hero is not None
+                else "Street Brawl Builds | Deadlock Stat Tracker"
+            ),
+            meta_description=(
+                f"See the latest {selected_hero.name} Street Brawl build in Deadlock, including high-win-rate items and tracked ability path data."
+                if selected_hero is not None
+                else "Find the best Street Brawl builds in Deadlock, including high-win-rate items and common ability paths by hero."
+            ),
+            hero_options=[
                 FilterOptionView(value=str(hero.hero_id), label=hero.name)
                 for hero in sorted_heroes
             ],
-            "item_level_options": [
+            item_level_options=[
                 FilterOptionView(value="", label="All item levels"),
                 FilterOptionView(value="1", label="Tier 1"),
                 FilterOptionView(value="2", label="Tier 2"),
@@ -507,28 +676,28 @@ async def street_brawl_builds(
                 FilterOptionView(value="4", label="Tier 4"),
                 FilterOptionView(value="legendary", label="Legendary"),
             ],
-            "window_options": [
+            window_options=[
                 FilterOptionView(value="7", label="Last 7 days"),
                 FilterOptionView(value="30", label="Last 30 days"),
                 FilterOptionView(value="90", label="Last 90 days"),
             ],
-            "sample_options": [
+            sample_options=[
                 FilterOptionView(value="50", label="50+ matches"),
                 FilterOptionView(value="100", label="100+ matches"),
                 FilterOptionView(value="250", label="250+ matches"),
                 FilterOptionView(value="500", label="500+ matches"),
                 FilterOptionView(value="1000", label="1000+ matches"),
             ],
-            "selected_hero_id": str(selected_hero.hero_id),
-            "selected_item_level": selected_item_level,
-            "selected_window_days": str(selected_window_days),
-            "selected_min_matches": str(selected_min_matches),
-            "items": item_rows,
-            "guide": guide,
-            "selected_hero_name": selected_hero.name,
-            "hero_cards": hero_cards,
-            "error_message": error_message,
-        },
+            selected_hero_id=str(selected_hero.hero_id),
+            selected_item_level=selected_item_level,
+            selected_window_days=str(selected_window_days),
+            selected_min_matches=str(selected_min_matches),
+            items=item_rows,
+            guide=guide,
+            selected_hero_name=selected_hero.name,
+            hero_cards=hero_cards,
+            error_message=error_message,
+        ),
     ))
 
 
@@ -553,9 +722,13 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             return _html_response(TEMPLATES.TemplateResponse(
                 request,
                 "error.html",
-                {
-                    "message": "That search matched multiple players. Use the search page to choose the right one.",
-                },
+                _base_context(
+                    request,
+                    page_title="Player Search Ambiguous | Deadlock Stat Tracker",
+                    meta_description="That player search matched multiple Deadlock profiles. Refine the search to find the right player.",
+                    meta_robots="noindex,follow",
+                    message="That search matched multiple players. Use the search page to choose the right one.",
+                ),
                 status_code=400,
             ))
 
@@ -568,6 +741,19 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
                 raise
             summary = await player_service.build_player_summary(resolved, refresh_matches=False)
             refresh_status = "fallback"
+
+        canonical_player_url = str(
+            request.url_for(
+                "player_profile_canonical",
+                account_id=str(summary.player.account_id),
+                player_slug=_slugify(summary.player.personaname),
+            )
+        )
+        if request.url.path != canonical_player_url.replace(str(request.base_url).rstrip("/"), ""):
+            redirect_url = canonical_player_url
+            if refresh_requested:
+                redirect_url = f"{redirect_url}?{urlencode({'refresh': '1'})}"
+            return RedirectResponse(url=redirect_url, status_code=308)
 
         rank_name = player_service.rank_name(summary)
         rank_info = await player_service.api.get_rank_info()
@@ -587,6 +773,7 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             cache_updated_text=_relative_time_text(summary.player.last_updated),
             latest_match_text=_relative_time_text(latest_match_ts),
         )
+        refresh_url = f"{canonical_player_url}?{urlencode({'refresh': '1'})}"
 
         top_heroes = [
             HeroStatView(
@@ -603,7 +790,14 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             MatchView(
                 hero_name=summary.hero_info.get(match.hero_id).name if summary.hero_info.get(match.hero_id) else f"Hero {match.hero_id}",
                 hero_icon_url=summary.hero_info.get(match.hero_id).icon_small if summary.hero_info.get(match.hero_id) else None,
-                detail_url=str(request.url_for("match_detail", player_input=str(summary.player.account_id), match_id=str(match.match_id))),
+                detail_url=str(
+                    request.url_for(
+                        "match_detail_canonical",
+                        account_id=str(summary.player.account_id),
+                        player_slug=_slugify(summary.player.personaname),
+                        match_id=str(match.match_id),
+                    )
+                ),
                 queue_name=_friendly_mode_label(match.game_mode) or "Match",
                 result=player_service.match_result_label(match),
                 duration=player_service.format_match_duration(match.match_duration_s),
@@ -618,22 +812,57 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
         return _html_response(TEMPLATES.TemplateResponse(
             request,
             "error.html",
-            {"message": str(error)},
+            _base_context(
+                request,
+                page_title="Player Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock player profile could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
             status_code=404,
         ))
 
     return _html_response(TEMPLATES.TemplateResponse(
         request,
         "player.html",
-        {
-            "player": summary.player,
-            "overview": overview,
-            "top_heroes": top_heroes,
-            "recent_matches": recent_matches,
-            "refresh_requested": refresh_requested,
-            "refresh_status": refresh_status,
-        },
+        _base_context(
+            request,
+            page_title=f"{summary.player.personaname} Stats | Deadlock Stat Tracker",
+            meta_description=(
+                f"View {summary.player.personaname}'s Deadlock rank, recent matches, hero stats, and profile summary."
+            ),
+            canonical_url=canonical_player_url,
+            og_type="profile",
+            structured_data={
+                "@context": "https://schema.org",
+                "@type": "ProfilePage",
+                "name": f"{summary.player.personaname} Stats",
+                "url": canonical_player_url,
+                "mainEntity": {
+                    "@type": "Person",
+                    "name": summary.player.personaname,
+                },
+            },
+            player=summary.player,
+            overview=overview,
+            top_heroes=top_heroes,
+            recent_matches=recent_matches,
+            player_profile_url=canonical_player_url,
+            player_refresh_url=refresh_url,
+            refresh_requested=refresh_requested,
+            refresh_status=refresh_status,
+        ),
     ))
+
+
+@app.get("/players/{account_id}/{player_slug}", response_class=HTMLResponse, name="player_profile_canonical")
+async def player_profile_canonical(
+    request: Request,
+    account_id: str,
+    player_slug: str,
+    refresh: int = 0,
+) -> HTMLResponse:
+    return await player_profile(request, account_id, refresh)
 
 
 @app.get("/players/{player_input}/matches/{match_id}", response_class=HTMLResponse)
@@ -646,7 +875,13 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
             return _html_response(TEMPLATES.TemplateResponse(
                 request,
                 "error.html",
-                {"message": "That player lookup matched multiple profiles."},
+                _base_context(
+                    request,
+                    page_title="Player Search Ambiguous | Deadlock Stat Tracker",
+                    meta_description="That player lookup matched multiple Deadlock profiles. Refine the search to find the right player.",
+                    meta_robots="noindex,follow",
+                    message="That player lookup matched multiple profiles.",
+                ),
                 status_code=400,
             ))
 
@@ -715,23 +950,67 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
             viewed_player_result=viewed_player_result,
             viewed_player_name=resolved.personaname,
         )
+        canonical_match_url = str(
+            request.url_for(
+                "match_detail_canonical",
+                account_id=str(resolved.account_id),
+                player_slug=_slugify(resolved.personaname),
+                match_id=str(metadata.match_id),
+            )
+        )
+        canonical_player_url = str(
+            request.url_for(
+                "player_profile_canonical",
+                account_id=str(resolved.account_id),
+                player_slug=_slugify(resolved.personaname),
+            )
+        )
+        if request.url.path != canonical_match_url.replace(str(request.base_url).rstrip("/"), ""):
+            return RedirectResponse(url=canonical_match_url, status_code=308)
     except DeadlockError as error:
         return _html_response(TEMPLATES.TemplateResponse(
             request,
             "error.html",
-            {"message": str(error)},
+            _base_context(
+                request,
+                page_title="Match Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock match detail page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
             status_code=404,
         ))
 
     return _html_response(TEMPLATES.TemplateResponse(
         request,
         "match_detail.html",
-        {
-            "player": resolved,
-            "overview": overview,
-            "matchup_rows": matchup_rows,
-        },
+        _base_context(
+            request,
+            page_title=f"Match {metadata.match_id} | Deadlock Stat Tracker",
+            meta_description=(
+                f"View Deadlock match {metadata.match_id} for {resolved.personaname}, including matchup lines, players, items, and outcome."
+            ),
+            canonical_url=canonical_match_url,
+            player=resolved,
+            overview=overview,
+            matchup_rows=matchup_rows,
+            player_profile_url=canonical_player_url,
+        ),
     ))
+
+
+@app.get(
+    "/players/{account_id}/{player_slug}/matches/{match_id}",
+    response_class=HTMLResponse,
+    name="match_detail_canonical",
+)
+async def match_detail_canonical(
+    request: Request,
+    account_id: str,
+    player_slug: str,
+    match_id: str,
+) -> HTMLResponse:
+    return await match_detail(request, account_id, match_id)
 
 
 def _relative_time_text(timestamp: int | None) -> str:
@@ -843,6 +1122,11 @@ def _friendly_meta_error_message(error: DeadlockError, *, topic: str) -> str:
     if "http 500" in lowered or "request failed" in lowered:
         return f"Deadlock API is having trouble loading {topic} right now. Try again shortly."
     return f"We couldn't load {topic} right now. Try again shortly."
+
+
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
+    return slug or "player"
 
 
 def _build_player_rank_distribution_views(
