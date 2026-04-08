@@ -154,6 +154,7 @@ class ProfileOverviewView:
     avatarfull: str | None
     countrycode: str | None
     rank_name: str
+    rank_badge_image_url: str | None
     rank_updated_text: str
     rank_is_stale: bool
     cache_updated_text: str

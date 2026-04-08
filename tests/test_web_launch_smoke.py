@@ -39,7 +39,13 @@ def test_friendly_meta_error_message_bad_filters() -> None:
 
 
 def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
+    class FakeApi:
+        async def get_rank_info(self) -> list:
+            return []
+
     class FakePlayerService:
+        api = FakeApi()
+
         def win_rate(self, stat: DeadlockHeroStat) -> float:
             return stat.wins / stat.matches_played
 

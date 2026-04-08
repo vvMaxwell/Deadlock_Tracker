@@ -568,6 +568,8 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             refresh_status = "fallback"
 
         rank_name = player_service.rank_name(summary)
+        rank_info = await player_service.api.get_rank_info()
+        rank_badge_image_url = _rank_badge_image_url(summary.rank.rank if summary.rank else None, rank_info)
         latest_match_ts = max((match.start_time for match in summary.recent_matches), default=None)
         rank_updated_ts = summary.rank.start_time if summary.rank else None
         overview = ProfileOverviewView(
@@ -577,6 +579,7 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             avatarfull=summary.player.avatarfull,
             countrycode=summary.player.countrycode,
             rank_name=rank_name,
+            rank_badge_image_url=rank_badge_image_url,
             rank_updated_text=_relative_time_text(rank_updated_ts),
             rank_is_stale=bool(rank_updated_ts and latest_match_ts and rank_updated_ts < latest_match_ts),
             cache_updated_text=_relative_time_text(summary.player.last_updated),
@@ -900,6 +903,16 @@ def _rank_floor_options() -> list[FilterOptionView]:
         FilterOptionView(value="101", label="Ascendant+"),
         FilterOptionView(value="111", label="Eternus+"),
     ]
+
+
+def _rank_badge_image_url(rank: int | None, rank_info: list) -> str | None:
+    if rank is None:
+        return None
+    tier = rank // 10
+    for item in rank_info:
+        if getattr(item, "tier", None) == tier:
+            return getattr(item, "image_small", None)
+    return None
 
 
 def _build_lane_views(players: list[MatchDetailPlayerView]) -> list[MatchLaneView]:
