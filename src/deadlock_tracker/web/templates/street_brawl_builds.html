@@ -8,7 +8,7 @@
         <p class="eyebrow">Special Mode Guide</p>
         <h1>Street Brawl Builds</h1>
         <p class="lede">
-            {% if guide %}
+            {% if selected_hero_name %}
             Pick a hero and we’ll surface the highest win rate Street Brawl items on the left, then the most common ability upgrade path on the right.
             {% else %}
             Start on the hero splash below, then jump straight into a Street Brawl build page for any champion in the active roster.
@@ -51,7 +51,7 @@
     <p class="error-message">{{ error_message }}</p>
     {% endif %}
 
-    {% if not guide %}
+    {% if not selected_hero_name %}
     <section class="street-brawl-splash">
         <div class="section-heading">
             <h2>Choose A Hero</h2>
@@ -174,6 +174,13 @@
                         </div>
                     </article>
                     {% endfor %}
+                </div>
+            </section>
+            {% else %}
+            <section class="street-brawl-ability-guide">
+                <div class="section-heading">
+                    <h2>Most Common Level Path</h2>
+                    <p>We do not have enough tracked Street Brawl ability-order data for {{ selected_hero_name }} yet, but the item board is still shown on the left.</p>
                 </div>
             </section>
             {% endif %}

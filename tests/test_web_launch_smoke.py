@@ -2,8 +2,11 @@ from fastapi.testclient import TestClient
 
 from deadlock_tracker.clients.deadlock_api import DeadlockError
 from deadlock_tracker.models import (
+    DeadlockAbilityOrderStat,
     DeadlockHeroInfo,
     DeadlockHeroStat,
+    DeadlockItemInfo,
+    DeadlockItemStat,
     DeadlockMatch,
     DeadlockPlayer,
     DeadlockRank,
@@ -142,3 +145,67 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
     assert "Live refresh is temporarily limited." in response.text
     assert "Showing the latest cached match history instead" in response.text
     assert "oracle-1.png" in response.text
+
+
+def test_street_brawl_selected_hero_stays_on_build_page_without_guide(monkeypatch) -> None:
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                15: DeadlockHeroInfo(
+                    hero_id=15,
+                    name="Bebop",
+                    icon_small="https://example.com/bebop.png",
+                    portrait_url="https://example.com/bebop-portrait.png",
+                    background_image_url="https://example.com/bebop-bg.png",
+                )
+            }
+
+        async def get_item_stats(self, **_: object) -> list[DeadlockItemStat]:
+            return [
+                DeadlockItemStat(
+                    item_id=101,
+                    wins=12,
+                    losses=8,
+                    matches=20,
+                    players=18,
+                    avg_buy_time_s=120.0,
+                    avg_sell_time_s=None,
+                    avg_buy_time_relative=None,
+                    avg_sell_time_relative=None,
+                )
+            ]
+
+        async def get_ability_order_stats(self, **_: object) -> list[DeadlockAbilityOrderStat]:
+            return []
+
+        async def get_all_item_info(self) -> dict[int, DeadlockItemInfo]:
+            return {
+                101: DeadlockItemInfo(
+                    item_id=101,
+                    name="Mystic Shot",
+                    image="https://example.com/item.png",
+                    shop_image="https://example.com/item-shop.png",
+                    item_slot_type="weapon",
+                    item_tier=1,
+                    cost=500,
+                    is_active_item=False,
+                    item_type="upgrade",
+                    ability_type=None,
+                    hero_id=None,
+                )
+            }
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/street-brawl-builds?hero_id=15")
+
+    assert response.status_code == 200
+    assert "Choose A Hero" not in response.text
+    assert "Best Items By Win Rate" in response.text
+    assert "Mystic Shot" in response.text
+    assert "We do not have enough tracked Street Brawl ability-order data for Bebop yet" in response.text
