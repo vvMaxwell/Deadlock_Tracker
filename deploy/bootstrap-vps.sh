@@ -31,8 +31,10 @@ systemctl start docker
 
 ufw allow OpenSSH
 ufw allow 80/tcp
+ufw allow 443/tcp
 ufw --force enable
 
 mkdir -p /opt/deadlock-tracker
+mkdir -p /opt/deadlock-tracker-shared/certs
 
 echo "Bootstrap complete."

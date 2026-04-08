@@ -73,3 +73,8 @@ GitHub Actions secrets expected by the deploy workflow:
 - `DEPLOY_SSH_KEY`
 - `DEPLOY_PORT` (optional, defaults to `22`)
 - `DEPLOY_PATH` (optional, defaults to `/opt/deadlock-tracker`)
+
+For custom domains behind Cloudflare, place the Cloudflare Origin certificate and key on the VPS at:
+
+- `/home/deadlockdeploy/certs/origin.crt`
+- `/home/deadlockdeploy/certs/origin.key`
