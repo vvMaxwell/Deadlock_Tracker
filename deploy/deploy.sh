@@ -9,6 +9,7 @@ mkdir -p "${DEPLOY_PATH}"
 cd "${DEPLOY_PATH}"
 
 if [[ ! -d .git ]]; then
+  find "${DEPLOY_PATH}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
   git clone --branch "${BRANCH}" "${REPO_URL}" .
 else
   git fetch origin "${BRANCH}"
