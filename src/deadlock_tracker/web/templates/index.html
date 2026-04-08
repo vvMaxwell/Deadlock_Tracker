@@ -1,13 +1,22 @@
 {% extends "base.html" %}
 
-{% block title %}Deadlock Tracker{% endblock %}
+{% block title %}Deadlock Stat Tracker{% endblock %}
 
 {% block content %}
 <section class="hero">
     <div class="hero-copy">
-        <p class="eyebrow">Website + Discord Bot</p>
-        <h1>Deadlock stats in a clean black-and-beige tracker.</h1>
-        <p class="lede">Search by Steam name, vanity URL, or account ID to pull rank snapshots, hero performance, and recent matches in a public-ready layout.</p>
+        <p class="eyebrow">Deadlock Stat Tracker</p>
+        <h1>Deadlock Stat Tracker</h1>
+        <div class="search-intro">
+            <p class="search-intro-label">Search by:</p>
+            <ul class="search-intro-items">
+                <li>Steam Name</li>
+                <li>Steam Account URL</li>
+                <li>Account ID</li>
+            </ul>
+            <p class="search-intro-copy">To search up Rank Information, Match History, and Hero Performance.</p>
+        </div>
+        <a class="help-link" href="/faq#steam-account-url">How to get Steam account URL</a>
         <form class="search-form" method="get" action="/">
             <input type="text" name="query" value="{{ query }}" placeholder="Search player, profile URL, or account ID">
             <button type="submit">Search</button>
@@ -15,44 +24,60 @@
         {% if error_message %}
         <p class="error-message">{{ error_message }}</p>
         {% endif %}
-        <div class="hero-notes">
-            <span>Competitive rank snapshots</span>
-            <span>Hero performance breakdowns</span>
-            <span>Discord bot + website from one codebase</span>
-        </div>
     </div>
     <div class="hero-card">
-        <div class="stat-chip stat-chip-featured">
-            <span>Now shipping</span>
-            <strong>Professional Deadlock tracker</strong>
+        <div class="stat-chip">
+            <span>Search</span>
+            <strong>Steam profiles and account IDs</strong>
         </div>
         <div class="stat-chip">
-            <span>Public facing</span>
-            <strong>Website + Bot</strong>
+            <span>Track</span>
+            <strong>Ranks, heroes, and match history</strong>
         </div>
         <div class="stat-chip">
-            <span>Lookup flow</span>
-            <strong>Steam to Deadlock</strong>
+            <span>View</span>
+            <strong>Profiles, matchups, and recent games</strong>
         </div>
-        <div class="stat-chip">
-            <span>Output</span>
-            <strong>Profiles, heroes, matches</strong>
+        <div class="hero-gallery">
+            <img class="hero-gallery-banner" src="{{ url_for('static', path='/community-assets/graphics/background-city.png') }}" alt="Deadlock city background art">
         </div>
     </div>
 </section>
 
-<section class="platform-strip" id="platform">
-    <article class="platform-card">
-        <p class="eyebrow">Website</p>
-        <h2>Fast profile lookups and polished public pages.</h2>
-        <p>Built in Python with FastAPI, so we can reuse the same Deadlock service layer across the site and bot without splitting the stack.</p>
-    </article>
-    <article class="platform-card">
-        <p class="eyebrow">Discord Bot</p>
-        <h2>Public slash commands for search, profile, and recent matches.</h2>
-        <p>The bot uses the same API client and stat formatting as the website, which keeps results consistent across both products.</p>
-    </article>
+{% if rank_distribution %}
+<section class="guide-shell rank-distribution-shell">
+    <div class="section-heading">
+        <p class="eyebrow">Meta Snapshot</p>
+        <h2>Match Rank Distribution</h2>
+        <p>Average match distribution across the current rank ladder, grouped by badge tier.</p>
+    </div>
+    <div class="rank-distribution-chart">
+        {% for tier in rank_distribution %}
+        <div class="rank-tier-group">
+            <div class="rank-tier-bars">
+                {% for bar in tier.bars %}
+                <div class="rank-bar-wrap">
+                    <div
+                        class="rank-bar"
+                        style="height: {{ '%.2f'|format(bar.height_percent) }}%; --rank-bar-color: {{ bar.color }};"
+                        aria-label="{{ bar.tier_name }} {{ bar.division_label }} - {{ bar.matches_text }} - {{ bar.share_text }}"
+                    >
+                        <div class="rank-bar-tooltip">
+                            <strong>{{ bar.tier_name }} {{ bar.division_label }}</strong>
+                            <span>{{ bar.matches_text }}</span>
+                            <span>{{ bar.share_text }}</span>
+                        </div>
+                    </div>
+                    <span>{{ bar.division_label }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="rank-tier-label">{{ tier.tier_name }}</p>
+        </div>
+        {% endfor %}
+    </div>
 </section>
+{% endif %}
 
 {% if results %}
 <section class="results-section">

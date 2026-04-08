@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Match {{ overview.match_id }} | Deadlock Tracker{% endblock %}
+
+{% block content %}
+<section class="match-hero-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="/players/{{ player.account_id }}">Back to profile</a>
+    </div>
+    <div class="match-scoreboard-head">
+        <div>
+            <p class="eyebrow">Match Detail</p>
+            <h1>{{ overview.queue_name }}</h1>
+            <p class="lede">{{ overview.viewed_player_name }} finished with a {{ overview.viewed_player_result|lower }}. Started {{ overview.started_text }} and lasted {{ overview.duration }}.</p>
+        </div>
+        <div class="match-head-meta">
+            <span>Match {{ overview.match_id }}</span>
+            <span>Winner {{ overview.winning_team_label }}</span>
+            <span>{{ overview.duration }}</span>
+        </div>
+    </div>
+</section>
+
+<section class="lane-board lane-board-bundled">
+    <div class="lane-board-head">
+        <div>
+            <p class="eyebrow">Matchup Board</p>
+            <h2>Six Matchup Lines</h2>
+        </div>
+    </div>
+    <div class="matchup-line-list">
+        {% for row in matchup_rows %}
+        <article class="matchup-line">
+            <div class="matchup-line-lane">
+                <span class="lane-color-pill lane-color-pill-{{ row.lane_text|lower|replace(' ', '-') }}">{{ row.lane_text }}</span>
+            </div>
+
+            <div class="matchup-side matchup-side-left">
+                {% if row.left_player %}
+                <article class="lane-player-row lane-player-row-inline{% if row.left_player.is_viewed_player %} lane-player-row-focus{% endif %}">
+                    <div class="lane-player-main">
+                        <div class="score-player lane-score-player">
+                            {% if row.left_player.hero_icon_url %}
+                            <img class="hero-icon score-hero-icon" src="{{ row.left_player.hero_icon_url }}" alt="{{ row.left_player.hero_name }}">
+                            {% else %}
+                            <div class="hero-icon hero-icon-fallback score-hero-icon">{{ row.left_player.hero_name[:2] }}</div>
+                            {% endif %}
+                            <div>
+                                <p class="match-hero">{{ row.left_player.hero_name }}</p>
+                                <h3>{{ row.left_player.personaname }}</h3>
+                            </div>
+                        </div>
+                        <div class="lane-player-tags">
+                            {% if row.left_player.is_viewed_player %}
+                            <span class="match-played">You</span>
+                            {% endif %}
+                            <span class="match-result match-result-{{ row.left_player.result|lower }}">{{ row.left_player.result }}</span>
+                        </div>
+                    </div>
+                    <div class="lane-player-stats">
+                        <span>Souls {{ "{:,}".format(row.left_player.souls) }}</span>
+                        <span>KDA {{ row.left_player.kda }}</span>
+                        <span>Dmg {{ "{:,}".format(row.left_player.player_damage) }}</span>
+                        <span>Obj {{ "{:,}".format(row.left_player.objective_damage) }}</span>
+                        <span>Heal {{ "{:,}".format(row.left_player.healing) }}</span>
+                        <span>LH {{ row.left_player.last_hits }}</span>
+                    </div>
+                </article>
+                {% endif %}
+            </div>
+
+            <div class="matchup-center">VS</div>
+
+            <div class="matchup-side matchup-side-right">
+                {% if row.right_player %}
+                <article class="lane-player-row lane-player-row-inline{% if row.right_player.is_viewed_player %} lane-player-row-focus{% endif %}">
+                    <div class="lane-player-main">
+                        <div class="score-player lane-score-player">
+                            {% if row.right_player.hero_icon_url %}
+                            <img class="hero-icon score-hero-icon" src="{{ row.right_player.hero_icon_url }}" alt="{{ row.right_player.hero_name }}">
+                            {% else %}
+                            <div class="hero-icon hero-icon-fallback score-hero-icon">{{ row.right_player.hero_name[:2] }}</div>
+                            {% endif %}
+                            <div>
+                                <p class="match-hero">{{ row.right_player.hero_name }}</p>
+                                <h3>{{ row.right_player.personaname }}</h3>
+                            </div>
+                        </div>
+                        <div class="lane-player-tags">
+                            {% if row.right_player.is_viewed_player %}
+                            <span class="match-played">You</span>
+                            {% endif %}
+                            <span class="match-result match-result-{{ row.right_player.result|lower }}">{{ row.right_player.result }}</span>
+                        </div>
+                    </div>
+                    <div class="lane-player-stats">
+                        <span>Souls {{ "{:,}".format(row.right_player.souls) }}</span>
+                        <span>KDA {{ row.right_player.kda }}</span>
+                        <span>Dmg {{ "{:,}".format(row.right_player.player_damage) }}</span>
+                        <span>Obj {{ "{:,}".format(row.right_player.objective_damage) }}</span>
+                        <span>Heal {{ "{:,}".format(row.right_player.healing) }}</span>
+                        <span>LH {{ row.right_player.last_hits }}</span>
+                    </div>
+                </article>
+                {% endif %}
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

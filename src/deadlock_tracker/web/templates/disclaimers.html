@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Disclaimers | Deadlock Stat Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="/">Back to search</a>
+    </div>
+    <p class="eyebrow">Disclaimers</p>
+    <h1>Project Disclaimers</h1>
+    <p class="lede">A few quick notes about how data and assets are used on this site.</p>
+    <div class="signature-strip" aria-hidden="true">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/dynamo.svg') }}" alt="">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/haze.svg') }}" alt="">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/seven.svg') }}" alt="">
+    </div>
+
+    <div class="guide-steps">
+        <div class="guide-step">
+            <span class="guide-step-number">1</span>
+            <p>This is a fan-made Deadlock project and is not affiliated with Valve.</p>
+        </div>
+        <div class="guide-step">
+            <span class="guide-step-number">2</span>
+            <p>Rank, match, and player data depend on upstream Deadlock API availability and freshness.</p>
+        </div>
+        <div class="guide-step">
+            <span class="guide-step-number">3</span>
+            <p>Some community graphics and recreated assets belong to their respective creators and rights holders.</p>
+        </div>
+    </div>
+    
+    <div class="guide-note">
+        <p>Data may occasionally be delayed, rate-limited, or incomplete depending on upstream API responses and Steam-side availability.</p>
+    </div>
+</section>
+{% endblock %}

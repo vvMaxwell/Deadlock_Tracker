@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Credits | Deadlock Stat Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="/">Back to search</a>
+    </div>
+    <p class="eyebrow">Credits</p>
+    <h1>Project Credits</h1>
+    <p class="lede">This project relies on community tools and resources that make Deadlock stat tracking possible.</p>
+    <div class="signature-strip" aria-hidden="true">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/haze.svg') }}" alt="">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/paradox.svg') }}" alt="">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/seven.svg') }}" alt="">
+    </div>
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <p class="eyebrow">Deadlock API</p>
+            <h2>Deadlock API</h2>
+            <p>Player search, rank information, match history, and match metadata are powered by Deadlock API.</p>
+            <p><a class="text-link" href="https://deadlock-api.com/" target="_blank" rel="noreferrer">Visit Deadlock API</a></p>
+        </article>
+        <article class="platform-card faq-card">
+            <p class="eyebrow">Graphic Assets</p>
+            <h2>Lovely's Deadlock Graphical Library</h2>
+            <p>Some visual references and community graphics are sourced from Lovely's Deadlock Graphical Library.</p>
+            <p><a class="text-link" href="https://forums.playdeadlock.com/resources/deadlock-graphical-library.30/" target="_blank" rel="noreferrer">View the library resource</a></p>
+        </article>
+    </section>
+</section>
+{% endblock %}

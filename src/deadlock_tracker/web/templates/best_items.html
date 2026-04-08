@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Best Items | Deadlock Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell meta-shell">
+    <div class="section-heading">
+        <p class="eyebrow">Meta Board</p>
+        <h1>Best Items</h1>
+        <p class="lede">A first-pass item leaderboard built from Deadlock API analytics. Filter by hero, rank floor, mode, and time window to explore the current meta.</p>
+    </div>
+
+    <form class="meta-filter-form" method="get" action="/best-items">
+        <label>
+            <span>Hero</span>
+            <select name="hero_id">
+                {% for option in hero_options %}
+                <option value="{{ option.value }}"{% if option.value == selected_hero_id %} selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>Rank Floor</span>
+            <select name="rank_floor">
+                {% for option in rank_options %}
+                <option value="{{ option.value }}"{% if option.value == selected_rank_floor %} selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>Mode</span>
+            <select name="mode">
+                {% for option in mode_options %}
+                <option value="{{ option.value }}"{% if option.value == selected_mode %} selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>Window</span>
+            <select name="window_days">
+                {% for option in window_options %}
+                <option value="{{ option.value }}"{% if option.value == selected_window_days %} selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>Min Matches</span>
+            <input
+                class="meta-filter-input"
+                type="text"
+                name="min_matches"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="4"
+                placeholder="1000"
+                value="{{ selected_min_matches }}"
+                aria-describedby="min-matches-help"
+            >
+        </label>
+        <button class="meta-filter-submit" type="submit">Apply Filters</button>
+    </form>
+    <p class="meta-filter-note" id="min-matches-help">Enter a value from 100 to 5000. Higher values give steadier results but can hide niche builds.</p>
+
+    {% if error_message %}
+    <p class="error-message">{{ error_message }}</p>
+    {% endif %}
+
+    <section class="results-section">
+        <div class="section-heading">
+            <h2>Highest Win Rate Items</h2>
+            <p>Sorted by win rate with a minimum match threshold to keep the list grounded in real sample sizes.</p>
+        </div>
+        <div class="item-board">
+            {% for item in items %}
+            <article class="item-card">
+                <div class="item-card-head">
+                    {% if item.item_image_url %}
+                    <img class="item-card-icon" src="{{ item.item_image_url }}" alt="{{ item.item_name }}">
+                    {% endif %}
+                    <div>
+                        <h3>{{ item.item_name }}</h3>
+                        <div class="item-card-tags">
+                            <span>{{ item.slot_type }}</span>
+                            <span>{{ item.tier_text }}</span>
+                            <span>{{ item.cost_text }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="item-card-stats">
+                    <div>
+                        <span class="item-stat-label">Win Rate</span>
+                        <strong>{{ item.win_rate_percent }}</strong>
+                    </div>
+                    <div>
+                        <span class="item-stat-label">Volume</span>
+                        <strong>{{ item.matches_text }}</strong>
+                    </div>
+                    <div>
+                        <span class="item-stat-label">Players</span>
+                        <strong>{{ item.players_text }}</strong>
+                    </div>
+                    <div>
+                        <span class="item-stat-label">Timing</span>
+                        <strong>{{ item.avg_buy_time_text }}</strong>
+                    </div>
+                </div>
+                <div class="item-card-foot">
+                    <span>{{ item.wins_text }}</span>
+                    <span>{{ item.losses_text }}</span>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% if not items and not error_message %}
+        <p class="empty-state">No item stats matched those filters yet. Try lowering the rank floor, widening the time window, or reducing the minimum matches.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

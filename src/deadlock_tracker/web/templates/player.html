@@ -5,19 +5,20 @@
 {% block content %}
 <section class="player-hero">
     <div>
-        <a class="back-link" href="/">Back to search</a>
+        <div class="hero-actions">
+            <a class="back-link" href="/">Back to search</a>
+            <a class="refresh-link" href="/players/{{ overview.account_id }}?refresh=1">Refresh Match History</a>
+        </div>
         <p class="eyebrow">Player Overview</p>
         <h1>{{ overview.personaname }}</h1>
-        <p class="lede">Rank {{ overview.rank_name }} with internal rating {{ overview.rating_text }}.</p>
+        <p class="lede">Estimated rank {{ overview.rank_name }}. Match history is shown newest first so the latest game appears at the top.</p>
         <div class="meta-row">
             <span>Account {{ overview.account_id }}</span>
             <span>{{ overview.countrycode or "Unknown Country" }}</span>
             <a href="{{ overview.profileurl }}" target="_blank" rel="noreferrer">Steam Profile</a>
         </div>
         <div class="hero-notes">
-            <span>Cache updated {{ overview.cache_updated_text }}</span>
-            <span>Website layout</span>
-            <span>Discord image card stays in bot</span>
+            <span>Latest match {{ overview.latest_match_text }}</span>
         </div>
     </div>
     {% if overview.avatarfull %}
@@ -27,70 +28,96 @@
 
 {% if refresh_requested %}
 <section class="status-banner">
-    <strong>Refetched from Deadlock API.</strong>
-    <span>The page was refreshed on our side, but the upstream player cache may still stay old until Deadlock API ingests newer data.</span>
+    <strong>Fresh match history loaded.</strong>
+    <span>Recent matches were refreshed from the available API history.</span>
 </section>
 {% endif %}
 
 <section class="overview-grid">
+    <article class="overview-card overview-card-highlight">
+        <p class="eyebrow">Latest Match Seen</p>
+        <h2>{{ overview.latest_match_text }}</h2>
+        <p class="overview-stat">Most recent match loaded from the available player history.</p>
+    </article>
     <article class="overview-card">
-        <p class="eyebrow">Rank Snapshot</p>
+        <p class="eyebrow">Estimated Rank</p>
         <h2>{{ overview.rank_name }}</h2>
-        <p class="overview-stat">MMR {{ overview.rating_text }}</p>
-    </article>
-    <article class="overview-card">
-        <p class="eyebrow">Cache Status</p>
-        <h2>{{ overview.cache_updated_text }}</h2>
-        <p class="overview-stat">Source timestamp {% if overview.cache_updated_raw %}{{ overview.cache_updated_raw }}{% else %}unknown{% endif %}</p>
-    </article>
-    <article class="overview-card overview-card-actions">
-        <p class="eyebrow">Actions</p>
-        <div class="action-stack">
-            <a class="action-button" href="/players/{{ overview.account_id }}?refresh=1">Refresh From API</a>
-            <a class="action-button action-button-secondary" href="{{ overview.profileurl }}" target="_blank" rel="noreferrer">Open Steam Profile</a>
-        </div>
-        <p class="overview-note">This rechecks the public Deadlock API. If the timestamp still stays old, their upstream cache likely has not ingested newer data yet.</p>
+        <p class="overview-stat">Based on the latest available competitive rank data.</p>
     </article>
 </section>
 
 <section class="content-grid">
-    <div class="panel">
+    <div class="panel panel-heroes">
         <div class="section-heading">
-            <h2>Top Heroes</h2>
-            <p>Highest volume hero performance.</p>
+            <div class="section-heading-top">
+                <h2>Top Heroes</h2>
+                <span class="section-badge">Last 50 Matches</span>
+            </div>
+            <p>Highest volume hero performance across the loaded history.</p>
         </div>
-        <div class="table-list">
+        <div class="hero-stack">
             {% for hero in top_heroes %}
-            <article class="table-row">
-                <div>
-                    <h3>{{ hero.hero_name }}</h3>
-                    <p>{{ hero.matches_played }} matches | {{ hero.wins }} wins</p>
+            <article class="hero-card-row">
+                <div class="hero-card-main">
+                    <div class="hero-card-title">
+                        {% if hero.hero_icon_url %}
+                        <img class="hero-icon" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}">
+                        {% else %}
+                        <div class="hero-icon hero-icon-fallback">{{ hero.hero_name[:2] }}</div>
+                        {% endif %}
+                        <div>
+                            <h3>{{ hero.hero_name }}</h3>
+                            <p>{{ hero.matches_played }} matches played</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="row-metrics">
-                    <span>{{ hero.win_rate_percent }}</span>
-                    <span>{{ hero.kda }}</span>
+                <div class="hero-card-metrics">
+                    <span>{{ hero.wins }} wins</span>
+                    <span>{{ hero.win_rate_percent }} win rate</span>
+                    <span>KDA {{ hero.kda }}</span>
                 </div>
             </article>
             {% endfor %}
         </div>
     </div>
-    <div class="panel">
+    <div class="panel panel-matches">
         <div class="section-heading">
-            <h2>Recent Matches</h2>
-            <p>Latest stored match history.</p>
+            <div class="section-heading-top">
+                <h2>Recent Matches</h2>
+            </div>
+            <p>Newest matches first, with friendly labels and played times.</p>
         </div>
-        <div class="table-list">
+        <div class="match-feed">
             {% for match in recent_matches %}
-            <article class="table-row">
-                <div>
-                    <h3>{{ match.hero_name }} | Match {{ match.match_id }}</h3>
-                    <p>{{ match.result }} | {{ match.duration }} | KDA {{ match.kda }}</p>
+            <a class="match-card-link" href="{{ match.detail_url }}">
+            <article class="match-card">
+                <div class="match-card-top">
+                    <div class="match-card-title">
+                        {% if match.hero_icon_url %}
+                        <img class="hero-icon hero-icon-match" src="{{ match.hero_icon_url }}" alt="{{ match.hero_name }}">
+                        {% else %}
+                        <div class="hero-icon hero-icon-fallback hero-icon-match">{{ match.hero_name[:2] }}</div>
+                        {% endif %}
+                        <div>
+                            <p class="match-hero">{{ match.hero_name }}</p>
+                            <h3>{{ match.queue_name }}</h3>
+                        </div>
+                    </div>
+                    <div class="match-top-right">
+                        <span class="match-result match-result-{{ match.result|lower }}">{{ match.result }}</span>
+                        <span class="match-played">Played {{ match.played_text }}</span>
+                    </div>
                 </div>
-                <div class="row-metrics">
-                    <span>NW {{ match.net_worth }}</span>
-                    <span>LH {{ match.last_hits }}</span>
+                <div class="match-summary">
+                    <span>{{ match.duration }}</span>
+                    <span>KDA {{ match.kda }}</span>
+                </div>
+                <div class="match-metrics">
+                    <span class="metric-pill metric-pill-souls">Souls Collected {{ match.net_worth }}</span>
+                    <span class="metric-pill">Last Hits {{ match.last_hits }}</span>
                 </div>
             </article>
+            </a>
             {% endfor %}
         </div>
     </div>

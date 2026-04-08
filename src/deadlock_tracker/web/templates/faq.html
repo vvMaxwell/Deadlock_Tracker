@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}FAQ | Deadlock Stat Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="/">Back to search</a>
+    </div>
+    <p class="eyebrow">FAQ</p>
+    <h1>Frequently Asked Questions</h1>
+    <p class="lede">Quick answers for how to search players and what links work best in Deadlock Stat Tracker.</p>
+    <div class="signature-strip" aria-hidden="true">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/lady-geist.svg') }}" alt="">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/lash.svg') }}" alt="">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/yamato.svg') }}" alt="">
+    </div>
+
+    <section class="faq-block" id="steam-account-url">
+        <div class="faq-block-head">
+            <h2>How do I get my Steam account URL?</h2>
+            <span class="section-badge section-badge-soft">Most useful for search</span>
+        </div>
+        <p class="overview-stat">On Steam or Steam Web, go to your account page and click your profile, then copy the full URL from the address bar.</p>
+
+        <div class="guide-steps">
+            <div class="guide-step">
+                <span class="guide-step-number">1</span>
+                <p>Open Steam and click your account or profile name.</p>
+            </div>
+            <div class="guide-step">
+                <span class="guide-step-number">2</span>
+                <p>Open your full Steam profile page.</p>
+            </div>
+            <div class="guide-step">
+                <span class="guide-step-number">3</span>
+                <p>Copy the URL from the address bar and paste it into the search field.</p>
+            </div>
+        </div>
+
+        <div class="guide-visual">
+            {% if screenshot_url %}
+            <img src="{{ screenshot_url }}" alt="Steam profile page showing where to copy the account URL">
+            {% else %}
+            <div class="guide-visual-placeholder">
+                <strong>Steam profile screenshot goes here</strong>
+                <p>Add your screenshot to <code>src/deadlock_tracker/web/static/help/steam-account-url-guide.png</code> and it will appear on this page automatically.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="guide-note">
+            <p>You can paste either a numeric profile URL like <code>steamcommunity.com/profiles/...</code> or a custom URL like <code>steamcommunity.com/id/...</code>.</p>
+        </div>
+    </section>
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <p class="eyebrow">What can I search?</p>
+            <p>Steam Name, Steam Account URL, or Account ID all work on the main search page.</p>
+        </article>
+        <article class="platform-card faq-card">
+            <p class="eyebrow">What does the site show?</p>
+            <p>Rank information, recent match history, and hero performance for the player you search.</p>
+        </article>
+    </section>
+</section>
+{% endblock %}

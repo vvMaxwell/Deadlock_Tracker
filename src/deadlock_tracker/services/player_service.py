@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import defaultdict
+
 from deadlock_tracker.clients.deadlock_api import DeadlockAPI, DeadlockError, friendly_rank_name
 from deadlock_tracker.models import DeadlockHeroStat, DeadlockMatch, DeadlockPlayer, PlayerSummary
 
@@ -17,6 +19,9 @@ class PlayerService:
 
         if cleaned.isdigit():
             account_id = int(cleaned)
+            steam_profile = await self.api.get_steam_profile(account_id)
+            if steam_profile is not None:
+                return steam_profile
             profiles = await self.api.search_players(cleaned)
             for profile in profiles:
                 if profile.account_id == account_id:
@@ -43,13 +48,28 @@ class PlayerService:
             return profiles[0]
         return profiles[:5]
 
-    async def build_player_summary(self, player: DeadlockPlayer) -> PlayerSummary:
+    async def build_player_summary(self, player: DeadlockPlayer, *, refresh_matches: bool = False) -> PlayerSummary:
         hero_info = await self.api.get_hero_info()
         rank = await self.api.get_player_rank(player.account_id)
-        hero_stats = await self.api.get_hero_stats(player.account_id)
-        recent_matches = await self.api.get_match_history(player.account_id, limit=8)
+        effective_player = player
+
+        if refresh_matches:
+            steam_profile = await self.api.get_steam_profile(player.account_id)
+            if steam_profile is not None:
+                effective_player = steam_profile
+            match_history = await self.api.get_match_history(
+                player.account_id,
+                limit=50,
+                force_refetch=True,
+                only_stored_history=False,
+            )
+        else:
+            match_history = await self.api.get_match_history(player.account_id, limit=50)
+
+        hero_stats = self.hero_stats_from_matches(match_history)
+        recent_matches = match_history[:10]
         return PlayerSummary(
-            player=player,
+            player=effective_player,
             rank=rank,
             hero_stats=hero_stats,
             recent_matches=recent_matches,
@@ -67,8 +87,14 @@ class PlayerService:
         return stat.wins / stat.matches_played
 
     @staticmethod
+    def is_match_win(match: DeadlockMatch) -> bool:
+        if match.player_team is not None and match.match_result is not None:
+            return match.player_team == match.match_result
+        return False
+
+    @staticmethod
     def match_result_label(match: DeadlockMatch) -> str:
-        return "Win" if match.match_result == 1 else "Loss"
+        return "Win" if PlayerService.is_match_win(match) else "Loss"
 
     @staticmethod
     def format_kda(kills: float | int | None, deaths: float | int | None, assists: float | int | None) -> str:
@@ -84,3 +110,39 @@ class PlayerService:
     @staticmethod
     def rank_name(player_summary: PlayerSummary) -> str:
         return friendly_rank_name(player_summary.rank.rank) if player_summary.rank else "Unknown"
+
+    @staticmethod
+    def hero_stats_from_matches(matches: list[DeadlockMatch]) -> list[DeadlockHeroStat]:
+        by_hero: dict[int, dict[str, int]] = defaultdict(
+            lambda: {
+                "matches_played": 0,
+                "wins": 0,
+                "kills": 0,
+                "deaths": 0,
+                "assists": 0,
+                "last_played": 0,
+            }
+        )
+
+        for match in matches:
+            bucket = by_hero[match.hero_id]
+            bucket["matches_played"] += 1
+            bucket["wins"] += 1 if PlayerService.is_match_win(match) else 0
+            bucket["kills"] += match.player_kills or 0
+            bucket["deaths"] += match.player_deaths or 0
+            bucket["assists"] += match.player_assists or 0
+            bucket["last_played"] = max(bucket["last_played"], match.start_time)
+
+        hero_stats = [
+            DeadlockHeroStat(
+                hero_id=hero_id,
+                matches_played=values["matches_played"],
+                wins=values["wins"],
+                kills=values["kills"],
+                deaths=values["deaths"],
+                assists=values["assists"],
+                last_played=values["last_played"] or None,
+            )
+            for hero_id, values in by_hero.items()
+        ]
+        return sorted(hero_stats, key=lambda item: item.matches_played, reverse=True)

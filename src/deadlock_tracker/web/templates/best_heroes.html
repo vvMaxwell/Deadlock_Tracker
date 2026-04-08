@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Best Heroes | Deadlock Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell meta-shell">
+    <div class="section-heading">
+        <p class="eyebrow">Meta Board</p>
+        <h1>Best Heroes</h1>
+        <p class="lede">Track the strongest heroes by win rate and pick rate across the current active roster. Filter by rank floor, mode, time window, and minimum matches.</p>
+    </div>
+
+    <form class="meta-filter-form meta-filter-form-compact" method="get" action="/best-heroes">
+        <label>
+            <span>Rank Floor</span>
+            <select name="rank_floor">
+                {% for option in rank_options %}
+                <option value="{{ option.value }}"{% if option.value == selected_rank_floor %} selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>Mode</span>
+            <select name="mode">
+                {% for option in mode_options %}
+                <option value="{{ option.value }}"{% if option.value == selected_mode %} selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>Window</span>
+            <select name="window_days">
+                {% for option in window_options %}
+                <option value="{{ option.value }}"{% if option.value == selected_window_days %} selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>Min Matches</span>
+            <input
+                class="meta-filter-input"
+                type="text"
+                name="min_matches"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="4"
+                placeholder="1000"
+                value="{{ selected_min_matches }}"
+                aria-describedby="hero-min-matches-help"
+            >
+        </label>
+        <button class="meta-filter-submit" type="submit">Apply Filters</button>
+    </form>
+    <p class="meta-filter-note" id="hero-min-matches-help">Enter a value from 100 to 5000. Heroes below that threshold are excluded from the list.</p>
+
+    {% if error_message %}
+    <p class="error-message">{{ error_message }}</p>
+    {% endif %}
+
+    <section class="results-section">
+        <div class="section-heading">
+            <h2>Hero Rankings</h2>
+            <p>Sorted by win rate first, with pick rate and match volume alongside each hero so the list stays useful and grounded.</p>
+        </div>
+
+        <div class="hero-meta-table">
+            <div class="hero-meta-head">
+                <span>#</span>
+                <span>Hero</span>
+                <span>Win Rate</span>
+                <span>Pick Rate</span>
+                <span>Matches</span>
+                <span>Players</span>
+                <span>Record</span>
+            </div>
+
+            {% for hero in heroes %}
+            <article class="hero-meta-row">
+                <div class="hero-meta-rank">{{ hero.rank_number }}</div>
+                <div class="hero-meta-name">
+                    {% if hero.hero_icon_url %}
+                    <img class="hero-icon" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}">
+                    {% else %}
+                    <div class="hero-icon hero-icon-fallback">{{ hero.hero_name[:2] }}</div>
+                    {% endif %}
+                    <strong>{{ hero.hero_name }}</strong>
+                </div>
+                <div class="hero-meta-stat">
+                    <span>Win Rate</span>
+                    <strong>{{ hero.win_rate_percent }}</strong>
+                </div>
+                <div class="hero-meta-stat">
+                    <span>Pick Rate</span>
+                    <strong>{{ hero.pick_rate_percent }}</strong>
+                </div>
+                <div class="hero-meta-stat">
+                    <span>Matches</span>
+                    <strong>{{ hero.matches_text }}</strong>
+                </div>
+                <div class="hero-meta-stat">
+                    <span>Players</span>
+                    <strong>{{ hero.players_text }}</strong>
+                </div>
+                <div class="hero-meta-stat">
+                    <span>Record</span>
+                    <strong>{{ hero.wins_text }} / {{ hero.losses_text }}</strong>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+
+        {% if not heroes and not error_message %}
+        <p class="empty-state">No hero stats matched those filters yet. Try lowering the rank floor, widening the time window, or reducing the minimum matches.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}
