@@ -32,6 +32,5 @@ jobs:
           REPO_URL: https://github.com/${{ github.repository }}.git
           BRANCH: ${{ github.ref_name }}
         run: |
-          ssh -p "${DEPLOY_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "export DEPLOY_PATH='${DEPLOY_PATH}' REPO_URL='${REPO_URL}' BRANCH='${BRANCH}'; bash -s" \
-            < deploy/deploy.sh
+          tr -d '\r' < deploy/deploy.sh | ssh -p "${DEPLOY_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "export DEPLOY_PATH='${DEPLOY_PATH}' REPO_URL='${REPO_URL}' BRANCH='${BRANCH}'; bash -s"

@@ -14,7 +14,8 @@ if [[ ! -d .git ]]; then
 else
   git fetch origin "${BRANCH}"
   git checkout "${BRANCH}"
-  git pull --ff-only origin "${BRANCH}"
+  git reset --hard "origin/${BRANCH}"
+  git clean -fd
 fi
 
 mkdir -p deploy
@@ -22,7 +23,10 @@ if [[ ! -f deploy/app.env ]]; then
   cp deploy/app.env.example deploy/app.env
 fi
 
-docker compose -f deploy/docker-compose.yml up -d --build --remove-orphans
+if ! docker compose -f deploy/docker-compose.yml up -d --build --force-recreate --remove-orphans; then
+  docker compose -f deploy/docker-compose.yml down --remove-orphans
+  docker compose -f deploy/docker-compose.yml up -d --build --force-recreate --remove-orphans
+fi
 docker image prune -f
 
 echo "Deployment complete."
