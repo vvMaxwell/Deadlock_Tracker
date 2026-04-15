@@ -27,13 +27,40 @@
 </head>
 <body>
     <div class="site-backdrop"></div>
+    <input class="menu-toggle" type="checkbox" id="menu-toggle" aria-hidden="true">
+    <label class="site-drawer-scrim" for="menu-toggle" aria-hidden="true"></label>
+    <aside class="site-drawer">
+        <div class="site-drawer-head">
+            <p class="site-header-eyebrow">Browse</p>
+            <label class="site-drawer-close" for="menu-toggle">Close</label>
+        </div>
+        <nav class="site-drawer-nav">
+            <a href="/">Search</a>
+            <a href="/street-brawl-builds">Street Brawl Builds</a>
+            <a href="/best-heroes">Best Heroes</a>
+            <a href="/best-items">Best Items</a>
+            <a href="/heroes">Heroes</a>
+            <a href="/items">Items</a>
+            <a href="/patch-notes">Patch Notes</a>
+            <a href="/faq">FAQ</a>
+            <a href="/discord-bot">Discord Bot</a>
+            <a href="/credits">Credits</a>
+            <a href="/disclaimers">Disclaimers</a>
+        </nav>
+    </aside>
     <div class="page-shell">
         <header class="site-header site-header-stacked">
             <div class="site-header-top">
-                <a class="brand-mark" href="/">
-                    <span class="brand-kicker">Deadlock</span>
-                    <strong>Tracker</strong>
-                </a>
+                <div class="site-brand-row">
+                    <label class="menu-button" for="menu-toggle">
+                        <span class="menu-button-icon" aria-hidden="true">---</span>
+                        <span>Menu</span>
+                    </label>
+                    <a class="brand-mark" href="/">
+                        <span class="brand-kicker">Deadlock</span>
+                        <strong>Tracker</strong>
+                    </a>
+                </div>
                 <div class="site-header-copy">
                     <p class="site-header-eyebrow">Deadlock stat pages</p>
                     <p class="site-header-text">Player search, hero guides, item pages, patch notes, and meta boards in one place.</p>
@@ -48,20 +75,12 @@
                     </span>
                     <span>Search</span>
                 </a>
-                <a href="/heroes">Heroes</a>
-                <a href="/items">Items</a>
                 <a class="site-nav-new site-nav-spotlight site-nav-spotlight-street-brawl" href="/street-brawl-builds">
                     <span>Street Brawl Builds</span>
                     <span class="site-nav-badge">New</span>
                 </a>
                 <a class="site-nav-spotlight site-nav-spotlight-heroes" href="/best-heroes">Best Heroes</a>
                 <a class="site-nav-spotlight site-nav-spotlight-items" href="/best-items">Best Items</a>
-                <a class="site-nav-spotlight site-nav-spotlight-patches" href="/patch-notes">Patch Notes</a>
-                <a class="site-nav-coming-soon" href="/discord-bot">
-                    <span>Discord Bot</span>
-                    <span class="site-nav-badge site-nav-badge-muted">Soon</span>
-                </a>
-                <a href="/faq">FAQ</a>
             </nav>
         </header>
         {% block content %}{% endblock %}
