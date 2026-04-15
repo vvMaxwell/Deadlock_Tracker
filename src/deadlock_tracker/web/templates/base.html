@@ -27,52 +27,64 @@
 </head>
 <body>
     <div class="site-backdrop"></div>
+    <input class="nav-toggle" type="checkbox" id="nav-toggle" aria-hidden="true">
     <div class="page-shell">
-        <header class="site-header">
-            <a class="brand-mark" href="/">
-                <span class="brand-kicker">Deadlock</span>
-                <strong>Tracker</strong>
-            </a>
-            <nav class="site-nav">
-                <a class="site-nav-search" href="/">
-                    <span class="site-nav-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" role="img" focusable="false">
-                            <path d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Zm5.86 10.44 3.1 3.1-1.42 1.42-3.1-3.1 1.42-1.42Z" fill="currentColor"/>
-                        </svg>
-                    </span>
-                    <span>Search</span>
+        <div class="site-layout">
+            <aside class="site-sidebar">
+                <a class="brand-mark site-sidebar-brand" href="/">
+                    <span class="brand-kicker">Deadlock</span>
+                    <strong>Tracker</strong>
                 </a>
-                <a href="/heroes">Heroes</a>
-                <a href="/items">Items</a>
-                <a class="site-nav-new site-nav-spotlight site-nav-spotlight-street-brawl" href="/street-brawl-builds">
-                    <span>Street Brawl Builds</span>
-                    <span class="site-nav-badge">NEW!</span>
-                </a>
-                <a class="site-nav-spotlight site-nav-spotlight-heroes" href="/best-heroes">Best Heroes</a>
-                <a class="site-nav-spotlight site-nav-spotlight-items" href="/best-items">Best Items</a>
-                <a class="site-nav-spotlight site-nav-spotlight-patches" href="/patch-notes">Patch Notes</a>
-                <a class="site-nav-coming-soon" href="/discord-bot">
-                    <span>Discord Bot</span>
-                    <span class="site-nav-badge site-nav-badge-muted">Coming Soon</span>
-                </a>
-                <a href="/faq">FAQ</a>
-            </nav>
-        </header>
-        {% block content %}{% endblock %}
-        <footer class="site-footer">
-            <div class="site-footer-links">
-                <a href="/heroes">Heroes</a>
-                <a href="/items">Items</a>
-                <a href="/best-heroes">Best Heroes</a>
-                <a href="/best-items">Best Items</a>
-                <a href="/street-brawl-builds">Street Brawl Builds</a>
-                <a href="/patch-notes">Patch Notes</a>
-                <a href="/faq">FAQ</a>
-                <a href="/credits">Credits</a>
-                <a href="/disclaimers">Disclaimers</a>
+                <p class="site-sidebar-copy">Player search, hero guides, item pages, patch notes, and meta boards in one place.</p>
+                <nav class="site-nav">
+                    <a class="site-nav-search" href="/">
+                        <span class="site-nav-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" role="img" focusable="false">
+                                <path d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Zm5.86 10.44 3.1 3.1-1.42 1.42-3.1-3.1 1.42-1.42Z" fill="currentColor"/>
+                            </svg>
+                        </span>
+                        <span>Search</span>
+                    </a>
+                    <a href="/heroes">Heroes</a>
+                    <a href="/items">Items</a>
+                    <a class="site-nav-new site-nav-spotlight site-nav-spotlight-street-brawl" href="/street-brawl-builds">
+                        <span>Street Brawl Builds</span>
+                        <span class="site-nav-badge">New</span>
+                    </a>
+                    <a class="site-nav-spotlight site-nav-spotlight-heroes" href="/best-heroes">Best Heroes</a>
+                    <a class="site-nav-spotlight site-nav-spotlight-items" href="/best-items">Best Items</a>
+                    <a class="site-nav-spotlight site-nav-spotlight-patches" href="/patch-notes">Patch Notes</a>
+                    <a class="site-nav-coming-soon" href="/discord-bot">
+                        <span>Discord Bot</span>
+                        <span class="site-nav-badge site-nav-badge-muted">Soon</span>
+                    </a>
+                    <a href="/faq">FAQ</a>
+                </nav>
+            </aside>
+            <div class="site-main">
+                <header class="site-header">
+                    <label class="nav-toggle-button" for="nav-toggle">Menu</label>
+                    <a class="brand-mark site-header-brand" href="/">
+                        <span class="brand-kicker">Deadlock</span>
+                        <strong>Tracker</strong>
+                    </a>
+                    <div class="site-header-copy">
+                        <p class="site-header-eyebrow">Deadlock stat pages</p>
+                        <p class="site-header-text">Cleaner navigation, deeper hero and item pages, and official patch notes.</p>
+                    </div>
+                </header>
+                {% block content %}{% endblock %}
+                <footer class="site-footer">
+                    <div class="site-footer-links">
+                        <a href="/credits">Credits</a>
+                        <a href="/disclaimers">Disclaimers</a>
+                        <a href="/faq">FAQ</a>
+                    </div>
+                </footer>
             </div>
-        </footer>
+        </div>
     </div>
+    <label class="site-overlay" for="nav-toggle" aria-hidden="true"></label>
     {% block scripts %}{% endblock %}
 </body>
 </html>

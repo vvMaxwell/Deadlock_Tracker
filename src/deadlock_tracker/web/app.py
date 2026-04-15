@@ -852,6 +852,8 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
                 page_title="Item Not Found | Deadlock Stat Tracker",
                 meta_description="That Deadlock item page could not be loaded right now.",
                 meta_robots="noindex,follow",
+                error_subject="item",
+                error_hints=["Try another item", "Try the item directory", "Try again in a moment"],
                 message="That item could not be found.",
             ),
             status_code=404,
@@ -867,9 +869,26 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
         )
         if request.url.path != _url_path(canonical_url):
             return RedirectResponse(url=canonical_url, status_code=308)
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Item Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock item page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                error_subject="item",
+                error_hints=["Try another item", "Try the item directory", "Try again in a moment"],
+                message=str(error),
+            ),
+            status_code=404,
+        ))
 
-        mode_stats: list[ItemModeStatView] = []
-        for mode_name in ("normal", "street_brawl"):
+    mode_stats: list[ItemModeStatView] = []
+    data_warning: str | None = None
+    for mode_name in ("normal", "street_brawl"):
+        try:
             stats = await api.get_item_stats(game_mode=mode_name, min_matches=100)
             stat = next((entry for entry in stats if entry.item_id == parsed_item_id), None)
             if stat is None:
@@ -883,19 +902,9 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
                     timing_text=_friendly_time_seconds(stat.avg_buy_time_s),
                 )
             )
-    except DeadlockError as error:
-        return _html_response(TEMPLATES.TemplateResponse(
-            request,
-            "error.html",
-            _base_context(
-                request,
-                page_title="Item Not Found | Deadlock Stat Tracker",
-                meta_description="That Deadlock item page could not be loaded right now.",
-                meta_robots="noindex,follow",
-                message=str(error),
-            ),
-            status_code=404,
-        ))
+        except DeadlockError as error:
+            if data_warning is None:
+                data_warning = _friendly_meta_error_message(error, topic=f"{item.name} item stats")
 
     return _html_response(TEMPLATES.TemplateResponse(
         request,
@@ -924,6 +933,7 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
             ],
             item=item,
             item_mode_stats=mode_stats,
+            data_warning=data_warning,
         ),
     ))
 
@@ -1069,6 +1079,8 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
                 page_title="Hero Not Found | Deadlock Stat Tracker",
                 meta_description="That Deadlock hero page could not be loaded right now.",
                 meta_robots="noindex,follow",
+                error_subject="hero",
+                error_hints=["Try another hero", "Try the hero directory", "Try again in a moment"],
                 message="That hero could not be found.",
             ),
             status_code=404,
@@ -1085,7 +1097,28 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
         )
         if request.url.path != _url_path(canonical_url):
             return RedirectResponse(url=canonical_url, status_code=308)
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock hero page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                error_subject="hero",
+                error_hints=["Try another hero", "Try the hero directory", "Try again in a moment"],
+                message=str(error),
+            ),
+            status_code=404,
+        ))
 
+    hero_stat = None
+    top_items: list[HeroDetailItemView] = []
+    matchup_preview: list[HeroPeerStatView] = []
+    synergy_preview: list[HeroPeerStatView] = []
+    data_warning: str | None = None
+    try:
         analytics = await api.get_hero_analytics(game_mode="normal", min_matches=500)
         hero_stat = next((entry for entry in analytics if entry.hero_id == hero.hero_id), None)
         item_stats = await api.get_item_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=100)
@@ -1115,33 +1148,10 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             for stat, item in ranked_items
             if item is not None
         ]
-        matchup_preview = _build_counter_views(
-            counter_stats,
-            hero_info,
-            request=request,
-            view="favorable",
-            limit=3,
-        )
-        synergy_preview = _build_synergy_views(
-            synergy_stats,
-            hero.hero_id,
-            hero_info,
-            request=request,
-            limit=3,
-        )
+        matchup_preview = _build_counter_views(counter_stats, hero_info, request=request, view="favorable", limit=3)
+        synergy_preview = _build_synergy_views(synergy_stats, hero.hero_id, hero_info, request=request, limit=3)
     except DeadlockError as error:
-        return _html_response(TEMPLATES.TemplateResponse(
-            request,
-            "error.html",
-            _base_context(
-                request,
-                page_title="Hero Not Found | Deadlock Stat Tracker",
-                meta_description="That Deadlock hero page could not be loaded right now.",
-                meta_robots="noindex,follow",
-                message=str(error),
-            ),
-            status_code=404,
-        ))
+        data_warning = _friendly_meta_error_message(error, topic=f"{hero.name} hero details")
 
     return _html_response(TEMPLATES.TemplateResponse(
         request,
@@ -1176,6 +1186,7 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             hero_top_items=top_items,
             hero_matchup_preview=matchup_preview,
             hero_synergy_preview=synergy_preview,
+            data_warning=data_warning,
             hero_items_url=str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
             hero_matchups_url=str(request.url_for("hero_matchups", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
         ),
@@ -1195,6 +1206,8 @@ async def hero_items(request: Request, hero_id: str, hero_slug: str) -> HTMLResp
                 page_title="Hero Items Not Found | Deadlock Stat Tracker",
                 meta_description="That Deadlock hero item page could not be loaded right now.",
                 meta_robots="noindex,follow",
+                error_subject="hero",
+                error_hints=["Try another hero", "Try the hero directory", "Try again in a moment"],
                 message="That hero could not be found.",
             ),
             status_code=404,
@@ -1211,7 +1224,25 @@ async def hero_items(request: Request, hero_id: str, hero_slug: str) -> HTMLResp
         )
         if request.url.path != _url_path(canonical_url):
             return RedirectResponse(url=canonical_url, status_code=308)
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Items Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock hero item page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                error_subject="hero",
+                error_hints=["Try another hero", "Try the hero directory", "Try again in a moment"],
+                message=str(error),
+            ),
+            status_code=404,
+        ))
 
+    top_items: list[HeroDetailItemView] = []
+    data_warning: str | None = None
+    try:
         item_stats = await api.get_item_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=80)
         item_info_map = await api.get_all_item_info()
         ranked_items = sorted(
@@ -1238,18 +1269,7 @@ async def hero_items(request: Request, hero_id: str, hero_slug: str) -> HTMLResp
             if item is not None
         ]
     except DeadlockError as error:
-        return _html_response(TEMPLATES.TemplateResponse(
-            request,
-            "error.html",
-            _base_context(
-                request,
-                page_title="Hero Items Not Found | Deadlock Stat Tracker",
-                meta_description="That Deadlock hero item page could not be loaded right now.",
-                meta_robots="noindex,follow",
-                message=str(error),
-            ),
-            status_code=404,
-        ))
+        data_warning = _friendly_meta_error_message(error, topic="hero item trends")
 
     return _html_response(TEMPLATES.TemplateResponse(
         request,
@@ -1282,6 +1302,7 @@ async def hero_items(request: Request, hero_id: str, hero_slug: str) -> HTMLResp
             ],
             hero=hero,
             hero_top_items=top_items,
+            data_warning=data_warning,
             hero_detail_url=str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
             hero_matchups_url=str(request.url_for("hero_matchups", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
         ),
@@ -1301,6 +1322,8 @@ async def hero_matchups(request: Request, hero_id: str, hero_slug: str) -> HTMLR
                 page_title="Hero Matchups Not Found | Deadlock Stat Tracker",
                 meta_description="That Deadlock hero matchup page could not be loaded right now.",
                 meta_robots="noindex,follow",
+                error_subject="hero",
+                error_hints=["Try another hero", "Try the hero directory", "Try again in a moment"],
                 message="That hero could not be found.",
             ),
             status_code=404,
@@ -1317,12 +1340,6 @@ async def hero_matchups(request: Request, hero_id: str, hero_slug: str) -> HTMLR
         )
         if request.url.path != _url_path(canonical_url):
             return RedirectResponse(url=canonical_url, status_code=308)
-
-        counter_stats = await api.get_hero_counter_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200)
-        synergy_stats = await api.get_hero_synergy_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200)
-        favorable_matchups = _build_counter_views(counter_stats, hero_info, request=request, view="favorable", limit=12)
-        difficult_matchups = _build_counter_views(counter_stats, hero_info, request=request, view="difficult", limit=12)
-        synergy_rows = _build_synergy_views(synergy_stats, hero.hero_id, hero_info, request=request, limit=12)
     except DeadlockError as error:
         return _html_response(TEMPLATES.TemplateResponse(
             request,
@@ -1332,10 +1349,25 @@ async def hero_matchups(request: Request, hero_id: str, hero_slug: str) -> HTMLR
                 page_title="Hero Matchups Not Found | Deadlock Stat Tracker",
                 meta_description="That Deadlock hero matchup page could not be loaded right now.",
                 meta_robots="noindex,follow",
+                error_subject="hero",
+                error_hints=["Try another hero", "Try the hero directory", "Try again in a moment"],
                 message=str(error),
             ),
             status_code=404,
         ))
+
+    favorable_matchups: list[HeroPeerStatView] = []
+    difficult_matchups: list[HeroPeerStatView] = []
+    synergy_rows: list[HeroPeerStatView] = []
+    data_warning: str | None = None
+    try:
+        counter_stats = await api.get_hero_counter_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200)
+        synergy_stats = await api.get_hero_synergy_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200)
+        favorable_matchups = _build_counter_views(counter_stats, hero_info, request=request, view="favorable", limit=12)
+        difficult_matchups = _build_counter_views(counter_stats, hero_info, request=request, view="difficult", limit=12)
+        synergy_rows = _build_synergy_views(synergy_stats, hero.hero_id, hero_info, request=request, limit=12)
+    except DeadlockError as error:
+        data_warning = _friendly_meta_error_message(error, topic="hero matchup data")
 
     return _html_response(TEMPLATES.TemplateResponse(
         request,
@@ -1370,6 +1402,7 @@ async def hero_matchups(request: Request, hero_id: str, hero_slug: str) -> HTMLR
             favorable_matchups=favorable_matchups,
             difficult_matchups=difficult_matchups,
             synergy_rows=synergy_rows,
+            data_warning=data_warning,
             hero_detail_url=str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
             hero_items_url=str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
         ),

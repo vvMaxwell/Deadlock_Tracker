@@ -23,19 +23,25 @@
         </div>
     </section>
 
+    {% if data_warning %}
+    <article class="platform-card faq-card detail-warning-card">
+        <p>{{ data_warning }}</p>
+    </article>
+    {% endif %}
+
     <section class="faq-grid">
         <article class="platform-card faq-card">
             <p class="eyebrow">Favored Lanes</p>
             <h2>Best matchups for {{ hero.name }}</h2>
             {% for row in favorable_matchups %}
-            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> • {{ row.win_rate_percent }} • {{ row.matches_text }} • {{ row.summary_text }}</p>
+            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> | {{ row.win_rate_percent }} | {{ row.matches_text }} | {{ row.summary_text }}</p>
             {% endfor %}
         </article>
         <article class="platform-card faq-card">
             <p class="eyebrow">Rougher Lanes</p>
             <h2>Hardest matchups for {{ hero.name }}</h2>
             {% for row in difficult_matchups %}
-            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> • {{ row.win_rate_percent }} • {{ row.matches_text }} • {{ row.summary_text }}</p>
+            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> | {{ row.win_rate_percent }} | {{ row.matches_text }} | {{ row.summary_text }}</p>
             {% endfor %}
         </article>
     </section>

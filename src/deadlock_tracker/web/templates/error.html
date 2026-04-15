@@ -6,12 +6,12 @@
 <section class="error-panel">
     <a class="back-link" href="/">Back to search</a>
     <p class="eyebrow">Lookup Error</p>
-    <h1>We couldn't load that player.</h1>
+    <h1>We couldn't load that {{ error_subject or "page" }}.</h1>
     <p class="lede">{{ message }}</p>
     <div class="hero-notes">
-        <span>Try a Steam URL</span>
-        <span>Try a player name</span>
-        <span>Try an account ID</span>
+        {% for hint in error_hints or ["Try going back", "Try another page", "Try again in a moment"] %}
+        <span>{{ hint }}</span>
+        {% endfor %}
     </div>
 </section>
 {% endblock %}

@@ -367,6 +367,36 @@ def test_hero_detail_page_renders(monkeypatch) -> None:
     assert "Abrams matchups" in response.text
 
 
+def test_hero_detail_page_degrades_gracefully_when_meta_calls_fail(monkeypatch) -> None:
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small="https://example.com/abrams.png",
+                    portrait_url=None,
+                    background_image_url=None,
+                )
+            }
+
+        async def get_hero_analytics(self, **_: object) -> list:
+            raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.")
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/heroes/1/abrams")
+
+    assert response.status_code == 200
+    assert "Abrams" in response.text
+    assert "taking longer than usual" in response.text
+
+
 def test_hero_items_page_renders(monkeypatch) -> None:
     class FakeApi:
         async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
@@ -559,6 +589,40 @@ def test_item_detail_page_renders(monkeypatch) -> None:
     assert response.status_code == 200
     assert "Mystic Shot" in response.text
     assert "100 matches" in response.text
+
+
+def test_item_detail_page_degrades_gracefully_when_stats_fail(monkeypatch) -> None:
+    class FakeApi:
+        async def get_item_info(self, item_id: int) -> DeadlockItemInfo:
+            return DeadlockItemInfo(
+                item_id=item_id,
+                name="Mystic Shot",
+                image=None,
+                shop_image="https://example.com/item.png",
+                item_slot_type="weapon",
+                item_tier=1,
+                cost=500,
+                is_active_item=False,
+                item_type="upgrade",
+                ability_type=None,
+                hero_id=None,
+            )
+
+        async def get_item_stats(self, **kwargs: object) -> list[DeadlockItemStat]:
+            raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.")
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/items/101/mystic-shot")
+
+    assert response.status_code == 200
+    assert "Mystic Shot" in response.text
+    assert "taking longer than usual" in response.text
 
 
 def test_heroes_directory_page_renders(monkeypatch) -> None:

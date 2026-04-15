@@ -25,6 +25,12 @@
         </div>
     </section>
 
+    {% if data_warning %}
+    <article class="platform-card faq-card detail-warning-card">
+        <p>{{ data_warning }}</p>
+    </article>
+    {% endif %}
+
     <section class="faq-grid">
         {% for stat in item_mode_stats %}
         <article class="platform-card faq-card">

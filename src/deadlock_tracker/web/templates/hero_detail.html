@@ -31,6 +31,12 @@
         </div>
     </section>
 
+    {% if data_warning %}
+    <article class="platform-card faq-card detail-warning-card">
+        <p>{{ data_warning }}</p>
+    </article>
+    {% endif %}
+
     <section class="results-section">
         <div class="section-heading">
             <h2>Top Items For {{ hero.name }}</h2>
@@ -75,7 +81,7 @@
             <p class="eyebrow">Strong Matchups</p>
             <h2>Who {{ hero.name }} pressures</h2>
             {% for row in hero_matchup_preview %}
-            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> • {{ row.win_rate_percent }} • {{ row.matches_text }}</p>
+            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> | {{ row.win_rate_percent }} | {{ row.matches_text }}</p>
             {% endfor %}
             {% if not hero_matchup_preview %}
             <p>Matchup data is still filling in for {{ hero.name }}.</p>
@@ -86,7 +92,7 @@
             <p class="eyebrow">Best Synergies</p>
             <h2>Who pairs well with {{ hero.name }}</h2>
             {% for row in hero_synergy_preview %}
-            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> • {{ row.win_rate_percent }} • {{ row.matches_text }}</p>
+            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> | {{ row.win_rate_percent }} | {{ row.matches_text }}</p>
             {% endfor %}
             {% if not hero_synergy_preview %}
             <p>Synergy data is still filling in for {{ hero.name }}.</p>

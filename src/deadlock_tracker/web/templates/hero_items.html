@@ -23,6 +23,12 @@
         </div>
     </section>
 
+    {% if data_warning %}
+    <article class="platform-card faq-card detail-warning-card">
+        <p>{{ data_warning }}</p>
+    </article>
+    {% endif %}
+
     <section class="results-section">
         <div class="section-heading">
             <h2>{{ hero.name }} Item Board</h2>
