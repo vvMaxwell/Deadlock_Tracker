@@ -21,6 +21,53 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', path='/site.css') }}">
+    <style>
+        [hidden] { display: none !important; }
+        .site-header-stacked { display: grid; gap: 18px; align-items: stretch; }
+        .site-header-top { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+        .site-brand-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .site-header-copy, .site-header-text, .site-header-eyebrow, .site-drawer-title, .site-drawer-label { margin: 0; }
+        .site-header-copy { display: grid; gap: 4px; max-width: 620px; }
+        .site-header-eyebrow { color: var(--accent); font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; }
+        .site-header-text { color: var(--muted); }
+        .site-nav-inline { display: flex; flex-wrap: wrap; gap: 10px; margin-left: 0; }
+        .site-nav-inline a { display: inline-flex; align-items: center; gap: 9px; width: auto; padding: 10px 14px; border-radius: 999px; }
+        .menu-button {
+            display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px;
+            border-radius: 12px; border: 1px solid rgba(211, 181, 138, 0.18); background: rgba(255,255,255,0.03);
+            color: var(--text); cursor: pointer;
+        }
+        .menu-button-icon { display: inline-grid; gap: 4px; }
+        .menu-button-icon span { display: block; width: 16px; height: 2px; border-radius: 999px; background: var(--accent); }
+        .site-drawer-scrim {
+            position: fixed; inset: 0; z-index: 40; border: 0; background: rgba(0,0,0,0.32); cursor: pointer;
+        }
+        .site-drawer {
+            position: fixed; top: 0; left: 0; bottom: 0; z-index: 50; width: 272px; padding: 14px 12px 22px;
+            background: #f8fafc; border-right: 1px solid #d9dee7; box-shadow: 18px 0 36px rgba(0,0,0,0.16); overflow-y: auto;
+        }
+        .site-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px 12px; }
+        .site-drawer-title { color: #202124; font-family: "Space Grotesk", sans-serif; font-size: 1.05rem; font-weight: 700; }
+        .site-drawer-close {
+            display: inline-flex; align-items: center; justify-content: center; padding: 8px 12px; border-radius: 999px;
+            border: 1px solid #d9dee7; background: #fff; color: #475467; cursor: pointer;
+        }
+        .site-drawer-section { display: grid; gap: 8px; padding: 14px 6px; border-top: 1px solid #d9dee7; }
+        .site-drawer-label { color: #5f6368; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        .site-drawer-nav { display: grid; gap: 4px; }
+        .site-drawer-nav a {
+            display: flex; align-items: center; padding: 11px 14px; border-radius: 999px; color: #202124; text-decoration: none;
+            border: 1px solid transparent; background: transparent; transition: background 0.16s ease, border-color 0.16s ease;
+        }
+        .site-drawer-nav a:hover { background: #dbeafe; border-color: #c7dafc; }
+        body.menu-open { overflow: hidden; }
+        @media (max-width: 900px) { .site-header-top { align-items: flex-start; flex-direction: column; } }
+        @media (max-width: 640px) {
+            .site-nav-inline { gap: 8px; }
+            .site-nav-inline a { padding: 9px 12px; font-size: 0.92rem; }
+            .site-drawer { width: min(272px, calc(100vw - 20px)); }
+        }
+    </style>
     {% if structured_data %}
     <script type="application/ld+json">{{ structured_data|safe }}</script>
     {% endif %}
@@ -28,7 +75,7 @@
 <body>
     <div class="site-backdrop"></div>
     <button class="site-drawer-scrim" type="button" aria-label="Close menu" data-menu-close hidden></button>
-    <aside class="site-drawer" id="site-drawer" aria-hidden="true">
+    <aside class="site-drawer" id="site-drawer" aria-hidden="true" hidden>
         <div class="site-drawer-head">
             <div>
                 <p class="site-header-eyebrow">Browse</p>
@@ -73,7 +120,6 @@
                             <span></span>
                             <span></span>
                         </span>
-                        <span>Menu</span>
                     </button>
                     <a class="brand-mark" href="/">
                         <span class="brand-kicker">Deadlock</span>
@@ -126,10 +172,10 @@
         if (!drawer || !scrim || !openButton) return;
 
         const setOpen = (open) => {
-            drawer.classList.toggle('is-open', open);
+            drawer.hidden = !open;
+            scrim.hidden = !open;
             drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
             openButton.setAttribute('aria-expanded', open ? 'true' : 'false');
-            scrim.hidden = !open;
             document.body.classList.toggle('menu-open', open);
         };
 
