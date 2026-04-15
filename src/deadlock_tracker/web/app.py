@@ -2321,6 +2321,7 @@ def _build_player_rank_distribution_views(
 
     tiers_by_id = {item.tier: item for item in rank_info}
     grouped: dict[int, list[RankDistributionBarView]] = {}
+    tier_totals: dict[int, int] = {}
 
     for entry in sorted(player_rank_distribution, key=lambda item: item.rank):
         tier = entry.rank // 10
@@ -2330,6 +2331,7 @@ def _build_player_rank_distribution_views(
         rank = tiers_by_id.get(tier)
         if rank is None:
             continue
+        tier_totals[tier] = tier_totals.get(tier, 0) + entry.players
         grouped.setdefault(tier, []).append(
             RankDistributionBarView(
                 badge_level=entry.rank,
@@ -2342,13 +2344,20 @@ def _build_player_rank_distribution_views(
             )
         )
 
+    sorted_tiers = [tier for tier in sorted(grouped) if grouped[tier]]
+    cumulative_share = 0.0
+    top_percent_by_tier: dict[int, str] = {}
+    for tier in reversed(sorted_tiers):
+        cumulative_share += (tier_totals.get(tier, 0) / total_players) * 100 if total_players else 0.0
+        top_percent_by_tier[tier] = f"Top {cumulative_share:.1f}%"
+
     return [
         RankDistributionTierView(
             tier_name=tiers_by_id[tier].name,
+            top_percent_text=top_percent_by_tier.get(tier, "Top 0.0%"),
             bars=grouped[tier],
         )
-        for tier in sorted(grouped)
-        if grouped[tier]
+        for tier in sorted_tiers
     ]
 
 

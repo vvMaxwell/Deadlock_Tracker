@@ -141,6 +141,7 @@ class RankDistributionBarView:
 @dataclass(slots=True)
 class RankDistributionTierView:
     tier_name: str
+    top_percent_text: str
     bars: list[RankDistributionBarView]
 
 

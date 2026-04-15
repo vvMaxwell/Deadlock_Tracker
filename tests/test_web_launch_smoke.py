@@ -127,6 +127,29 @@ def test_home_json_ld_is_valid_json() -> None:
     assert parsed[0]["@type"] == "WebSite"
 
 
+def test_rank_distribution_includes_top_percent_labels() -> None:
+    tiers = web_app._build_player_rank_distribution_views(
+        [
+            type("RankRow", (), {"rank": 11, "players": 50})(),
+            type("RankRow", (), {"rank": 12, "players": 50})(),
+            type("RankRow", (), {"rank": 81, "players": 20})(),
+            type("RankRow", (), {"rank": 82, "players": 20})(),
+            type("RankRow", (), {"rank": 111, "players": 10})(),
+            type("RankRow", (), {"rank": 112, "players": 10})(),
+        ],
+        [
+            DeadlockRankInfo(tier=1, name="Initiate", color="#111", image_small=None, image_small_by_division={}),
+            DeadlockRankInfo(tier=8, name="Oracle", color="#888", image_small=None, image_small_by_division={}),
+            DeadlockRankInfo(tier=11, name="Eternus", color="#0f0", image_small=None, image_small_by_division={}),
+        ],
+    )
+
+    by_name = {tier.tier_name: tier.top_percent_text for tier in tiers}
+    assert by_name["Eternus"] == "Top 12.5%"
+    assert by_name["Oracle"] == "Top 37.5%"
+    assert by_name["Initiate"] == "Top 100.0%"
+
+
 def test_faq_json_ld_is_valid_json() -> None:
     client = TestClient(web_app.app)
     response = client.get("/faq")

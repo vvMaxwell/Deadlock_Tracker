@@ -81,7 +81,7 @@
         <h2>Estimated Player Rank Distribution</h2>
         <p>Tracked-player estimate of the current rank ladder, grouped by badge tier. This is not the full global playerbase.</p>
     </div>
-    <div class="rank-distribution-chart">
+        <div class="rank-distribution-chart">
         {% for tier in rank_distribution %}
         <div class="rank-tier-group">
             <div class="rank-tier-bars">
@@ -102,7 +102,10 @@
                 </div>
                 {% endfor %}
             </div>
-            <p class="rank-tier-label">{{ tier.tier_name }}</p>
+            <div class="rank-tier-caption">
+                <p class="rank-tier-label">{{ tier.tier_name }}</p>
+                <p class="rank-tier-subtitle">{{ tier.top_percent_text }}</p>
+            </div>
         </div>
         {% endfor %}
     </div>
