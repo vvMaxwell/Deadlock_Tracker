@@ -43,29 +43,30 @@
             position: fixed; inset: 0; z-index: 40; border: 0; background: rgba(0,0,0,0.32); cursor: pointer;
         }
         .site-drawer {
-            position: fixed; top: 0; left: 0; bottom: 0; z-index: 50; width: 272px; padding: 14px 12px 22px;
-            background: #f8fafc; border-right: 1px solid #d9dee7; box-shadow: 18px 0 36px rgba(0,0,0,0.16); overflow-y: auto;
+            position: fixed; top: 18px; left: max(14px, calc((100vw - 1040px) / 2 + 14px)); bottom: 18px; z-index: 50;
+            width: min(288px, calc(100vw - 28px)); padding: 14px 12px 22px; background: #ece0cd;
+            border: 1px solid #d4c2a8; border-radius: 26px; box-shadow: 18px 0 36px rgba(0,0,0,0.16); overflow-y: auto;
         }
         .site-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px 12px; }
-        .site-drawer-title { color: #202124; font-family: "Space Grotesk", sans-serif; font-size: 1.05rem; font-weight: 700; }
+        .site-drawer-title { color: #2e2416; font-family: "Space Grotesk", sans-serif; font-size: 1.05rem; font-weight: 700; }
         .site-drawer-close {
             display: inline-flex; align-items: center; justify-content: center; padding: 8px 12px; border-radius: 999px;
-            border: 1px solid #d9dee7; background: #fff; color: #475467; cursor: pointer;
+            border: 1px solid #d4c2a8; background: #f7efe3; color: #5f4b2d; cursor: pointer;
         }
-        .site-drawer-section { display: grid; gap: 8px; padding: 14px 6px; border-top: 1px solid #d9dee7; }
-        .site-drawer-label { color: #5f6368; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        .site-drawer-section { display: grid; gap: 8px; padding: 14px 6px; border-top: 1px solid #d4c2a8; }
+        .site-drawer-label { color: #7a6241; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
         .site-drawer-nav { display: grid; gap: 4px; }
         .site-drawer-nav a {
-            display: flex; align-items: center; padding: 11px 14px; border-radius: 999px; color: #202124; text-decoration: none;
+            display: flex; align-items: center; padding: 11px 14px; border-radius: 999px; color: #2f2618; text-decoration: none;
             border: 1px solid transparent; background: transparent; transition: background 0.16s ease, border-color 0.16s ease;
         }
-        .site-drawer-nav a:hover { background: #dbeafe; border-color: #c7dafc; }
+        .site-drawer-nav a:hover { background: #f7efe3; border-color: #d9c6ab; }
         body.menu-open { overflow: hidden; }
         @media (max-width: 900px) { .site-header-top { align-items: flex-start; flex-direction: column; } }
         @media (max-width: 640px) {
             .site-nav-inline { gap: 8px; }
             .site-nav-inline a { padding: 9px 12px; font-size: 0.92rem; }
-            .site-drawer { width: min(272px, calc(100vw - 20px)); }
+            .site-drawer { top: 12px; left: 12px; bottom: 12px; width: min(296px, calc(100vw - 24px)); border-radius: 22px; }
         }
     </style>
     {% if structured_data %}
@@ -82,6 +83,12 @@
                 <p class="site-drawer-title">Navigation</p>
             </div>
             <button class="site-drawer-close" type="button" data-menu-close>Close</button>
+        </div>
+        <div class="site-drawer-section">
+            <p class="site-drawer-label">Home</p>
+            <nav class="site-drawer-nav">
+                <a href="/">Main Screen</a>
+            </nav>
         </div>
         <div class="site-drawer-section">
             <p class="site-drawer-label">Core</p>
