@@ -1,3 +1,5 @@
+import json
+
 from fastapi.testclient import TestClient
 
 from deadlock_tracker.clients.deadlock_api import DeadlockAPI
@@ -5,10 +7,13 @@ from deadlock_tracker.clients.deadlock_api import DeadlockError
 from deadlock_tracker.models import (
     DeadlockAbilityOrderStat,
     DeadlockHeroInfo,
+    DeadlockHeroCounterStat,
     DeadlockHeroStat,
+    DeadlockHeroSynergyStat,
     DeadlockItemInfo,
     DeadlockItemStat,
     DeadlockMatch,
+    DeadlockPatch,
     DeadlockPlayer,
     DeadlockRank,
     DeadlockRankInfo,
@@ -40,9 +45,601 @@ def test_sitemap_lists_core_pages() -> None:
 
     assert response.status_code == 200
     assert "<loc>http://testserver/</loc>" in response.text
+    assert "<loc>http://testserver/heroes</loc>" in response.text
+    assert "<loc>http://testserver/items</loc>" in response.text
     assert "<loc>http://testserver/best-heroes</loc>" in response.text
     assert "<loc>http://testserver/best-items</loc>" in response.text
     assert "<loc>http://testserver/street-brawl-builds</loc>" in response.text
+    assert "<loc>http://testserver/patch-notes</loc>" in response.text
+
+
+def test_sitemap_lists_hero_item_and_patch_detail_pages(monkeypatch) -> None:
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small=None,
+                    portrait_url=None,
+                    background_image_url=None,
+                )
+            }
+
+        async def get_all_item_info(self) -> dict[int, DeadlockItemInfo]:
+            return {
+                101: DeadlockItemInfo(
+                    item_id=101,
+                    name="Mystic Shot",
+                    image=None,
+                    shop_image=None,
+                    item_slot_type="weapon",
+                    item_tier=1,
+                    cost=500,
+                    is_active_item=False,
+                    item_type="upgrade",
+                    ability_type=None,
+                    hero_id=None,
+                )
+            }
+
+        async def get_patches(self, *, limit: int = 50) -> list[DeadlockPatch]:
+            return [
+                DeadlockPatch(
+                    title="04-10-2026 Update",
+                    pub_date="2026-04-11T04:03:53Z",
+                    link="https://forums.playdeadlock.com/threads/04-10-2026-update.125825/",
+                    guid="125825",
+                    author="invalid@example.com (Yoshi)",
+                    category="Changelog",
+                    creator="Yoshi",
+                    content_html="<div>Test</div>",
+                )
+            ]
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/sitemap.xml")
+
+    assert "<loc>http://testserver/heroes/1/abrams</loc>" in response.text
+    assert "<loc>http://testserver/heroes/1/abrams/items</loc>" in response.text
+    assert "<loc>http://testserver/heroes/1/abrams/matchups</loc>" in response.text
+    assert "<loc>http://testserver/items/101/mystic-shot</loc>" in response.text
+    assert "<loc>http://testserver/patch-notes/125825/04-10-2026-update</loc>" in response.text
+
+
+def test_home_json_ld_is_valid_json() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/")
+
+    marker = '<script type="application/ld+json">'
+    start = response.text.index(marker) + len(marker)
+    end = response.text.index("</script>", start)
+    payload = response.text[start:end]
+
+    parsed = json.loads(payload)
+    assert isinstance(parsed, list)
+    assert parsed[0]["@type"] == "WebSite"
+
+
+def test_faq_json_ld_is_valid_json() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/faq")
+
+    marker = '<script type="application/ld+json">'
+    start = response.text.index(marker) + len(marker)
+    end = response.text.index("</script>", start)
+    payload = response.text[start:end]
+
+    parsed = json.loads(payload)
+    assert isinstance(parsed, list)
+    assert parsed[0]["@type"] == "FAQPage"
+
+
+def test_patch_notes_page_renders_official_posts(monkeypatch) -> None:
+    class FakeApi:
+        async def get_patches(self, *, limit: int = 12) -> list[DeadlockPatch]:
+            return [
+                DeadlockPatch(
+                    title="04-10-2026 Update",
+                    pub_date="2026-04-11T04:03:53Z",
+                    link="https://forums.playdeadlock.com/threads/04-10-2026-update.125825/",
+                    guid="125825",
+                    author="invalid@example.com (Yoshi)",
+                    category="Changelog",
+                    creator="Yoshi",
+                    content_html=(
+                        '<div class="bbWrapper"><b>[ General ]</b><br />'
+                        '- Parrying is now allowed while ground dashing<br />'
+                        '<a href="https://forums.playdeadlock.com/threads/04-10-2026-update.125825/">Read more</a></div>'
+                    ),
+                )
+            ]
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/patch-notes")
+
+    assert response.status_code == 200
+    assert "Deadlock Patch Notes" in response.text
+    assert "04-10-2026 Update" in response.text
+    assert "forums.playdeadlock.com" in response.text
+    assert "Parrying is now allowed while ground dashing" in response.text
+    assert "Read more" not in response.text
+
+
+def test_patch_note_detail_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_patches(self, *, limit: int = 50) -> list[DeadlockPatch]:
+            return [
+                DeadlockPatch(
+                    title="04-12-2026 Update",
+                    pub_date="2026-04-12T04:03:53Z",
+                    link="https://forums.playdeadlock.com/threads/04-12-2026-update.126000/",
+                    guid="126000",
+                    author="invalid@example.com (Yoshi)",
+                    category="Changelog",
+                    creator="Yoshi",
+                    content_html="<div>- Newer patch</div>",
+                ),
+                DeadlockPatch(
+                    title="04-10-2026 Update",
+                    pub_date="2026-04-11T04:03:53Z",
+                    link="https://forums.playdeadlock.com/threads/04-10-2026-update.125825/",
+                    guid="125825",
+                    author="invalid@example.com (Yoshi)",
+                    category="Changelog",
+                    creator="Yoshi",
+                    content_html="<div>- Parrying is now allowed while ground dashing</div>",
+                )
+            ]
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/patch-notes/125825/04-10-2026-update")
+
+    assert response.status_code == 200
+    assert "04-10-2026 Update" in response.text
+    assert "Parrying is now allowed while ground dashing" in response.text
+    assert "04-12-2026 Update" in response.text
+
+
+def test_patch_notes_archive_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_patches(self, *, limit: int = 25) -> list[DeadlockPatch]:
+            return [
+                DeadlockPatch(
+                    title=f"04-{index:02d}-2026 Update",
+                    pub_date="2026-04-11T04:03:53Z",
+                    link=f"https://forums.playdeadlock.com/threads/{index}/",
+                    guid=str(index),
+                    author="invalid@example.com (Yoshi)",
+                    category="Changelog",
+                    creator="Yoshi",
+                    content_html="<div>- Test</div>",
+                )
+                for index in range(1, 15)
+            ]
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/patch-notes?page=2")
+
+    assert response.status_code == 200
+    assert "Archive page 2" in response.text
+    assert "Newer patch notes" in response.text
+
+
+def test_hero_detail_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small="https://example.com/abrams.png",
+                    portrait_url=None,
+                    background_image_url=None,
+                )
+            }
+
+        async def get_hero_analytics(self, **_: object) -> list:
+            from deadlock_tracker.models import DeadlockHeroAnalytics
+
+            return [DeadlockHeroAnalytics(hero_id=1, wins=60, losses=40, matches=100, players=80)]
+
+        async def get_item_stats(self, **_: object) -> list[DeadlockItemStat]:
+            return [
+                DeadlockItemStat(
+                    item_id=101,
+                    wins=60,
+                    losses=40,
+                    matches=100,
+                    players=70,
+                    avg_buy_time_s=120.0,
+                    avg_sell_time_s=None,
+                    avg_buy_time_relative=None,
+                    avg_sell_time_relative=None,
+                )
+            ]
+
+        async def get_all_item_info(self) -> dict[int, DeadlockItemInfo]:
+            return {
+                101: DeadlockItemInfo(
+                    item_id=101,
+                    name="Mystic Shot",
+                    image=None,
+                    shop_image="https://example.com/item.png",
+                    item_slot_type="weapon",
+                    item_tier=1,
+                    cost=500,
+                    is_active_item=False,
+                    item_type="upgrade",
+                    ability_type=None,
+                    hero_id=None,
+                )
+            }
+
+        async def get_hero_counter_stats(self, **_: object) -> list[DeadlockHeroCounterStat]:
+            return [
+                DeadlockHeroCounterStat(
+                    hero_id=1,
+                    enemy_hero_id=2,
+                    wins=60,
+                    matches_played=100,
+                    kills=500,
+                    enemy_kills=420,
+                    deaths=300,
+                    enemy_deaths=350,
+                    assists=600,
+                    enemy_assists=540,
+                    denies=100,
+                    enemy_denies=90,
+                    last_hits=5000,
+                    enemy_last_hits=4700,
+                    networth=900000,
+                    enemy_networth=850000,
+                    obj_damage=110000,
+                    enemy_obj_damage=100000,
+                    creeps=2500,
+                    enemy_creeps=2400,
+                )
+            ]
+
+        async def get_hero_synergy_stats(self, **_: object) -> list[DeadlockHeroSynergyStat]:
+            return [
+                DeadlockHeroSynergyStat(
+                    hero_id1=1,
+                    hero_id2=2,
+                    wins=66,
+                    matches_played=100,
+                    kills1=500,
+                    kills2=450,
+                    deaths1=300,
+                    deaths2=280,
+                    assists1=600,
+                    assists2=650,
+                    denies1=100,
+                    denies2=95,
+                    last_hits1=5000,
+                    last_hits2=4800,
+                    networth1=900000,
+                    networth2=880000,
+                    obj_damage1=110000,
+                    obj_damage2=102000,
+                    creeps1=2500,
+                    creeps2=2400,
+                )
+            ]
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/heroes/1/abrams")
+
+    assert response.status_code == 200
+    assert "Abrams" in response.text
+    assert "Mystic Shot" in response.text
+    assert "Abrams matchups" in response.text
+
+
+def test_hero_items_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small="https://example.com/abrams.png",
+                    portrait_url=None,
+                    background_image_url=None,
+                )
+            }
+
+        async def get_item_stats(self, **_: object) -> list[DeadlockItemStat]:
+            return [
+                DeadlockItemStat(
+                    item_id=101,
+                    wins=60,
+                    losses=40,
+                    matches=100,
+                    players=70,
+                    avg_buy_time_s=120.0,
+                    avg_sell_time_s=None,
+                    avg_buy_time_relative=None,
+                    avg_sell_time_relative=None,
+                )
+            ]
+
+        async def get_all_item_info(self) -> dict[int, DeadlockItemInfo]:
+            return {
+                101: DeadlockItemInfo(
+                    item_id=101,
+                    name="Mystic Shot",
+                    image=None,
+                    shop_image="https://example.com/item.png",
+                    item_slot_type="weapon",
+                    item_tier=1,
+                    cost=500,
+                    is_active_item=False,
+                    item_type="upgrade",
+                    ability_type=None,
+                    hero_id=None,
+                )
+            }
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/heroes/1/abrams/items")
+
+    assert response.status_code == 200
+    assert "Best Items for Abrams" in response.text
+    assert "Mystic Shot" in response.text
+
+
+def test_hero_matchups_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small="https://example.com/abrams.png",
+                    portrait_url=None,
+                    background_image_url=None,
+                ),
+                2: DeadlockHeroInfo(
+                    hero_id=2,
+                    name="Bebop",
+                    icon_small="https://example.com/bebop.png",
+                    portrait_url=None,
+                    background_image_url=None,
+                ),
+            }
+
+        async def get_hero_counter_stats(self, **_: object) -> list[DeadlockHeroCounterStat]:
+            return [
+                DeadlockHeroCounterStat(
+                    hero_id=1,
+                    enemy_hero_id=2,
+                    wins=60,
+                    matches_played=100,
+                    kills=500,
+                    enemy_kills=420,
+                    deaths=300,
+                    enemy_deaths=350,
+                    assists=600,
+                    enemy_assists=540,
+                    denies=100,
+                    enemy_denies=90,
+                    last_hits=5000,
+                    enemy_last_hits=4700,
+                    networth=900000,
+                    enemy_networth=850000,
+                    obj_damage=110000,
+                    enemy_obj_damage=100000,
+                    creeps=2500,
+                    enemy_creeps=2400,
+                )
+            ]
+
+        async def get_hero_synergy_stats(self, **_: object) -> list[DeadlockHeroSynergyStat]:
+            return [
+                DeadlockHeroSynergyStat(
+                    hero_id1=1,
+                    hero_id2=2,
+                    wins=66,
+                    matches_played=100,
+                    kills1=500,
+                    kills2=450,
+                    deaths1=300,
+                    deaths2=280,
+                    assists1=600,
+                    assists2=650,
+                    denies1=100,
+                    denies2=95,
+                    last_hits1=5000,
+                    last_hits2=4800,
+                    networth1=900000,
+                    networth2=880000,
+                    obj_damage1=110000,
+                    obj_damage2=102000,
+                    creeps1=2500,
+                    creeps2=2400,
+                )
+            ]
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/heroes/1/abrams/matchups")
+
+    assert response.status_code == 200
+    assert "Abrams Matchups" in response.text
+    assert "Bebop" in response.text
+
+
+def test_item_detail_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_item_info(self, item_id: int) -> DeadlockItemInfo:
+            return DeadlockItemInfo(
+                item_id=item_id,
+                name="Mystic Shot",
+                image=None,
+                shop_image="https://example.com/item.png",
+                item_slot_type="weapon",
+                item_tier=1,
+                cost=500,
+                is_active_item=False,
+                item_type="upgrade",
+                ability_type=None,
+                hero_id=None,
+            )
+
+        async def get_item_stats(self, **kwargs: object) -> list[DeadlockItemStat]:
+            mode = kwargs.get("game_mode")
+            if mode == "normal":
+                return [
+                    DeadlockItemStat(
+                        item_id=101,
+                        wins=55,
+                        losses=45,
+                        matches=100,
+                        players=80,
+                        avg_buy_time_s=120.0,
+                        avg_sell_time_s=None,
+                        avg_buy_time_relative=None,
+                        avg_sell_time_relative=None,
+                    )
+                ]
+            return []
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/items/101/mystic-shot")
+
+    assert response.status_code == 200
+    assert "Mystic Shot" in response.text
+    assert "100 matches" in response.text
+
+
+def test_heroes_directory_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small="https://example.com/abrams.png",
+                    portrait_url=None,
+                    background_image_url=None,
+                )
+            }
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/heroes")
+
+    assert response.status_code == 200
+    assert "All Deadlock Heroes" in response.text
+    assert "/heroes/1/abrams" in response.text
+
+
+def test_items_directory_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_all_item_info(self) -> dict[int, DeadlockItemInfo]:
+            return {
+                101: DeadlockItemInfo(
+                    item_id=101,
+                    name="Mystic Shot",
+                    image=None,
+                    shop_image="https://example.com/item.png",
+                    item_slot_type="weapon",
+                    item_tier=1,
+                    cost=500,
+                    is_active_item=False,
+                    item_type="upgrade",
+                    ability_type=None,
+                    hero_id=None,
+                )
+            }
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/items")
+
+    assert response.status_code == 200
+    assert "All Deadlock Items" in response.text
+    assert "/items/101/mystic-shot" in response.text
+
+
+def test_filtered_best_heroes_page_is_noindex(monkeypatch) -> None:
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {}
+
+        async def get_hero_analytics(self, **_: object) -> list:
+            return []
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/best-heroes?window_days=30")
+
+    assert response.status_code == 200
+    assert '<meta name="robots" content="noindex,follow">' in response.text
 
 
 def test_friendly_meta_error_message_rate_limit() -> None:

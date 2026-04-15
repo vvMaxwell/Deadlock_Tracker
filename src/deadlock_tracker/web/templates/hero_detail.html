@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}{{ hero.name }} Guide | Deadlock Stat Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="/best-heroes">Back to best heroes</a>
+        <a class="back-link" href="{{ hero_items_url }}">Best items for {{ hero.name }}</a>
+        <a class="back-link" href="{{ hero_matchups_url }}">{{ hero.name }} matchups</a>
+    </div>
+    <section class="player-hero"{% if hero.background_image_url %} style="background-image: linear-gradient(180deg, rgba(8, 6, 4, 0.3), rgba(8, 6, 4, 0.94)), url('{{ hero.background_image_url }}'); background-size: cover; background-position: center;"{% endif %}>
+        <div>
+            <p class="eyebrow">Hero Guide</p>
+            <h1>{{ hero.name }}</h1>
+            <p class="lede">Current Deadlock hero overview with meta performance, strongest tracked item choices, and quick reads on synergies and matchup pressure in standard mode.</p>
+            {% if hero_stat %}
+            <div class="section-badge-group">
+                <span class="section-badge section-badge-soft">{{ ((hero_stat.wins / hero_stat.matches) if hero_stat.matches else 0)|round(3) * 100 }}% win rate</span>
+                <span class="section-badge section-badge-soft">{{ hero_stat.matches }} tracked matches</span>
+                <span class="section-badge section-badge-soft">{{ hero_stat.players }} tracked players</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-preview">
+            {% if hero.portrait_url %}
+            <img src="{{ hero.portrait_url }}" alt="{{ hero.name }}">
+            {% elif hero.icon_small %}
+            <img src="{{ hero.icon_small }}" alt="{{ hero.name }}">
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="results-section">
+        <div class="section-heading">
+            <h2>Top Items For {{ hero.name }}</h2>
+            <p>These item rows are based on tracked standard-mode performance for this hero and sorted by win rate with sample size in view.</p>
+        </div>
+        <div class="item-board">
+            {% for item in hero_top_items %}
+            <article class="item-card">
+                <div class="item-card-head">
+                    {% if item.item_image_url %}
+                    <img class="item-card-icon" src="{{ item.item_image_url }}" alt="{{ item.item_name }}">
+                    {% endif %}
+                    <div>
+                        <h3><a class="text-link" href="{{ item.item_url }}">{{ item.item_name }}</a></h3>
+                        <div class="item-card-tags">
+                            <span>{{ item.slot_type }}</span>
+                            <span>{{ item.tier_text }}</span>
+                            <span>{{ item.cost_text }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="item-card-stats">
+                    <div>
+                        <span class="item-stat-label">Win Rate</span>
+                        <strong>{{ item.win_rate_percent }}</strong>
+                    </div>
+                    <div>
+                        <span class="item-stat-label">Matches</span>
+                        <strong>{{ item.matches_text }}</strong>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% if not hero_top_items %}
+        <p class="empty-state">We do not have enough tracked item data for {{ hero.name }} yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <p class="eyebrow">Strong Matchups</p>
+            <h2>Who {{ hero.name }} pressures</h2>
+            {% for row in hero_matchup_preview %}
+            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> • {{ row.win_rate_percent }} • {{ row.matches_text }}</p>
+            {% endfor %}
+            {% if not hero_matchup_preview %}
+            <p>Matchup data is still filling in for {{ hero.name }}.</p>
+            {% endif %}
+            <p><a class="text-link" href="{{ hero_matchups_url }}">Open the full matchup page</a></p>
+        </article>
+        <article class="platform-card faq-card">
+            <p class="eyebrow">Best Synergies</p>
+            <h2>Who pairs well with {{ hero.name }}</h2>
+            {% for row in hero_synergy_preview %}
+            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> • {{ row.win_rate_percent }} • {{ row.matches_text }}</p>
+            {% endfor %}
+            {% if not hero_synergy_preview %}
+            <p>Synergy data is still filling in for {{ hero.name }}.</p>
+            {% endif %}
+            <p><a class="text-link" href="{{ hero_matchups_url }}">See all synergy and counter rows</a></p>
+        </article>
+    </section>
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <h2>How to use this hero page</h2>
+            <p>Use this page as a quick hero reference, then compare it against the wider <a class="text-link" href="/best-heroes">Best Heroes</a> board to see where {{ hero.name }} sits in the broader meta.</p>
+        </article>
+        <article class="platform-card faq-card">
+            <h2>More Deadlock pages</h2>
+            <p>Browse the full <a class="text-link" href="/heroes">hero directory</a>, compare items in the <a class="text-link" href="/items">item directory</a>, open the dedicated <a class="text-link" href="{{ hero_items_url }}">best items page for {{ hero.name }}</a>, or review <a class="text-link" href="/patch-notes">patch notes</a> after major balance changes.</p>
+        </article>
+    </section>
+</section>
+{% endblock %}

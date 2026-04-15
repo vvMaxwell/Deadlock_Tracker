@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}{{ hero.name }} Matchups | Deadlock Stat Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="{{ hero_detail_url }}">Back to {{ hero.name }}</a>
+        <a class="back-link" href="{{ hero_items_url }}">Best items for {{ hero.name }}</a>
+    </div>
+    <section class="player-hero"{% if hero.background_image_url %} style="background-image: linear-gradient(180deg, rgba(8, 6, 4, 0.3), rgba(8, 6, 4, 0.94)), url('{{ hero.background_image_url }}'); background-size: cover; background-position: center;"{% endif %}>
+        <div>
+            <p class="eyebrow">Hero Matchups</p>
+            <h1>{{ hero.name }} Matchups</h1>
+            <p class="lede">Tracked lane matchup and duo data for {{ hero.name }} in standard mode, so you can quickly see favorable enemies, tougher lanes, and strong pairings.</p>
+        </div>
+        <div class="card-preview">
+            {% if hero.portrait_url %}
+            <img src="{{ hero.portrait_url }}" alt="{{ hero.name }}">
+            {% elif hero.icon_small %}
+            <img src="{{ hero.icon_small }}" alt="{{ hero.name }}">
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <p class="eyebrow">Favored Lanes</p>
+            <h2>Best matchups for {{ hero.name }}</h2>
+            {% for row in favorable_matchups %}
+            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> • {{ row.win_rate_percent }} • {{ row.matches_text }} • {{ row.summary_text }}</p>
+            {% endfor %}
+        </article>
+        <article class="platform-card faq-card">
+            <p class="eyebrow">Rougher Lanes</p>
+            <h2>Hardest matchups for {{ hero.name }}</h2>
+            {% for row in difficult_matchups %}
+            <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> • {{ row.win_rate_percent }} • {{ row.matches_text }} • {{ row.summary_text }}</p>
+            {% endfor %}
+        </article>
+    </section>
+
+    <section class="results-section">
+        <div class="section-heading">
+            <p class="eyebrow">Synergy</p>
+            <h2>Best Partners for {{ hero.name }}</h2>
+            <p>These rows reflect how often tracked duos involving {{ hero.name }} win together, plus a quick read on the partner's average contribution.</p>
+        </div>
+        <div class="faq-grid">
+            {% for row in synergy_rows %}
+            <article class="platform-card faq-card">
+                <h3><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a></h3>
+                <p>{{ row.win_rate_percent }} across {{ row.matches_text }}.</p>
+                <p>{{ row.summary_text }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+</section>
+{% endblock %}

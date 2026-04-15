@@ -81,12 +81,14 @@
             <article class="hero-meta-row">
                 <div class="hero-meta-rank">{{ hero.rank_number }}</div>
                 <div class="hero-meta-name">
+                    <a class="hero-detail-link" href="{{ hero.detail_url }}">
                     {% if hero.hero_icon_url %}
                     <img class="hero-icon" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}">
                     {% else %}
                     <div class="hero-icon hero-icon-fallback">{{ hero.hero_name[:2] }}</div>
                     {% endif %}
-                    <strong>{{ hero.hero_name }}</strong>
+                    </a>
+                    <strong><a class="text-link" href="{{ hero.detail_url }}">{{ hero.hero_name }}</a></strong>
                 </div>
                 <div class="hero-meta-stat">
                     <span>Win Rate</span>
@@ -115,6 +117,17 @@
         {% if not heroes and not error_message %}
         <p class="empty-state">No hero stats matched those filters yet. Try lowering the rank floor, widening the time window, or reducing the minimum matches.</p>
         {% endif %}
+    </section>
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <h2>How to use this page</h2>
+            <p>Start with the default view for a broad snapshot of the strongest Deadlock heroes, then narrow by rank floor or mode when you want a more specific meta read.</p>
+        </article>
+        <article class="platform-card faq-card">
+            <h2>Related pages</h2>
+            <p>Pair this hero leaderboard with <a class="text-link" href="/best-items">Best Items</a> for build-level trends or <a class="text-link" href="/patch-notes">Patch Notes</a> to see which official changes may have shifted the rankings.</p>
+        </article>
     </section>
 </section>
 {% endblock %}

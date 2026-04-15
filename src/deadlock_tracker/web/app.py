@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import UTC, datetime
+from html.parser import HTMLParser
 from pathlib import Path
 from time import time
 from urllib.parse import urlencode, urlsplit
@@ -18,12 +20,19 @@ from deadlock_tracker.web.view_models import (
     BestHeroView,
     FilterOptionView,
     HeroStatView,
+    HeroDirectoryCardView,
+    HeroDetailItemView,
+    HeroPeerStatView,
+    ItemDirectoryCardView,
+    ItemModeStatView,
     MatchDetailItemView,
     MatchLaneView,
     MatchDetailOverviewView,
     MatchDetailPlayerView,
     MatchView,
     MatchupRowView,
+    PaginationLinkView,
+    PatchNoteView,
     ProfileOverviewView,
     RankDistributionBarView,
     RankDistributionTierView,
@@ -60,9 +69,9 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
         request,
         str(request.url_for("static", path="/community-assets/graphics/background-city.png")),
     )
-    meta_robots = context.get("meta_robots") or "index,follow"
+    meta_robots = context.pop("meta_robots", None) or "index,follow"
     og_type = context.get("og_type") or "website"
-    structured_data = context.get("structured_data")
+    structured_data = context.pop("structured_data", None)
     if structured_data is not None:
         structured_data = json.dumps(structured_data, separators=(",", ":"))
 
@@ -94,16 +103,102 @@ async def robots_txt(request: Request) -> Response:
 
 @app.get("/sitemap.xml", name="sitemap_xml")
 async def sitemap_xml(request: Request) -> Response:
+    api = PlayerService().api
     urls = [
         _public_url(request, str(request.url_for("home"))),
+        _public_url(request, str(request.url_for("heroes_directory"))),
+        _public_url(request, str(request.url_for("items_directory"))),
         _public_url(request, str(request.url_for("best_heroes"))),
         _public_url(request, str(request.url_for("best_items"))),
         _public_url(request, str(request.url_for("street_brawl_builds"))),
+        _public_url(request, str(request.url_for("patch_notes"))),
         _public_url(request, str(request.url_for("faq"))),
         _public_url(request, str(request.url_for("discord_bot"))),
         _public_url(request, str(request.url_for("credits"))),
         _public_url(request, str(request.url_for("disclaimers"))),
     ]
+    try:
+        hero_info = await api.get_hero_info()
+        urls.extend(
+            _public_url(
+                request,
+                str(
+                    request.url_for(
+                        "hero_detail",
+                        hero_id=str(hero.hero_id),
+                        hero_slug=_slugify(hero.name),
+                    )
+                ),
+            )
+            for hero in hero_info.values()
+        )
+        urls.extend(
+            _public_url(
+                request,
+                str(
+                    request.url_for(
+                        "hero_items",
+                        hero_id=str(hero.hero_id),
+                        hero_slug=_slugify(hero.name),
+                    )
+                ),
+            )
+            for hero in hero_info.values()
+        )
+        urls.extend(
+            _public_url(
+                request,
+                str(
+                    request.url_for(
+                        "hero_matchups",
+                        hero_id=str(hero.hero_id),
+                        hero_slug=_slugify(hero.name),
+                    )
+                ),
+            )
+            for hero in hero_info.values()
+        )
+    except DeadlockError:
+        pass
+
+    try:
+        items = await api.get_all_item_info()
+        urls.extend(
+            _public_url(
+                request,
+                str(
+                    request.url_for(
+                        "item_detail",
+                        item_id=str(item.item_id),
+                        item_slug=_slugify(item.name),
+                    )
+                ),
+            )
+            for item in items.values()
+            if item.item_type == "upgrade"
+        )
+    except DeadlockError:
+        pass
+
+    try:
+        patches = await api.get_patches(limit=50)
+        urls.extend(
+            _public_url(
+                request,
+                str(
+                    request.url_for(
+                        "patch_note_detail",
+                        patch_guid=patch.guid or _slugify(patch.title),
+                        patch_slug=_slugify(patch.title),
+                    )
+                ),
+            )
+            for patch in patches
+        )
+    except DeadlockError:
+        pass
+
+    urls = list(dict.fromkeys(urls))
     body = "".join(f"<url><loc>{url}</loc></url>" for url in urls)
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
@@ -170,17 +265,28 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
                 "to view ranks, match history, hero stats, best heroes, best items, and Street Brawl builds."
             ),
             meta_robots="noindex,follow" if query else "index,follow",
-            structured_data={
-                "@context": "https://schema.org",
-                "@type": "WebSite",
-                "name": "Deadlock Stat Tracker",
-                "url": _public_url(request, str(request.url_for("home"))),
-                "potentialAction": {
-                    "@type": "SearchAction",
-                    "target": f"{_public_url(request, str(request.url_for('home')))}?query={{search_term_string}}",
-                    "query-input": "required name=search_term_string",
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "WebSite",
+                    "name": "Deadlock Stat Tracker",
+                    "url": _public_url(request, str(request.url_for("home"))),
+                    "potentialAction": {
+                        "@type": "SearchAction",
+                        "target": f"{_public_url(request, str(request.url_for('home')))}?query={{search_term_string}}",
+                        "query-input": "required name=search_term_string",
+                    },
                 },
-            },
+                {
+                    "@context": "https://schema.org",
+                    "@type": "WebPage",
+                    "name": "Deadlock Stat Tracker",
+                    "url": _public_url(request, str(request.url_for("home"))),
+                    "description": (
+                        "Search Deadlock players and explore ranks, match history, best heroes, best items, and Street Brawl builds."
+                    ),
+                },
+            ],
             query=query or "",
             results=search_results,
             error_message=error_message,
@@ -202,28 +308,37 @@ async def faq(request: Request) -> HTMLResponse:
             meta_description=(
                 "Learn how to search Deadlock players by Steam name, profile URL, or account ID, and how to use Deadlock Stat Tracker."
             ),
-            structured_data={
-                "@context": "https://schema.org",
-                "@type": "FAQPage",
-                "mainEntity": [
-                    {
-                        "@type": "Question",
-                        "name": "How do I get my Steam account URL?",
-                        "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Open your Steam profile page and copy the full URL from the address bar. Both numeric profile URLs and custom Steam ID URLs work.",
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "FAQPage",
+                    "mainEntity": [
+                        {
+                            "@type": "Question",
+                            "name": "How do I get my Steam account URL?",
+                            "acceptedAnswer": {
+                                "@type": "Answer",
+                                "text": "Open your Steam profile page and copy the full URL from the address bar. Both numeric profile URLs and custom Steam ID URLs work.",
+                            },
                         },
-                    },
-                    {
-                        "@type": "Question",
-                        "name": "What can I search?",
-                        "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "You can search by Steam Name, Steam Account URL, or Account ID.",
+                        {
+                            "@type": "Question",
+                            "name": "What can I search?",
+                            "acceptedAnswer": {
+                                "@type": "Answer",
+                                "text": "You can search by Steam Name, Steam Account URL, or Account ID.",
+                            },
                         },
-                    },
-                ],
-            },
+                    ],
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("FAQ", str(request.url_for("faq"))),
+                    ],
+                ),
+            ],
             screenshot_url=_public_url(request, str(request.url_for("static", path=screenshot_rel))) if screenshot_abs.exists() else None,
         ),
     ))
@@ -268,6 +383,319 @@ async def disclaimers(request: Request) -> HTMLResponse:
     ))
 
 
+@app.get("/patch-notes", response_class=HTMLResponse, name="patch_notes")
+async def patch_notes(request: Request, page: int = 1) -> HTMLResponse:
+    api = PlayerService().api
+    error_message: str | None = None
+    patches: list[PatchNoteView] = []
+    page_size = 12
+    current_page = max(page, 1)
+    pagination_links: list[PaginationLinkView] = []
+    has_next_page = False
+    canonical_url = _public_url(
+        request,
+        str(request.url_for("patch_notes")) if current_page == 1 else str(request.url.include_query_params(page=current_page)),
+    )
+
+    try:
+        patch_feed = await api.get_patches(limit=min((current_page * page_size) + 1, 121))
+        start_index = (current_page - 1) * page_size
+        end_index = start_index + page_size
+        visible_patches = patch_feed[start_index:end_index]
+        has_next_page = len(patch_feed) > end_index
+        patches = [
+            PatchNoteView(
+                title=patch.title,
+                detail_url=str(
+                    request.url_for(
+                        "patch_note_detail",
+                        patch_guid=patch.guid or _slugify(patch.title),
+                        patch_slug=_slugify(patch.title),
+                    )
+                ),
+                published_text=_patch_pub_date_text(patch.pub_date),
+                author_text=patch.creator or _patch_author_text(patch.author),
+                summary_lines=_patch_summary_lines(patch.content_html),
+                official_url=patch.link,
+            )
+            for patch in visible_patches
+        ]
+        if current_page > 1:
+            previous_url = str(request.url_for("patch_notes")) if current_page == 2 else str(request.url.include_query_params(page=current_page - 1))
+            pagination_links.append(PaginationLinkView(label="Newer patch notes", url=previous_url))
+        if has_next_page:
+            pagination_links.append(
+                PaginationLinkView(
+                    label="Older patch notes",
+                    url=str(request.url.include_query_params(page=current_page + 1)),
+                )
+            )
+    except DeadlockError as error:
+        error_message = _friendly_meta_error_message(error, topic="patch notes")
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "patch_notes.html",
+        _base_context(
+            request,
+            page_title="Deadlock Patch Notes | Deadlock Stat Tracker",
+            meta_description=(
+                "Read recent Deadlock patch notes sourced from the official Deadlock changelog posts."
+            ),
+            canonical_url=canonical_url,
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": "Deadlock Patch Notes",
+                    "url": canonical_url,
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Patch Notes", str(request.url_for("patch_notes"))),
+                    ],
+                ),
+            ],
+            patches=patches,
+            current_page=current_page,
+            pagination_links=pagination_links,
+            error_message=error_message,
+        ),
+    ))
+
+
+@app.get("/patch-notes/{patch_guid}/{patch_slug}", response_class=HTMLResponse, name="patch_note_detail")
+async def patch_note_detail(request: Request, patch_guid: str, patch_slug: str) -> HTMLResponse:
+    api = PlayerService().api
+
+    try:
+        patches = await api.get_patches(limit=50)
+        patch = next(
+            (
+                item for item in patches
+                if item.guid == patch_guid or _slugify(item.title) == patch_guid or _slugify(item.title) == patch_slug
+            ),
+            None,
+        )
+        if patch is None:
+            raise DeadlockError("That patch note could not be found.")
+
+        canonical_url = _public_url(
+            request,
+            str(
+                request.url_for(
+                    "patch_note_detail",
+                    patch_guid=patch.guid or _slugify(patch.title),
+                    patch_slug=_slugify(patch.title),
+                )
+            ),
+        )
+        if request.url.path != _url_path(canonical_url):
+            return RedirectResponse(url=canonical_url, status_code=308)
+        patch_index = next((index for index, item in enumerate(patches) if item is patch), None)
+        previous_patch = patches[patch_index + 1] if patch_index is not None and patch_index + 1 < len(patches) else None
+        next_patch = patches[patch_index - 1] if patch_index is not None and patch_index - 1 >= 0 else None
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Patch Note Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock patch note could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "patch_note_detail.html",
+        _base_context(
+            request,
+            page_title=f"{patch.title} | Deadlock Patch Notes",
+            meta_description=f"Read the official Deadlock patch note summary for {patch.title}.",
+            canonical_url=canonical_url,
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "Article",
+                    "headline": patch.title,
+                    "datePublished": patch.pub_date,
+                    "author": {"@type": "Person", "name": patch.creator or _patch_author_text(patch.author)},
+                    "publisher": {"@type": "Organization", "name": "Deadlock Forums"},
+                    "url": canonical_url,
+                    "mainEntityOfPage": canonical_url,
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Patch Notes", str(request.url_for("patch_notes"))),
+                        (patch.title, str(request.url_for(
+                            "patch_note_detail",
+                            patch_guid=patch.guid or _slugify(patch.title),
+                            patch_slug=_slugify(patch.title),
+                        ))),
+                    ],
+                ),
+            ],
+            patch_title=patch.title,
+            patch_published_text=_patch_pub_date_text(patch.pub_date),
+            patch_author_text=patch.creator or _patch_author_text(patch.author),
+            patch_lines=_patch_summary_lines(patch.content_html, limit=120),
+            official_url=patch.link,
+            previous_patch_url=(
+                str(
+                    request.url_for(
+                        "patch_note_detail",
+                        patch_guid=previous_patch.guid or _slugify(previous_patch.title),
+                        patch_slug=_slugify(previous_patch.title),
+                    )
+                )
+                if previous_patch is not None else None
+            ),
+            previous_patch_title=previous_patch.title if previous_patch is not None else None,
+            next_patch_url=(
+                str(
+                    request.url_for(
+                        "patch_note_detail",
+                        patch_guid=next_patch.guid or _slugify(next_patch.title),
+                        patch_slug=_slugify(next_patch.title),
+                    )
+                )
+                if next_patch is not None else None
+            ),
+            next_patch_title=next_patch.title if next_patch is not None else None,
+        ),
+    ))
+
+
+@app.get("/heroes", response_class=HTMLResponse, name="heroes_directory")
+async def heroes_directory(request: Request) -> HTMLResponse:
+    api = PlayerService().api
+    try:
+        hero_info = await api.get_hero_info()
+        heroes = sorted(hero_info.values(), key=lambda item: item.name.casefold())
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Heroes | Deadlock Stat Tracker",
+                meta_description="Deadlock hero directory page.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    hero_cards = [
+        HeroDirectoryCardView(
+            hero_name=hero.name,
+            detail_url=str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+            hero_icon_url=hero.icon_small,
+            hero_portrait_url=hero.portrait_url,
+            hero_background_image_url=hero.background_image_url,
+        )
+        for hero in heroes
+    ]
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "heroes_directory.html",
+        _base_context(
+            request,
+            page_title="Deadlock Heroes | Deadlock Stat Tracker",
+            meta_description="Browse the full Deadlock hero directory and open dedicated hero guide pages.",
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": "Deadlock Heroes",
+                    "url": _public_url(request, str(request.url_for("heroes_directory"))),
+                    "description": "Browse the full Deadlock hero directory and open dedicated hero guide pages.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Heroes", str(request.url_for("heroes_directory"))),
+                    ],
+                ),
+            ],
+            hero_cards=hero_cards,
+        ),
+    ))
+
+
+@app.get("/items", response_class=HTMLResponse, name="items_directory")
+async def items_directory(request: Request) -> HTMLResponse:
+    api = PlayerService().api
+    try:
+        item_info = await api.get_all_item_info()
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Items | Deadlock Stat Tracker",
+                meta_description="Deadlock item directory page.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    items = sorted(
+        [item for item in item_info.values() if item.item_type == "upgrade"],
+        key=lambda item: item.name.casefold(),
+    )
+    item_cards = [
+        ItemDirectoryCardView(
+            item_name=item.name,
+            detail_url=str(request.url_for("item_detail", item_id=str(item.item_id), item_slug=_slugify(item.name))),
+            item_image_url=item.shop_image or item.image,
+            slot_type=_friendly_slot_type(item.item_slot_type),
+            tier_text=_friendly_item_tier_text(item.item_tier),
+            cost_text=f"{item.cost:,} souls" if item.cost else "Cost Unknown",
+        )
+        for item in items
+    ]
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "items_directory.html",
+        _base_context(
+            request,
+            page_title="Deadlock Items | Deadlock Stat Tracker",
+            meta_description="Browse the full Deadlock item directory and open dedicated item guide pages.",
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": "Deadlock Items",
+                    "url": _public_url(request, str(request.url_for("items_directory"))),
+                    "description": "Browse the full Deadlock item directory and open dedicated item guide pages.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Items", str(request.url_for("items_directory"))),
+                    ],
+                ),
+            ],
+            item_cards=item_cards,
+        ),
+    ))
+
+
 @app.get("/help/steam-account-url", response_class=HTMLResponse)
 async def steam_account_url_help(request: Request) -> HTMLResponse:
     return RedirectResponse(url=str(request.url_for("faq")) + "#steam-account-url", status_code=307)
@@ -304,6 +732,13 @@ async def best_items(
     rank_options = _rank_floor_options()
     best_item_rows: list[BestItemView] = []
     selected_hero_id = parsed_hero_id if parsed_hero_id in hero_info else None
+    is_default_view = (
+        selected_hero_id is None
+        and selected_rank_floor == 81
+        and selected_mode == "normal"
+        and selected_window_days == 7
+        and selected_min_matches == 1000
+    )
 
     try:
         stats = await api.get_item_stats(
@@ -328,6 +763,13 @@ async def best_items(
                 BestItemView(
                     item_id=stat.item_id,
                     item_name=item_info.name,
+                    detail_url=str(
+                        request.url_for(
+                            "item_detail",
+                            item_id=str(item_info.item_id),
+                            item_slug=_slugify(item_info.name),
+                        )
+                    ),
                     item_image_url=item_info.shop_image or item_info.image,
                     slot_type=_friendly_slot_type(item_info.item_slot_type),
                     tier_text=f"Tier {item_info.item_tier}" if item_info.item_tier else "Tier Unknown",
@@ -352,6 +794,23 @@ async def best_items(
             meta_description=(
                 "Browse the best Deadlock items by win rate, hero, rank floor, mode, and time window using live meta analytics."
             ),
+            meta_robots="index,follow" if is_default_view else "noindex,follow",
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": "Best Deadlock Items",
+                    "url": _public_url(request, str(request.url_for("best_items"))),
+                    "description": "Browse the best Deadlock items by win rate, hero, rank floor, and mode.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Best Items", str(request.url_for("best_items"))),
+                    ],
+                ),
+            ],
             hero_options=[
                 FilterOptionView(value="", label="All heroes"),
                 *[
@@ -376,6 +835,95 @@ async def best_items(
             selected_min_matches=selected_min_matches,
             items=best_item_rows,
             error_message=error_message,
+        ),
+    ))
+
+
+@app.get("/items/{item_id}/{item_slug}", response_class=HTMLResponse, name="item_detail")
+async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLResponse:
+    api = PlayerService().api
+    parsed_item_id = _parse_optional_int(item_id)
+    if parsed_item_id is None:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Item Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock item page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message="That item could not be found.",
+            ),
+            status_code=404,
+        ))
+
+    try:
+        item = await api.get_item_info(parsed_item_id)
+        if item is None:
+            raise DeadlockError("That item could not be found.")
+        canonical_url = _public_url(
+            request,
+            str(request.url_for("item_detail", item_id=str(parsed_item_id), item_slug=_slugify(item.name))),
+        )
+        if request.url.path != _url_path(canonical_url):
+            return RedirectResponse(url=canonical_url, status_code=308)
+
+        mode_stats: list[ItemModeStatView] = []
+        for mode_name in ("normal", "street_brawl"):
+            stats = await api.get_item_stats(game_mode=mode_name, min_matches=100)
+            stat = next((entry for entry in stats if entry.item_id == parsed_item_id), None)
+            if stat is None:
+                continue
+            mode_stats.append(
+                ItemModeStatView(
+                    mode_name="Normal" if mode_name == "normal" else "Street Brawl",
+                    win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat.matches else "0.0%",
+                    matches_text=f"{stat.matches:,} matches",
+                    players_text=f"{stat.players:,} players",
+                    timing_text=_friendly_time_seconds(stat.avg_buy_time_s),
+                )
+            )
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Item Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock item page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "item_detail.html",
+        _base_context(
+            request,
+            page_title=f"{item.name} Item Guide | Deadlock Stat Tracker",
+            meta_description=f"See Deadlock item stats and current mode-by-mode performance for {item.name}.",
+            canonical_url=canonical_url,
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "WebPage",
+                    "name": f"{item.name} Item Guide",
+                    "url": canonical_url,
+                    "description": f"See Deadlock item stats and current mode-by-mode performance for {item.name}.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Best Items", str(request.url_for("best_items"))),
+                        (item.name, str(request.url_for("item_detail", item_id=str(item.item_id), item_slug=_slugify(item.name)))),
+                    ],
+                ),
+            ],
+            item=item,
+            item_mode_stats=mode_stats,
         ),
     ))
 
@@ -407,6 +955,12 @@ async def best_heroes(
 
     hero_info = await api.get_hero_info()
     hero_rows: list[BestHeroView] = []
+    is_default_view = (
+        selected_rank_floor == 81
+        and selected_mode == "normal"
+        and selected_window_days == 7
+        and selected_min_matches == 1000
+    )
 
     try:
         stats = await api.get_hero_analytics(
@@ -434,8 +988,16 @@ async def best_heroes(
             pick_rate = (stat.matches / total_matches) if total_matches else 0.0
             hero_rows.append(
                 BestHeroView(
+                    hero_id=hero.hero_id,
                     rank_number=index,
                     hero_name=hero.name,
+                    detail_url=str(
+                        request.url_for(
+                            "hero_detail",
+                            hero_id=str(hero.hero_id),
+                            hero_slug=_slugify(hero.name),
+                        )
+                    ),
                     hero_icon_url=hero.icon_small,
                     win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat.matches else "0.0%",
                     pick_rate_percent=f"{pick_rate:.1%}",
@@ -457,6 +1019,23 @@ async def best_heroes(
             meta_description=(
                 "Track the best Deadlock heroes by win rate, pick rate, rank floor, mode, and time window with live meta data."
             ),
+            meta_robots="index,follow" if is_default_view else "noindex,follow",
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": "Best Deadlock Heroes",
+                    "url": _public_url(request, str(request.url_for("best_heroes"))),
+                    "description": "Track the best Deadlock heroes by win rate, pick rate, rank floor, and mode.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Best Heroes", str(request.url_for("best_heroes"))),
+                    ],
+                ),
+            ],
             rank_options=_rank_floor_options(),
             mode_options=[
                 FilterOptionView(value="normal", label="Normal"),
@@ -477,6 +1056,326 @@ async def best_heroes(
     ))
 
 
+@app.get("/heroes/{hero_id}/{hero_slug}", response_class=HTMLResponse, name="hero_detail")
+async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLResponse:
+    api = PlayerService().api
+    parsed_hero_id = _parse_optional_int(hero_id)
+    if parsed_hero_id is None:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock hero page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message="That hero could not be found.",
+            ),
+            status_code=404,
+        ))
+
+    try:
+        hero_info = await api.get_hero_info()
+        hero = hero_info.get(parsed_hero_id)
+        if hero is None:
+            raise DeadlockError("That hero could not be found.")
+        canonical_url = _public_url(
+            request,
+            str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+        )
+        if request.url.path != _url_path(canonical_url):
+            return RedirectResponse(url=canonical_url, status_code=308)
+
+        analytics = await api.get_hero_analytics(game_mode="normal", min_matches=500)
+        hero_stat = next((entry for entry in analytics if entry.hero_id == hero.hero_id), None)
+        item_stats = await api.get_item_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=100)
+        counter_stats = await api.get_hero_counter_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200)
+        synergy_stats = await api.get_hero_synergy_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200)
+        item_info_map = await api.get_all_item_info()
+        ranked_items = sorted(
+            [
+                (stat, item_info_map.get(stat.item_id))
+                for stat in item_stats
+                if item_info_map.get(stat.item_id) is not None and item_info_map[stat.item_id].item_type == "upgrade"
+            ],
+            key=lambda entry: (((entry[0].wins / entry[0].matches) if entry[0].matches else 0.0), entry[0].matches),
+            reverse=True,
+        )[:10]
+        top_items = [
+            HeroDetailItemView(
+                item_name=item.name,
+                item_url=str(request.url_for("item_detail", item_id=str(item.item_id), item_slug=_slugify(item.name))),
+                item_image_url=item.shop_image or item.image,
+                slot_type=_friendly_slot_type(item.item_slot_type),
+                tier_text=_friendly_item_tier_text(item.item_tier),
+                cost_text=f"{item.cost:,} souls" if item.cost else "Cost Unknown",
+                win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat.matches else "0.0%",
+                matches_text=f"{stat.matches:,} matches",
+            )
+            for stat, item in ranked_items
+            if item is not None
+        ]
+        matchup_preview = _build_counter_views(
+            counter_stats,
+            hero_info,
+            request=request,
+            view="favorable",
+            limit=3,
+        )
+        synergy_preview = _build_synergy_views(
+            synergy_stats,
+            hero.hero_id,
+            hero_info,
+            request=request,
+            limit=3,
+        )
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock hero page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "hero_detail.html",
+        _base_context(
+            request,
+            page_title=f"{hero.name} Guide | Deadlock Stat Tracker",
+            meta_description=f"See current Deadlock stats, win rate, and top items for {hero.name}.",
+            canonical_url=canonical_url,
+            og_image=hero.portrait_url or hero.background_image_url or _public_url(
+                request, str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
+            ),
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "WebPage",
+                    "name": f"{hero.name} Guide",
+                    "url": canonical_url,
+                    "description": f"See current Deadlock stats, win rate, and top items for {hero.name}.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Best Heroes", str(request.url_for("best_heroes"))),
+                        (hero.name, str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name)))),
+                    ],
+                ),
+            ],
+            hero=hero,
+            hero_stat=hero_stat,
+            hero_top_items=top_items,
+            hero_matchup_preview=matchup_preview,
+            hero_synergy_preview=synergy_preview,
+            hero_items_url=str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+            hero_matchups_url=str(request.url_for("hero_matchups", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+        ),
+    ))
+
+
+@app.get("/heroes/{hero_id}/{hero_slug}/items", response_class=HTMLResponse, name="hero_items")
+async def hero_items(request: Request, hero_id: str, hero_slug: str) -> HTMLResponse:
+    api = PlayerService().api
+    parsed_hero_id = _parse_optional_int(hero_id)
+    if parsed_hero_id is None:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Items Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock hero item page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message="That hero could not be found.",
+            ),
+            status_code=404,
+        ))
+
+    try:
+        hero_info = await api.get_hero_info()
+        hero = hero_info.get(parsed_hero_id)
+        if hero is None:
+            raise DeadlockError("That hero could not be found.")
+        canonical_url = _public_url(
+            request,
+            str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+        )
+        if request.url.path != _url_path(canonical_url):
+            return RedirectResponse(url=canonical_url, status_code=308)
+
+        item_stats = await api.get_item_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=80)
+        item_info_map = await api.get_all_item_info()
+        ranked_items = sorted(
+            [
+                (stat, item_info_map.get(stat.item_id))
+                for stat in item_stats
+                if item_info_map.get(stat.item_id) is not None and item_info_map[stat.item_id].item_type == "upgrade"
+            ],
+            key=lambda entry: (((entry[0].wins / entry[0].matches) if entry[0].matches else 0.0), entry[0].matches),
+            reverse=True,
+        )
+        top_items = [
+            HeroDetailItemView(
+                item_name=item.name,
+                item_url=str(request.url_for("item_detail", item_id=str(item.item_id), item_slug=_slugify(item.name))),
+                item_image_url=item.shop_image or item.image,
+                slot_type=_friendly_slot_type(item.item_slot_type),
+                tier_text=_friendly_item_tier_text(item.item_tier),
+                cost_text=f"{item.cost:,} souls" if item.cost else "Cost Unknown",
+                win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat.matches else "0.0%",
+                matches_text=f"{stat.matches:,} matches",
+            )
+            for stat, item in ranked_items
+            if item is not None
+        ]
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Items Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock hero item page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "hero_items.html",
+        _base_context(
+            request,
+            page_title=f"Best Items for {hero.name} | Deadlock Stat Tracker",
+            meta_description=f"See the strongest tracked items and current build trends for {hero.name} in Deadlock.",
+            canonical_url=canonical_url,
+            og_image=hero.portrait_url or hero.background_image_url or _public_url(
+                request, str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
+            ),
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": f"Best Items for {hero.name}",
+                    "url": canonical_url,
+                    "description": f"See the strongest tracked items and current build trends for {hero.name} in Deadlock.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Heroes", str(request.url_for("heroes_directory"))),
+                        (hero.name, str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name)))),
+                        ("Best Items", str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name)))),
+                    ],
+                ),
+            ],
+            hero=hero,
+            hero_top_items=top_items,
+            hero_detail_url=str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+            hero_matchups_url=str(request.url_for("hero_matchups", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+        ),
+    ))
+
+
+@app.get("/heroes/{hero_id}/{hero_slug}/matchups", response_class=HTMLResponse, name="hero_matchups")
+async def hero_matchups(request: Request, hero_id: str, hero_slug: str) -> HTMLResponse:
+    api = PlayerService().api
+    parsed_hero_id = _parse_optional_int(hero_id)
+    if parsed_hero_id is None:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Matchups Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock hero matchup page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message="That hero could not be found.",
+            ),
+            status_code=404,
+        ))
+
+    try:
+        hero_info = await api.get_hero_info()
+        hero = hero_info.get(parsed_hero_id)
+        if hero is None:
+            raise DeadlockError("That hero could not be found.")
+        canonical_url = _public_url(
+            request,
+            str(request.url_for("hero_matchups", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+        )
+        if request.url.path != _url_path(canonical_url):
+            return RedirectResponse(url=canonical_url, status_code=308)
+
+        counter_stats = await api.get_hero_counter_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200)
+        synergy_stats = await api.get_hero_synergy_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200)
+        favorable_matchups = _build_counter_views(counter_stats, hero_info, request=request, view="favorable", limit=12)
+        difficult_matchups = _build_counter_views(counter_stats, hero_info, request=request, view="difficult", limit=12)
+        synergy_rows = _build_synergy_views(synergy_stats, hero.hero_id, hero_info, request=request, limit=12)
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Matchups Not Found | Deadlock Stat Tracker",
+                meta_description="That Deadlock hero matchup page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "hero_matchups.html",
+        _base_context(
+            request,
+            page_title=f"{hero.name} Matchups | Deadlock Stat Tracker",
+            meta_description=f"See favorable lanes, difficult opponents, and top synergy partners for {hero.name} in Deadlock.",
+            canonical_url=canonical_url,
+            og_image=hero.portrait_url or hero.background_image_url or _public_url(
+                request, str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
+            ),
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": f"{hero.name} Matchups",
+                    "url": canonical_url,
+                    "description": f"See favorable lanes, difficult opponents, and top synergy partners for {hero.name} in Deadlock.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Heroes", str(request.url_for("heroes_directory"))),
+                        (hero.name, str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name)))),
+                        ("Matchups", str(request.url_for("hero_matchups", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name)))),
+                    ],
+                ),
+            ],
+            hero=hero,
+            favorable_matchups=favorable_matchups,
+            difficult_matchups=difficult_matchups,
+            synergy_rows=synergy_rows,
+            hero_detail_url=str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+            hero_items_url=str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+        ),
+    ))
+
+
 @app.get("/street-brawl-builds", response_class=HTMLResponse)
 async def street_brawl_builds(
     request: Request,
@@ -491,6 +1390,12 @@ async def street_brawl_builds(
     selected_window_days = window_days if window_days in {7, 30, 90} else 7
     parsed_min_matches = _parse_optional_int(min_matches)
     selected_min_matches = parsed_min_matches if parsed_min_matches in {50, 100, 250, 500, 1000} else 100
+    is_default_view = (
+        hero_id in {None, ""}
+        and not item_level
+        and selected_window_days == 7
+        and selected_min_matches == 100
+    )
 
     hero_info = await api.get_hero_info()
     sorted_heroes = sorted(hero_info.values(), key=lambda item: item.name.casefold())
@@ -533,15 +1438,33 @@ async def street_brawl_builds(
         return _html_response(TEMPLATES.TemplateResponse(
             request,
             "street_brawl_builds.html",
-            _base_context(
-                request,
-                page_title="Street Brawl Builds | Deadlock Stat Tracker",
-                meta_description=(
-                    "Find the best Street Brawl builds in Deadlock, including high-win-rate items and common ability paths by hero."
-                ),
-                hero_options=[
-                    FilterOptionView(value=str(hero.hero_id), label=hero.name)
-                    for hero in sorted_heroes
+                _base_context(
+                    request,
+                    page_title="Street Brawl Builds | Deadlock Stat Tracker",
+                    meta_description=(
+                        "Find the best Street Brawl builds in Deadlock, including high-win-rate items and common ability paths by hero."
+                    ),
+                    structured_data=[
+                        {
+                            "@context": "https://schema.org",
+                            "@type": "CollectionPage",
+                            "name": "Street Brawl Builds",
+                            "url": _public_url(request, str(request.url_for("street_brawl_builds"))),
+                            "description": (
+                                "Find the best Street Brawl builds in Deadlock, including high-win-rate items and common ability paths by hero."
+                            ),
+                        },
+                        _breadcrumb_structured_data(
+                            request,
+                            [
+                                ("Home", str(request.url_for("home"))),
+                                ("Street Brawl Builds", str(request.url_for("street_brawl_builds"))),
+                            ],
+                        ),
+                    ],
+                    hero_options=[
+                        FilterOptionView(value=str(hero.hero_id), label=hero.name)
+                        for hero in sorted_heroes
                 ],
                 item_level_options=[
                     FilterOptionView(value="", label="All item levels"),
@@ -667,6 +1590,23 @@ async def street_brawl_builds(
                 if selected_hero is not None
                 else "Find the best Street Brawl builds in Deadlock, including high-win-rate items and common ability paths by hero."
             ),
+            meta_robots="index,follow" if is_default_view else "noindex,follow",
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": "Street Brawl Builds",
+                    "url": _public_url(request, str(request.url_for("street_brawl_builds"))),
+                    "description": "Deadlock Street Brawl builds, item boards, and ability upgrade paths.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Street Brawl Builds", str(request.url_for("street_brawl_builds"))),
+                    ],
+                ),
+            ],
             hero_options=[
                 FilterOptionView(value=str(hero.hero_id), label=hero.name)
                 for hero in sorted_heroes
@@ -836,16 +1776,34 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             ),
             canonical_url=canonical_player_url,
             og_type="profile",
-            structured_data={
-                "@context": "https://schema.org",
-                "@type": "ProfilePage",
-                "name": f"{summary.player.personaname} Stats",
-                "url": canonical_player_url,
-                "mainEntity": {
-                    "@type": "Person",
-                    "name": summary.player.personaname,
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "ProfilePage",
+                    "name": f"{summary.player.personaname} Stats",
+                    "url": canonical_player_url,
+                    "mainEntity": {
+                        "@type": "Person",
+                        "name": summary.player.personaname,
+                    },
                 },
-            },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        (
+                            summary.player.personaname,
+                            str(
+                                request.url_for(
+                                    "player_profile_canonical",
+                                    account_id=str(summary.player.account_id),
+                                    player_slug=_slugify(summary.player.personaname),
+                                )
+                            ),
+                        ),
+                    ],
+                ),
+            ],
             player=summary.player,
             overview=overview,
             top_heroes=top_heroes,
@@ -1101,6 +2059,100 @@ def _friendly_time_seconds(seconds: float | None) -> str:
     return f"{minutes}:{secs:02d} avg buy"
 
 
+def _build_counter_views(
+    stats: list,
+    hero_info: dict[int, object],
+    *,
+    request: Request,
+    view: str,
+    limit: int,
+) -> list[HeroPeerStatView]:
+    filtered = [
+        stat
+        for stat in stats
+        if stat.enemy_hero_id in hero_info
+        and stat.matches_played > 0
+        and stat.hero_id != stat.enemy_hero_id
+    ]
+    if view == "favorable":
+        ranked = sorted(
+            filtered,
+            key=lambda stat: ((stat.wins / stat.matches_played), stat.matches_played),
+            reverse=True,
+        )
+    else:
+        ranked = sorted(
+            filtered,
+            key=lambda stat: ((stat.wins / stat.matches_played), -stat.matches_played),
+        )
+
+    rows: list[HeroPeerStatView] = []
+    for stat in ranked[:limit]:
+        enemy = hero_info[stat.enemy_hero_id]
+        rows.append(
+            HeroPeerStatView(
+                hero_name=enemy.name,
+                hero_url=str(request.url_for("hero_detail", hero_id=str(enemy.hero_id), hero_slug=_slugify(enemy.name))),
+                hero_icon_url=enemy.icon_small,
+                win_rate_percent=f"{(stat.wins / stat.matches_played):.1%}",
+                matches_text=f"{stat.matches_played:,} lane matchups",
+                summary_text=(
+                    f"{_per_match(stat.kills, stat.matches_played):.1f} / "
+                    f"{_per_match(stat.deaths, stat.matches_played):.1f} / "
+                    f"{_per_match(stat.assists, stat.matches_played):.1f} avg KDA"
+                ),
+            )
+        )
+    return rows
+
+
+def _build_synergy_views(
+    stats: list,
+    hero_id: int,
+    hero_info: dict[int, object],
+    *,
+    request: Request,
+    limit: int,
+) -> list[HeroPeerStatView]:
+    filtered = [
+        stat
+        for stat in stats
+        if stat.matches_played > 0
+        and stat.hero_id1 == hero_id
+        and stat.hero_id2 in hero_info
+        and stat.hero_id2 != hero_id
+    ]
+    ranked = sorted(
+        filtered,
+        key=lambda stat: ((stat.wins / stat.matches_played), stat.matches_played),
+        reverse=True,
+    )
+
+    rows: list[HeroPeerStatView] = []
+    for stat in ranked[:limit]:
+        teammate = hero_info[stat.hero_id2]
+        rows.append(
+            HeroPeerStatView(
+                hero_name=teammate.name,
+                hero_url=str(request.url_for("hero_detail", hero_id=str(teammate.hero_id), hero_slug=_slugify(teammate.name))),
+                hero_icon_url=teammate.icon_small,
+                win_rate_percent=f"{(stat.wins / stat.matches_played):.1%}",
+                matches_text=f"{stat.matches_played:,} tracked duos",
+                summary_text=(
+                    f"{_per_match(stat.kills2, stat.matches_played):.1f} kills and "
+                    f"{_per_match(stat.assists2, stat.matches_played):.1f} assists avg"
+                ),
+            )
+        )
+    return rows
+
+
+def _per_match(total: int, matches: int) -> float:
+    if matches <= 0:
+        return 0.0
+    return total / matches
+
+
 def _parse_optional_int(raw: str | None) -> int | None:
     if raw is None:
         return None
@@ -1125,6 +2177,76 @@ def _friendly_meta_error_message(error: DeadlockError, *, topic: str) -> str:
     if "http 500" in lowered or "request failed" in lowered:
         return f"Deadlock API is having trouble loading {topic} right now. Try again shortly."
     return f"We couldn't load {topic} right now. Try again shortly."
+
+
+def _breadcrumb_structured_data(request: Request, crumbs: list[tuple[str, str]]) -> dict[str, object]:
+    return {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": index,
+                "name": name,
+                "item": _public_url(request, url),
+            }
+            for index, (name, url) in enumerate(crumbs, start=1)
+        ],
+    }
+
+
+def _patch_author_text(author: str) -> str:
+    match = re.search(r"\(([^()]+)\)\s*$", author)
+    return match.group(1).strip() if match else (author.strip() or "Valve")
+
+
+def _patch_pub_date_text(raw: str) -> str:
+    try:
+        timestamp = int(datetime.fromisoformat(raw.replace("Z", "+00:00")).timestamp())
+    except ValueError:
+        return raw
+    return _absolute_date_text(timestamp)
+
+
+def _absolute_date_text(timestamp: int | None) -> str:
+    if not timestamp:
+        return "Unknown"
+    return datetime.fromtimestamp(int(timestamp), UTC).strftime("%B %d, %Y")
+
+
+def _patch_summary_lines(content_html: str, *, limit: int = 18) -> list[str]:
+    parser = _PatchHtmlSummaryParser()
+    parser.feed(content_html)
+    lines = parser.lines()
+    if not lines:
+        return ["Open the official post for the full patch notes."]
+    return lines[:limit]
+
+
+class _PatchHtmlSummaryParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self._parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in {"br", "p", "div", "li"}:
+            self._parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"p", "div", "li"}:
+            self._parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        text = data.strip()
+        if text:
+            self._parts.append(text)
+
+    def lines(self) -> list[str]:
+        text = "".join(self._parts)
+        cleaned = re.sub(r"\n{2,}", "\n", text)
+        raw_lines = [line.strip(" -\t") for line in cleaned.splitlines()]
+        lines = [line for line in raw_lines if line and line.casefold() != "read more"]
+        return lines
 
 
 def _slugify(value: str) -> str:

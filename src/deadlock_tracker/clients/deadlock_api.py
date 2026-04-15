@@ -11,7 +11,9 @@ from deadlock_tracker.models import (
     DeadlockAbilityOrderStat,
     DeadlockBadgeDistribution,
     DeadlockHeroAnalytics,
+    DeadlockHeroCounterStat,
     DeadlockHeroInfo,
+    DeadlockHeroSynergyStat,
     DeadlockItemInfo,
     DeadlockItemStat,
     DeadlockHeroStat,
@@ -20,6 +22,7 @@ from deadlock_tracker.models import (
     DeadlockMatchMetadata,
     DeadlockMatchPlayer,
     DeadlockPlayer,
+    DeadlockPatch,
     DeadlockPlayerRankDistribution,
     DeadlockRank,
     DeadlockRankInfo,
@@ -425,6 +428,92 @@ class DeadlockAPI:
             if item.get("hero_id") not in {None, 0}
         ]
 
+    async def get_hero_counter_stats(
+        self,
+        *,
+        hero_id: int,
+        game_mode: str = "normal",
+        min_matches: int = 200,
+        min_unix_timestamp: int | None = None,
+    ) -> list[DeadlockHeroCounterStat]:
+        params: dict[str, str] = {
+            "hero_id": str(hero_id),
+            "game_mode": game_mode,
+            "min_matches": str(min_matches),
+        }
+        if min_unix_timestamp is not None:
+            params["min_unix_timestamp"] = str(min_unix_timestamp)
+
+        payload = await self._get_json(f"{self.base_url}/v1/analytics/hero-counter-stats", params=params)
+        return [
+            DeadlockHeroCounterStat(
+                hero_id=item["hero_id"],
+                enemy_hero_id=item["enemy_hero_id"],
+                wins=item["wins"],
+                matches_played=item["matches_played"],
+                kills=item["kills"],
+                enemy_kills=item["enemy_kills"],
+                deaths=item["deaths"],
+                enemy_deaths=item["enemy_deaths"],
+                assists=item["assists"],
+                enemy_assists=item["enemy_assists"],
+                denies=item["denies"],
+                enemy_denies=item["enemy_denies"],
+                last_hits=item["last_hits"],
+                enemy_last_hits=item["enemy_last_hits"],
+                networth=item["networth"],
+                enemy_networth=item["enemy_networth"],
+                obj_damage=item["obj_damage"],
+                enemy_obj_damage=item["enemy_obj_damage"],
+                creeps=item["creeps"],
+                enemy_creeps=item["enemy_creeps"],
+            )
+            for item in payload
+        ]
+
+    async def get_hero_synergy_stats(
+        self,
+        *,
+        hero_id: int,
+        game_mode: str = "normal",
+        min_matches: int = 200,
+        min_unix_timestamp: int | None = None,
+    ) -> list[DeadlockHeroSynergyStat]:
+        params: dict[str, str] = {
+            "hero_ids": str(hero_id),
+            "game_mode": game_mode,
+            "min_matches": str(min_matches),
+        }
+        if min_unix_timestamp is not None:
+            params["min_unix_timestamp"] = str(min_unix_timestamp)
+
+        payload = await self._get_json(f"{self.base_url}/v1/analytics/hero-synergy-stats", params=params)
+        return [
+            DeadlockHeroSynergyStat(
+                hero_id1=item["hero_id1"],
+                hero_id2=item["hero_id2"],
+                wins=item["wins"],
+                matches_played=item["matches_played"],
+                kills1=item["kills1"],
+                kills2=item["kills2"],
+                deaths1=item["deaths1"],
+                deaths2=item["deaths2"],
+                assists1=item["assists1"],
+                assists2=item["assists2"],
+                denies1=item["denies1"],
+                denies2=item["denies2"],
+                last_hits1=item["last_hits1"],
+                last_hits2=item["last_hits2"],
+                networth1=item["networth1"],
+                networth2=item["networth2"],
+                obj_damage1=item["obj_damage1"],
+                obj_damage2=item["obj_damage2"],
+                creeps1=item["creeps1"],
+                creeps2=item["creeps2"],
+            )
+            for item in payload
+        ]
+
     async def get_badge_distribution(self) -> list[DeadlockBadgeDistribution]:
         payload = await self._get_json(f"{self.base_url}/v1/analytics/badge-distribution")
         return [
@@ -519,6 +608,24 @@ class DeadlockAPI:
             winning_team=match_info.get("winning_team"),
             players=players,
         )
+
+    async def get_patches(self, *, limit: int = 12) -> list[DeadlockPatch]:
+        payload = await self._get_json(f"{self.base_url}/v1/patches")
+        patches = [
+            DeadlockPatch(
+                title=item["title"],
+                pub_date=item["pub_date"],
+                link=item["link"],
+                guid=(item.get("guid") or {}).get("text", ""),
+                author=item.get("author", ""),
+                category=(item.get("category") or {}).get("text", ""),
+                creator=item.get("dc_creator", ""),
+                content_html=item.get("content_encoded", ""),
+            )
+            for item in payload
+            if item.get("title") and item.get("link")
+        ]
+        return patches[:limit]
 
     async def _get_json(self, url: str, params: dict[str, str] | None = None) -> Any:
         headers = self._request_headers()

@@ -53,6 +53,7 @@ class FilterOptionView:
 class BestItemView:
     item_id: int
     item_name: str
+    detail_url: str
     item_image_url: str | None
     slot_type: str
     tier_text: str
@@ -67,8 +68,10 @@ class BestItemView:
 
 @dataclass(slots=True)
 class BestHeroView:
+    hero_id: int
     rank_number: int
     hero_name: str
+    detail_url: str
     hero_icon_url: str | None
     win_rate_percent: str
     pick_rate_percent: str
@@ -221,3 +224,69 @@ class MatchupRowView:
     lane_text: str
     left_player: MatchDetailPlayerView | None
     right_player: MatchDetailPlayerView | None
+
+
+@dataclass(slots=True)
+class PatchNoteView:
+    title: str
+    detail_url: str
+    published_text: str
+    author_text: str
+    summary_lines: list[str]
+    official_url: str
+
+
+@dataclass(slots=True)
+class HeroDetailItemView:
+    item_name: str
+    item_url: str
+    item_image_url: str | None
+    slot_type: str
+    tier_text: str
+    cost_text: str
+    win_rate_percent: str
+    matches_text: str
+
+
+@dataclass(slots=True)
+class HeroPeerStatView:
+    hero_name: str
+    hero_url: str
+    hero_icon_url: str | None
+    win_rate_percent: str
+    matches_text: str
+    summary_text: str
+
+
+@dataclass(slots=True)
+class PaginationLinkView:
+    label: str
+    url: str
+
+
+@dataclass(slots=True)
+class ItemModeStatView:
+    mode_name: str
+    win_rate_percent: str
+    matches_text: str
+    players_text: str
+    timing_text: str
+
+
+@dataclass(slots=True)
+class HeroDirectoryCardView:
+    hero_name: str
+    detail_url: str
+    hero_icon_url: str | None
+    hero_portrait_url: str | None
+    hero_background_image_url: str | None
+
+
+@dataclass(slots=True)
+class ItemDirectoryCardView:
+    item_name: str
+    detail_url: str
+    item_image_url: str | None
+    slot_type: str
+    tier_text: str
+    cost_text: str

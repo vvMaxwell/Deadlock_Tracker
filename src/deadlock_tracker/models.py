@@ -64,6 +64,54 @@ class DeadlockHeroAnalytics:
 
 
 @dataclass(slots=True)
+class DeadlockHeroCounterStat:
+    hero_id: int
+    enemy_hero_id: int
+    wins: int
+    matches_played: int
+    kills: int
+    enemy_kills: int
+    deaths: int
+    enemy_deaths: int
+    assists: int
+    enemy_assists: int
+    denies: int
+    enemy_denies: int
+    last_hits: int
+    enemy_last_hits: int
+    networth: int
+    enemy_networth: int
+    obj_damage: int
+    enemy_obj_damage: int
+    creeps: int
+    enemy_creeps: int
+
+
+@dataclass(slots=True)
+class DeadlockHeroSynergyStat:
+    hero_id1: int
+    hero_id2: int
+    wins: int
+    matches_played: int
+    kills1: int
+    kills2: int
+    deaths1: int
+    deaths2: int
+    assists1: int
+    assists2: int
+    denies1: int
+    denies2: int
+    last_hits1: int
+    last_hits2: int
+    networth1: int
+    networth2: int
+    obj_damage1: int
+    obj_damage2: int
+    creeps1: int
+    creeps2: int
+
+
+@dataclass(slots=True)
 class DeadlockBadgeDistribution:
     badge_level: int
     total_matches: int
@@ -174,6 +222,18 @@ class DeadlockMatchMetadata:
     match_mode: int | None
     winning_team: int | None
     players: list[DeadlockMatchPlayer]
+
+
+@dataclass(slots=True)
+class DeadlockPatch:
+    title: str
+    pub_date: str
+    link: str
+    guid: str
+    author: str
+    category: str
+    creator: str
+    content_html: str
 
 
 @dataclass(slots=True)

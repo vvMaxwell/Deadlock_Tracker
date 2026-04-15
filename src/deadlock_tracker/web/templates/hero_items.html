@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Best Items for {{ hero.name }} | Deadlock Stat Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="{{ hero_detail_url }}">Back to {{ hero.name }}</a>
+        <a class="back-link" href="{{ hero_matchups_url }}">{{ hero.name }} matchups</a>
+    </div>
+    <section class="player-hero"{% if hero.background_image_url %} style="background-image: linear-gradient(180deg, rgba(8, 6, 4, 0.3), rgba(8, 6, 4, 0.94)), url('{{ hero.background_image_url }}'); background-size: cover; background-position: center;"{% endif %}>
+        <div>
+            <p class="eyebrow">Hero Build Trends</p>
+            <h1>Best Items for {{ hero.name }}</h1>
+            <p class="lede">Tracked standard-mode item performance for {{ hero.name }}, sorted to keep win rate and real sample size in view.</p>
+        </div>
+        <div class="card-preview">
+            {% if hero.portrait_url %}
+            <img src="{{ hero.portrait_url }}" alt="{{ hero.name }}">
+            {% elif hero.icon_small %}
+            <img src="{{ hero.icon_small }}" alt="{{ hero.name }}">
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="results-section">
+        <div class="section-heading">
+            <h2>{{ hero.name }} Item Board</h2>
+            <p>Use this page when you want more than the short preview from the hero overview. It is built to rank item choices with enough sample size to stay practical.</p>
+        </div>
+        <div class="item-board">
+            {% for item in hero_top_items %}
+            <article class="item-card">
+                <div class="item-card-head">
+                    {% if item.item_image_url %}
+                    <img class="item-card-icon" src="{{ item.item_image_url }}" alt="{{ item.item_name }}">
+                    {% endif %}
+                    <div>
+                        <h3><a class="text-link" href="{{ item.item_url }}">{{ item.item_name }}</a></h3>
+                        <div class="item-card-tags">
+                            <span>{{ item.slot_type }}</span>
+                            <span>{{ item.tier_text }}</span>
+                            <span>{{ item.cost_text }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="item-card-stats">
+                    <div>
+                        <span class="item-stat-label">Win Rate</span>
+                        <strong>{{ item.win_rate_percent }}</strong>
+                    </div>
+                    <div>
+                        <span class="item-stat-label">Matches</span>
+                        <strong>{{ item.matches_text }}</strong>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% if not hero_top_items %}
+        <p class="empty-state">We do not have enough tracked build data for {{ hero.name }} yet.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

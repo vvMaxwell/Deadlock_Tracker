@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}{{ item.name }} Item Guide | Deadlock Stat Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="/best-items">Back to best items</a>
+    </div>
+    <section class="player-hero">
+        <div>
+            <p class="eyebrow">Item Guide</p>
+            <h1>{{ item.name }}</h1>
+            <p class="lede">Current Deadlock item snapshot with mode-by-mode performance, role, tier, and buy timing where tracked.</p>
+            <div class="section-badge-group">
+                <span class="section-badge section-badge-soft">{{ item.item_slot_type or "utility" }}</span>
+                <span class="section-badge section-badge-soft">{% if item.item_tier %}Tier {{ item.item_tier }}{% else %}Tier unknown{% endif %}</span>
+                <span class="section-badge section-badge-soft">{% if item.cost %}{{ item.cost }} souls{% else %}Cost unknown{% endif %}</span>
+            </div>
+        </div>
+        <div class="card-preview">
+            {% if item.shop_image or item.image %}
+            <img src="{{ item.shop_image or item.image }}" alt="{{ item.name }}">
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="faq-grid">
+        {% for stat in item_mode_stats %}
+        <article class="platform-card faq-card">
+            <p class="eyebrow">{{ stat.mode_name }}</p>
+            <h2>{{ stat.win_rate_percent }}</h2>
+            <p>{{ stat.matches_text }} across {{ stat.players_text }}.</p>
+            <p>Average buy timing: {{ stat.timing_text }}</p>
+        </article>
+        {% endfor %}
+        {% if not item_mode_stats %}
+        <article class="platform-card faq-card">
+            <h2>No tracked stats yet</h2>
+            <p>We do not have enough tracked performance data for this item right now.</p>
+        </article>
+        {% endif %}
+        <article class="platform-card faq-card">
+            <h2>How to use this item page</h2>
+            <p>Use this page to compare how an item is performing across modes, then return to <a class="text-link" href="/best-items">Best Items</a> for a wider leaderboard view.</p>
+        </article>
+        <article class="platform-card faq-card">
+            <h2>More Deadlock pages</h2>
+            <p>Browse the full <a class="text-link" href="/items">item directory</a>, compare hero-specific usage from the <a class="text-link" href="/heroes">hero directory</a>, and check <a class="text-link" href="/patch-notes">patch notes</a> for update-driven meta shifts.</p>
+        </article>
+    </section>
+</section>
+{% endblock %}

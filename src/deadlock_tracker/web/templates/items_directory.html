@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Deadlock Items | Deadlock Stat Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="/">Back to search</a>
+    </div>
+    <p class="eyebrow">Item Directory</p>
+    <h1>All Deadlock Items</h1>
+    <p class="lede">Browse the main Deadlock upgrade item pool and open focused item pages with tracked mode-by-mode performance where data is available.</p>
+
+    <div class="item-board">
+        {% for item in item_cards %}
+        <article class="item-card">
+            <div class="item-card-head">
+                {% if item.item_image_url %}
+                <img class="item-card-icon" src="{{ item.item_image_url }}" alt="{{ item.item_name }}">
+                {% endif %}
+                <div>
+                    <h2><a class="text-link" href="{{ item.detail_url }}">{{ item.item_name }}</a></h2>
+                    <div class="item-card-tags">
+                        <span>{{ item.slot_type }}</span>
+                        <span>{{ item.tier_text }}</span>
+                        <span>{{ item.cost_text }}</span>
+                    </div>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

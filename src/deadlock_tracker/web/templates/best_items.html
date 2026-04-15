@@ -81,7 +81,7 @@
                     <img class="item-card-icon" src="{{ item.item_image_url }}" alt="{{ item.item_name }}">
                     {% endif %}
                     <div>
-                        <h3>{{ item.item_name }}</h3>
+                        <h3><a class="text-link" href="{{ item.detail_url }}">{{ item.item_name }}</a></h3>
                         <div class="item-card-tags">
                             <span>{{ item.slot_type }}</span>
                             <span>{{ item.tier_text }}</span>
@@ -117,6 +117,17 @@
         {% if not items and not error_message %}
         <p class="empty-state">No item stats matched those filters yet. Try lowering the rank floor, widening the time window, or reducing the minimum matches.</p>
         {% endif %}
+    </section>
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <h2>How to read item rankings</h2>
+            <p>Higher win rate is most useful when it comes with solid match volume. Use the minimum-match filter to avoid overreacting to tiny sample sizes or niche builds.</p>
+        </article>
+        <article class="platform-card faq-card">
+            <h2>Related pages</h2>
+            <p>Use <a class="text-link" href="/best-heroes">Best Heroes</a> to cross-check which heroes are currently rising, and review <a class="text-link" href="/patch-notes">Patch Notes</a> after major updates that can reshape the item meta.</p>
+        </article>
     </section>
 </section>
 {% endblock %}

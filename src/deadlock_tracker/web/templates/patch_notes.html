@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Deadlock Patch Notes | Deadlock Stat Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="/">Back to search</a>
+    </div>
+    <p class="eyebrow">Official Changelog</p>
+    <h1>Deadlock Patch Notes</h1>
+    <p class="lede">Recent Deadlock updates sourced from the official changelog posts published on the Deadlock forums.</p>
+    {% if current_page > 1 %}
+    <div class="section-badge-group">
+        <span class="section-badge section-badge-soft">Archive page {{ current_page }}</span>
+    </div>
+    {% endif %}
+
+    {% if error_message %}
+    <article class="platform-card faq-card">
+        <p>{{ error_message }}</p>
+    </article>
+    {% endif %}
+
+    <section class="patch-feed">
+        {% for patch in patches %}
+        <article class="patch-card">
+            <div class="patch-card-head">
+                <div class="patch-card-copy">
+                    <p class="eyebrow">Published {{ patch.published_text }}</p>
+                    <h2><a class="text-link" href="{{ patch.detail_url }}">{{ patch.title }}</a></h2>
+                </div>
+                <a class="patch-card-link" href="{{ patch.official_url }}" target="_blank" rel="noreferrer">Open official post</a>
+            </div>
+            <div class="section-badge-group">
+                <span class="section-badge section-badge-soft">Source: forums.playdeadlock.com</span>
+                <span class="section-badge section-badge-soft">Author: {{ patch.author_text }}</span>
+            </div>
+            <div class="patch-card-body">
+                {% for line in patch.summary_lines %}
+                <p>{{ line }}</p>
+                {% endfor %}
+            </div>
+        </article>
+        {% else %}
+        <article class="platform-card faq-card">
+            <p>No patch notes are available right now. Try again shortly.</p>
+        </article>
+        {% endfor %}
+    </section>
+
+    {% if pagination_links %}
+    <section class="hero-actions">
+        {% for link in pagination_links %}
+        <a class="back-link" href="{{ link.url }}">{{ link.label }}</a>
+        {% endfor %}
+    </section>
+    {% endif %}
+</section>
+{% endblock %}
