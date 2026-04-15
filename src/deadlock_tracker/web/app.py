@@ -752,7 +752,7 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
                 player_slug=_slugify(summary.player.personaname),
             )
         ))
-        if request.url.path != canonical_player_url.replace(str(request.base_url).rstrip("/"), ""):
+        if request.url.path != _url_path(canonical_player_url):
             redirect_url = canonical_player_url
             if refresh_requested:
                 redirect_url = f"{redirect_url}?{urlencode({'refresh': '1'})}"
@@ -968,7 +968,7 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
                 player_slug=_slugify(resolved.personaname),
             )
         ))
-        if request.url.path != canonical_match_url.replace(str(request.base_url).rstrip("/"), ""):
+        if request.url.path != _url_path(canonical_match_url):
             return RedirectResponse(url=canonical_match_url, status_code=308)
     except DeadlockError as error:
         return _html_response(TEMPLATES.TemplateResponse(
@@ -1146,6 +1146,10 @@ def _public_url(request: Request, url: str) -> str:
     if split.scheme and split.netloc:
         return f"{_public_origin(request)}{split.path}{query}{fragment}"
     return f"{_public_origin(request)}{url}{fragment}"
+
+
+def _url_path(url: str) -> str:
+    return urlsplit(url).path or "/"
 
 
 def _build_player_rank_distribution_views(

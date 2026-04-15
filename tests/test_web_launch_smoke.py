@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from deadlock_tracker.clients.deadlock_api import DeadlockAPI
 from deadlock_tracker.clients.deadlock_api import DeadlockError
 from deadlock_tracker.models import (
     DeadlockAbilityOrderStat,
@@ -281,3 +282,186 @@ def test_legacy_player_url_redirects_to_canonical_slug(monkeypatch) -> None:
 
     assert response.status_code == 308
     assert response.headers["location"] == "http://testserver/players/123/test-player"
+
+
+def test_canonical_player_url_does_not_redirect_forever_on_public_host(monkeypatch) -> None:
+    class FakeApi:
+        async def get_rank_info(self) -> list:
+            return []
+
+    class FakePlayerService:
+        api = FakeApi()
+
+        def rank_name(self, summary: PlayerSummary) -> str:
+            return "Unknown"
+
+        def win_rate(self, stat: DeadlockHeroStat) -> float:
+            return 0.0
+
+        def match_result_label(self, match: DeadlockMatch) -> str:
+            return "Loss"
+
+        def format_match_duration(self, seconds: int | None) -> str:
+            return "0:00"
+
+        def format_kda(self, kills: int | None, deaths: int | None, assists: int | None) -> str:
+            return "0/0/0"
+
+        async def resolve_player(self, raw_input: str) -> DeadlockPlayer:
+            return DeadlockPlayer(
+                account_id=123,
+                personaname="Test Player",
+                profileurl="https://steamcommunity.com/profiles/123",
+                avatarfull=None,
+                countrycode="CA",
+                last_updated=None,
+            )
+
+        async def build_player_summary(self, player: DeadlockPlayer, *, refresh_matches: bool = False) -> PlayerSummary:
+            return PlayerSummary(
+                player=player,
+                rank=None,
+                hero_stats=[],
+                recent_matches=[],
+                hero_info={},
+            )
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app, follow_redirects=False)
+    response = client.get("/players/123/test-player", headers={"host": "deadlockstattracker.com"})
+
+    assert response.status_code == 200
+
+
+def test_canonical_match_url_does_not_redirect_forever_on_public_host(monkeypatch) -> None:
+    class FakeApi:
+        async def get_match_metadata(self, match_id: int):
+            from deadlock_tracker.models import DeadlockMatchMetadata
+
+            return DeadlockMatchMetadata(
+                match_id=match_id,
+                start_time=1,
+                duration_s=600,
+                game_mode=1,
+                match_mode=1,
+                winning_team=0,
+                players=[],
+            )
+
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {}
+
+        async def get_all_item_info(self) -> dict[int, DeadlockItemInfo]:
+            return {}
+
+        async def get_steam_profiles(self, account_ids: list[int]) -> dict[int, object]:
+            return {}
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+        def format_kda(self, kills: int | None, deaths: int | None, assists: int | None) -> str:
+            return "0/0/0"
+
+        def format_match_duration(self, seconds: int | None) -> str:
+            return "10:00"
+
+        async def resolve_player(self, raw_input: str) -> DeadlockPlayer:
+            return DeadlockPlayer(
+                account_id=123,
+                personaname="Test Player",
+                profileurl="https://steamcommunity.com/profiles/123",
+                avatarfull=None,
+                countrycode="CA",
+                last_updated=None,
+            )
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app, follow_redirects=False)
+    response = client.get(
+        "/players/123/test-player/matches/999",
+        headers={"host": "deadlockstattracker.com"},
+    )
+
+    assert response.status_code == 200
+
+
+def test_deadlock_api_adds_api_key_header(monkeypatch) -> None:
+    monkeypatch.setattr("deadlock_tracker.clients.deadlock_api.get_settings", lambda: type(
+        "Settings",
+        (),
+        {
+            "deadlock_api_base_url": "https://api.deadlock-api.com",
+            "deadlock_assets_base_url": "https://assets.deadlock-api.com",
+            "deadlock_api_key": "test-key",
+        },
+    )())
+
+    api = DeadlockAPI()
+
+    assert api._request_headers()["X-API-KEY"] == "test-key"
+
+
+def test_player_page_does_not_render_api_key(monkeypatch) -> None:
+    secret = "super-secret-api-key-value"
+
+    class FakeApi:
+        async def get_rank_info(self) -> list:
+            return []
+
+    class FakePlayerService:
+        api = FakeApi()
+
+        def rank_name(self, summary: PlayerSummary) -> str:
+            return "Unknown"
+
+        def win_rate(self, stat: DeadlockHeroStat) -> float:
+            return 0.0
+
+        def match_result_label(self, match: DeadlockMatch) -> str:
+            return "Loss"
+
+        def format_match_duration(self, seconds: int | None) -> str:
+            return "0:00"
+
+        def format_kda(self, kills: int | None, deaths: int | None, assists: int | None) -> str:
+            return "0/0/0"
+
+        async def resolve_player(self, raw_input: str) -> DeadlockPlayer:
+            return DeadlockPlayer(
+                account_id=123,
+                personaname="Test Player",
+                profileurl="https://steamcommunity.com/profiles/123",
+                avatarfull=None,
+                countrycode="CA",
+                last_updated=None,
+            )
+
+        async def build_player_summary(self, player: DeadlockPlayer, *, refresh_matches: bool = False) -> PlayerSummary:
+            return PlayerSummary(
+                player=player,
+                rank=None,
+                hero_stats=[],
+                recent_matches=[],
+                hero_info={},
+            )
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+    monkeypatch.setattr("deadlock_tracker.clients.deadlock_api.get_settings", lambda: type(
+        "Settings",
+        (),
+        {
+            "deadlock_api_base_url": "https://api.deadlock-api.com",
+            "deadlock_assets_base_url": "https://assets.deadlock-api.com",
+            "deadlock_api_key": secret,
+        },
+    )())
+
+    client = TestClient(web_app.app, follow_redirects=False)
+    response = client.get("/players/123/test-player")
+
+    assert response.status_code == 200
+    assert secret not in response.text

@@ -107,6 +107,7 @@ class DeadlockAPI:
         settings = get_settings()
         self.base_url = settings.deadlock_api_base_url
         self.assets_url = settings.deadlock_assets_base_url
+        self.api_key = settings.deadlock_api_key
         self._hero_info: dict[int, DeadlockHeroInfo] | None = None
         self._item_info: dict[int, DeadlockItemInfo] = {}
         self._rank_info: list[DeadlockRankInfo] | None = None
@@ -520,13 +521,17 @@ class DeadlockAPI:
         )
 
     async def _get_json(self, url: str, params: dict[str, str] | None = None) -> Any:
-        headers = {"User-Agent": "DeadlockTracker/1.0"}
+        headers = self._request_headers()
         timeout = aiohttp.ClientTimeout(total=20)
         try:
             async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
                 async with session.get(url, params=params) as response:
                     if response.status == 404:
                         raise DeadlockError("No data found for that Deadlock player.")
+                    if response.status in {401, 403}:
+                        raise DeadlockError(
+                            "Deadlock API rejected this request. Configure DEADLOCK_API_KEY for protected endpoints."
+                        )
                     if response.status == 429:
                         if params and params.get("force_refetch") == "true":
                             raise DeadlockError(
@@ -544,6 +549,12 @@ class DeadlockAPI:
             raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.") from None
         except aiohttp.ClientError as error:
             raise DeadlockError(f"Deadlock API request failed: {error}") from error
+
+    def _request_headers(self) -> dict[str, str]:
+        headers = {"User-Agent": "DeadlockTracker/1.0"}
+        if self.api_key:
+            headers["X-API-KEY"] = self.api_key
+        return headers
 
 
 def _parse_last_updated(raw: Any) -> int | None:

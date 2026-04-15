@@ -22,6 +22,7 @@ mkdir -p deploy
 if [[ ! -f deploy/app.env ]]; then
   cp deploy/app.env.example deploy/app.env
 fi
+chmod 600 deploy/app.env
 
 if ! docker compose -f deploy/docker-compose.yml up -d --build --force-recreate --remove-orphans; then
   docker compose -f deploy/docker-compose.yml down --remove-orphans

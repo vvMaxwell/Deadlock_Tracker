@@ -37,6 +37,8 @@ python apps/web.py
 python apps/discord_bot.py
 ```
 
+Set `DEADLOCK_API_KEY` in `.env` or `deploy/app.env` to unlock protected Deadlock API endpoints like player match history. The app sends it as the `X-API-KEY` header and does not expose it in URLs.
+
 ## Stack
 
 - Website: FastAPI with Jinja templates and custom CSS
@@ -73,6 +75,8 @@ GitHub Actions secrets expected by the deploy workflow:
 - `DEPLOY_SSH_KEY`
 - `DEPLOY_PORT` (optional, defaults to `22`)
 - `DEPLOY_PATH` (optional, defaults to `/opt/deadlock-tracker`)
+
+For the Deadlock API key itself, do not commit it and do not use a GitHub Actions variable. Put it in the server-side `deploy/app.env` file as `DEADLOCK_API_KEY=...`, or template that file from a GitHub Actions secret if you later automate env sync.
 
 For custom domains behind Cloudflare, place the Cloudflare Origin certificate and key on the VPS at:
 
