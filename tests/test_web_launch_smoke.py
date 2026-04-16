@@ -131,12 +131,13 @@ def test_home_menu_drawer_renders_outside_header() -> None:
     client = TestClient(web_app.app)
     response = client.get("/")
 
-    drawer_index = response.text.index('<aside class="site-drawer" id="site-drawer"')
+    drawer_index = response.text.index('<dialog class="site-drawer" id="site-drawer"')
     header_index = response.text.index("<header class=\"site-header")
 
     assert drawer_index < header_index
     assert "data-menu-open" in response.text
     assert "data-menu-close" in response.text
+    assert "showModal" in response.text
 
 
 def test_rank_distribution_includes_top_percent_labels() -> None:
