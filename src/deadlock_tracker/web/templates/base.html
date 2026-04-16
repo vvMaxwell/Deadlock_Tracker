@@ -43,7 +43,7 @@
             position: fixed; inset: 0; z-index: 40; border: 0; background: rgba(0,0,0,0.32); cursor: pointer;
         }
         .site-drawer {
-            position: fixed; top: 18px; left: max(14px, calc((100vw - 1040px) / 2 + 14px)); bottom: 18px; z-index: 50;
+            position: fixed; top: 16px; left: 16px; bottom: 18px; z-index: 50;
             width: min(288px, calc(100vw - 28px)); padding: 14px 12px 22px; background: #ece0cd;
             border: 1px solid #d4c2a8; border-radius: 26px; box-shadow: 18px 0 36px rgba(0,0,0,0.16); overflow-y: auto;
         }
@@ -178,7 +178,27 @@
         const closeButtons = document.querySelectorAll('[data-menu-close]');
         if (!drawer || !scrim || !openButton) return;
 
+        const positionDrawer = () => {
+            const buttonRect = openButton.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const drawerWidth = Math.min(288, Math.max(240, viewportWidth - 28));
+            const left = Math.max(12, Math.min(buttonRect.left, viewportWidth - drawerWidth - 12));
+            const top = Math.max(12, Math.min(buttonRect.top + 6, viewportHeight - 220));
+            const bottomGap = 12;
+            const maxHeight = Math.max(220, viewportHeight - top - bottomGap);
+
+            drawer.style.left = `${left}px`;
+            drawer.style.top = `${top}px`;
+            drawer.style.width = `${drawerWidth}px`;
+            drawer.style.bottom = 'auto';
+            drawer.style.maxHeight = `${maxHeight}px`;
+        };
+
         const setOpen = (open) => {
+            if (open) {
+                positionDrawer();
+            }
             drawer.hidden = !open;
             scrim.hidden = !open;
             drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
@@ -194,6 +214,12 @@
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
                 setOpen(false);
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (!drawer.hidden) {
+                positionDrawer();
             }
         });
     })();
