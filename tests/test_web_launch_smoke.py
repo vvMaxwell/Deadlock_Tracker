@@ -127,6 +127,18 @@ def test_home_json_ld_is_valid_json() -> None:
     assert parsed[0]["@type"] == "WebSite"
 
 
+def test_home_menu_drawer_renders_outside_header() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/")
+
+    drawer_index = response.text.index('<aside class="site-drawer" id="site-drawer"')
+    header_index = response.text.index("<header class=\"site-header")
+
+    assert drawer_index < header_index
+    assert "data-menu-open" in response.text
+    assert "data-menu-close" in response.text
+
+
 def test_rank_distribution_includes_top_percent_labels() -> None:
     tiers = web_app._build_player_rank_distribution_views(
         [
