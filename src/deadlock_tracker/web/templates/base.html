@@ -26,7 +26,6 @@
         .site-header-stacked { display: grid; gap: 12px; align-items: stretch; }
         .site-header-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
         .site-brand-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .menu-anchor { position: relative; display: inline-flex; }
         .site-header-copy, .site-header-text, .site-header-eyebrow, .site-drawer-title, .site-drawer-label { margin: 0; }
         .site-header-copy { display: grid; gap: 2px; max-width: 620px; }
         .site-header-eyebrow { color: var(--accent); font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; }
@@ -36,22 +35,26 @@
         .menu-button {
             display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px;
             border-radius: 12px; border: 1px solid rgba(211, 181, 138, 0.18); background: rgba(255,255,255,0.03);
-            color: var(--text); cursor: pointer; list-style: none;
+            color: var(--text); cursor: pointer;
         }
         .menu-button { width: auto; padding: 0 14px; gap: 10px; }
-        .menu-button::-webkit-details-marker,
-        .menu-button::marker { display: none; content: ""; }
         .menu-button-icon { display: inline-grid; gap: 4px; }
         .menu-button-icon span { display: block; width: 16px; height: 2px; border-radius: 999px; background: var(--accent); }
         .menu-button-label { color: var(--accent-strong); font-size: 0.96rem; font-weight: 600; }
+        .site-drawer-backdrop {
+            position: fixed; inset: 0; z-index: 9988; border: 0; background: rgba(0,0,0,0.36);
+        }
         .site-drawer {
-            position: absolute; top: calc(100% + 12px); left: 0; z-index: 80; width: min(296px, calc(100vw - 40px)); max-height: min(70vh, 640px);
+            position: fixed; top: 24px; left: 24px; z-index: 9999; width: min(320px, calc(100vw - 32px)); max-height: calc(100vh - 48px);
             padding: 14px 12px 22px; background: #ece0cd; border: 1px solid #d4c2a8; border-radius: 26px;
             box-shadow: 18px 0 36px rgba(0,0,0,0.16); overflow-y: auto;
         }
         .site-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px 12px; }
         .site-drawer-title { color: #2e2416; font-family: "Space Grotesk", sans-serif; font-size: 1.05rem; font-weight: 700; }
-        .site-drawer-close { color: #7a6241; font-size: 0.82rem; }
+        .site-drawer-close {
+            display: inline-flex; align-items: center; justify-content: center; padding: 8px 12px; border-radius: 999px;
+            border: 1px solid #d4c2a8; background: #f7efe3; color: #5f4b2d; cursor: pointer;
+        }
         .site-drawer-section { display: grid; gap: 8px; padding: 14px 6px; border-top: 1px solid #d4c2a8; }
         .site-drawer-label { color: #7a6241; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
         .site-drawer-nav { display: grid; gap: 4px; }
@@ -60,12 +63,11 @@
             border: 1px solid transparent; background: transparent; transition: background 0.16s ease, border-color 0.16s ease;
         }
         .site-drawer-nav a:hover { background: #f7efe3; border-color: #d9c6ab; }
-        .menu-anchor[open] .menu-button { background: rgba(236, 224, 205, 0.12); border-color: rgba(211, 181, 138, 0.34); }
         @media (max-width: 900px) { .site-header-top { align-items: flex-start; flex-direction: column; } }
         @media (max-width: 640px) {
             .site-nav-inline { gap: 8px; }
             .site-nav-inline a { padding: 9px 12px; font-size: 0.92rem; }
-            .site-drawer { width: min(296px, calc(100vw - 40px)); border-radius: 22px; left: -2px; }
+            .site-drawer { top: 12px; left: 12px; width: min(320px, calc(100vw - 24px)); max-height: calc(100vh - 24px); border-radius: 22px; }
         }
     </style>
     {% if structured_data %}
@@ -74,61 +76,60 @@
 </head>
 <body>
     <div class="site-backdrop"></div>
+    <button class="site-drawer-backdrop" id="site-drawer-backdrop" hidden onclick="window.closeSiteMenu && window.closeSiteMenu()"></button>
+    <aside class="site-drawer" id="site-drawer" hidden>
+        <div class="site-drawer-head">
+            <div>
+                <p class="site-header-eyebrow">Browse</p>
+                <p class="site-drawer-title">Navigation</p>
+            </div>
+            <button class="site-drawer-close" type="button" onclick="window.closeSiteMenu && window.closeSiteMenu()">Close</button>
+        </div>
+        <div class="site-drawer-section">
+            <p class="site-drawer-label">Home</p>
+            <nav class="site-drawer-nav">
+                <a href="/">Main Screen</a>
+            </nav>
+        </div>
+        <div class="site-drawer-section">
+            <p class="site-drawer-label">Core</p>
+            <nav class="site-drawer-nav">
+                <a href="/">Search</a>
+                <a href="/street-brawl-builds">Street Brawl Builds</a>
+                <a href="/best-heroes">Best Heroes</a>
+                <a href="/best-items">Best Items</a>
+            </nav>
+        </div>
+        <div class="site-drawer-section">
+            <p class="site-drawer-label">Explore</p>
+            <nav class="site-drawer-nav">
+                <a href="/heroes">Heroes</a>
+                <a href="/items">Items</a>
+                <a href="/patch-notes">Patch Notes</a>
+            </nav>
+        </div>
+        <div class="site-drawer-section">
+            <p class="site-drawer-label">More</p>
+            <nav class="site-drawer-nav">
+                <a href="/faq">FAQ</a>
+                <a href="/discord-bot">Discord Bot</a>
+                <a href="/credits">Credits</a>
+                <a href="/disclaimers">Disclaimers</a>
+            </nav>
+        </div>
+    </aside>
     <div class="page-shell">
         <header class="site-header site-header-stacked">
             <div class="site-header-top">
                 <div class="site-brand-row">
-                    <details class="menu-anchor">
-                        <summary class="menu-button" aria-label="Open menu">
-                            <span class="menu-button-icon" aria-hidden="true">
-                                <span></span>
-                                <span></span>
-                                <span></span>
-                            </span>
-                            <span class="menu-button-label">Menu</span>
-                        </summary>
-                        <div class="site-drawer" id="site-drawer">
-                            <div class="site-drawer-head">
-                                <div>
-                                    <p class="site-header-eyebrow">Browse</p>
-                                    <p class="site-drawer-title">Navigation</p>
-                                </div>
-                                <span class="site-drawer-close">Click menu again to close</span>
-                            </div>
-                            <div class="site-drawer-section">
-                                <p class="site-drawer-label">Home</p>
-                                <nav class="site-drawer-nav">
-                                    <a href="/">Main Screen</a>
-                                </nav>
-                            </div>
-                            <div class="site-drawer-section">
-                                <p class="site-drawer-label">Core</p>
-                                <nav class="site-drawer-nav">
-                                    <a href="/">Search</a>
-                                    <a href="/street-brawl-builds">Street Brawl Builds</a>
-                                    <a href="/best-heroes">Best Heroes</a>
-                                    <a href="/best-items">Best Items</a>
-                                </nav>
-                            </div>
-                            <div class="site-drawer-section">
-                                <p class="site-drawer-label">Explore</p>
-                                <nav class="site-drawer-nav">
-                                    <a href="/heroes">Heroes</a>
-                                    <a href="/items">Items</a>
-                                    <a href="/patch-notes">Patch Notes</a>
-                                </nav>
-                            </div>
-                            <div class="site-drawer-section">
-                                <p class="site-drawer-label">More</p>
-                                <nav class="site-drawer-nav">
-                                    <a href="/faq">FAQ</a>
-                                    <a href="/discord-bot">Discord Bot</a>
-                                    <a href="/credits">Credits</a>
-                                    <a href="/disclaimers">Disclaimers</a>
-                                </nav>
-                            </div>
-                        </div>
-                    </details>
+                    <button class="menu-button" type="button" aria-label="Open menu" onclick="window.openSiteMenu && window.openSiteMenu()">
+                        <span class="menu-button-icon" aria-hidden="true">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </span>
+                        <span class="menu-button-label">Menu</span>
+                    </button>
                     <a class="brand-mark" href="/">
                         <span class="brand-kicker">Deadlock</span>
                         <strong>Tracker</strong>
@@ -171,6 +172,28 @@
             </div>
         </footer>
     </div>
+    <script>
+        window.openSiteMenu = function () {
+            var panel = document.getElementById('site-drawer');
+            var backdrop = document.getElementById('site-drawer-backdrop');
+            if (panel) {
+                panel.hidden = false;
+            }
+            if (backdrop) {
+                backdrop.hidden = false;
+            }
+        };
+        window.closeSiteMenu = function () {
+            var panel = document.getElementById('site-drawer');
+            var backdrop = document.getElementById('site-drawer-backdrop');
+            if (panel) {
+                panel.hidden = true;
+            }
+            if (backdrop) {
+                backdrop.hidden = true;
+            }
+        };
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
