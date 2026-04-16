@@ -131,13 +131,11 @@ def test_home_menu_drawer_renders_outside_header() -> None:
     client = TestClient(web_app.app)
     response = client.get("/")
 
-    drawer_index = response.text.index('<dialog class="site-drawer" id="site-drawer"')
-    header_index = response.text.index("<header class=\"site-header")
-
-    assert drawer_index < header_index
-    assert "data-menu-open" in response.text
-    assert "data-menu-close" in response.text
-    assert "showModal" in response.text
+    assert '<details class="menu-anchor">' in response.text
+    assert '<summary class="menu-button" aria-label="Open menu">' in response.text
+    assert '<div class="site-drawer" id="site-drawer">' in response.text
+    assert '<span class="menu-button-label">Menu</span>' in response.text
+    assert "Main Screen" in response.text
 
 
 def test_rank_distribution_includes_top_percent_labels() -> None:

@@ -36,22 +36,22 @@
         .menu-button {
             display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px;
             border-radius: 12px; border: 1px solid rgba(211, 181, 138, 0.18); background: rgba(255,255,255,0.03);
-            color: var(--text); cursor: pointer;
+            color: var(--text); cursor: pointer; list-style: none;
         }
+        .menu-button { width: auto; padding: 0 14px; gap: 10px; }
+        .menu-button::-webkit-details-marker,
+        .menu-button::marker { display: none; content: ""; }
         .menu-button-icon { display: inline-grid; gap: 4px; }
         .menu-button-icon span { display: block; width: 16px; height: 2px; border-radius: 999px; background: var(--accent); }
+        .menu-button-label { color: var(--accent-strong); font-size: 0.96rem; font-weight: 600; }
         .site-drawer {
-            position: fixed; top: 80px; left: 16px; z-index: 80; width: min(296px, calc(100vw - 40px)); max-height: calc(100vh - 96px);
+            position: absolute; top: calc(100% + 12px); left: 0; z-index: 80; width: min(296px, calc(100vw - 40px)); max-height: min(70vh, 640px);
             padding: 14px 12px 22px; background: #ece0cd; border: 1px solid #d4c2a8; border-radius: 26px;
             box-shadow: 18px 0 36px rgba(0,0,0,0.16); overflow-y: auto;
         }
-        .site-drawer::backdrop { background: rgba(0,0,0,0.24); }
         .site-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px 12px; }
         .site-drawer-title { color: #2e2416; font-family: "Space Grotesk", sans-serif; font-size: 1.05rem; font-weight: 700; }
-        .site-drawer-close {
-            display: inline-flex; align-items: center; justify-content: center; padding: 8px 12px; border-radius: 999px;
-            border: 1px solid #d4c2a8; background: #f7efe3; color: #5f4b2d; cursor: pointer;
-        }
+        .site-drawer-close { color: #7a6241; font-size: 0.82rem; }
         .site-drawer-section { display: grid; gap: 8px; padding: 14px 6px; border-top: 1px solid #d4c2a8; }
         .site-drawer-label { color: #7a6241; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
         .site-drawer-nav { display: grid; gap: 4px; }
@@ -60,11 +60,12 @@
             border: 1px solid transparent; background: transparent; transition: background 0.16s ease, border-color 0.16s ease;
         }
         .site-drawer-nav a:hover { background: #f7efe3; border-color: #d9c6ab; }
+        .menu-anchor[open] .menu-button { background: rgba(236, 224, 205, 0.12); border-color: rgba(211, 181, 138, 0.34); }
         @media (max-width: 900px) { .site-header-top { align-items: flex-start; flex-direction: column; } }
         @media (max-width: 640px) {
             .site-nav-inline { gap: 8px; }
             .site-nav-inline a { padding: 9px 12px; font-size: 0.92rem; }
-            .site-drawer { width: min(296px, calc(100vw - 40px)); border-radius: 22px; }
+            .site-drawer { width: min(296px, calc(100vw - 40px)); border-radius: 22px; left: -2px; }
         }
     </style>
     {% if structured_data %}
@@ -74,59 +75,60 @@
 <body>
     <div class="site-backdrop"></div>
     <div class="page-shell">
-        <dialog class="site-drawer" id="site-drawer" aria-hidden="true">
-            <div class="site-drawer-head">
-                <div>
-                    <p class="site-header-eyebrow">Browse</p>
-                    <p class="site-drawer-title">Navigation</p>
-                </div>
-                <button class="site-drawer-close" type="button" data-menu-close>Close</button>
-            </div>
-            <div class="site-drawer-section">
-                <p class="site-drawer-label">Home</p>
-                <nav class="site-drawer-nav">
-                    <a href="/">Main Screen</a>
-                </nav>
-            </div>
-            <div class="site-drawer-section">
-                <p class="site-drawer-label">Core</p>
-                <nav class="site-drawer-nav">
-                    <a href="/">Search</a>
-                    <a href="/street-brawl-builds">Street Brawl Builds</a>
-                    <a href="/best-heroes">Best Heroes</a>
-                    <a href="/best-items">Best Items</a>
-                </nav>
-            </div>
-            <div class="site-drawer-section">
-                <p class="site-drawer-label">Explore</p>
-                <nav class="site-drawer-nav">
-                    <a href="/heroes">Heroes</a>
-                    <a href="/items">Items</a>
-                    <a href="/patch-notes">Patch Notes</a>
-                </nav>
-            </div>
-            <div class="site-drawer-section">
-                <p class="site-drawer-label">More</p>
-                <nav class="site-drawer-nav">
-                    <a href="/faq">FAQ</a>
-                    <a href="/discord-bot">Discord Bot</a>
-                    <a href="/credits">Credits</a>
-                    <a href="/disclaimers">Disclaimers</a>
-                </nav>
-            </div>
-        </dialog>
         <header class="site-header site-header-stacked">
             <div class="site-header-top">
                 <div class="site-brand-row">
-                    <div class="menu-anchor">
-                        <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-drawer" data-menu-open>
+                    <details class="menu-anchor">
+                        <summary class="menu-button" aria-label="Open menu">
                             <span class="menu-button-icon" aria-hidden="true">
                                 <span></span>
                                 <span></span>
                                 <span></span>
                             </span>
-                        </button>
-                    </div>
+                            <span class="menu-button-label">Menu</span>
+                        </summary>
+                        <div class="site-drawer" id="site-drawer">
+                            <div class="site-drawer-head">
+                                <div>
+                                    <p class="site-header-eyebrow">Browse</p>
+                                    <p class="site-drawer-title">Navigation</p>
+                                </div>
+                                <span class="site-drawer-close">Click menu again to close</span>
+                            </div>
+                            <div class="site-drawer-section">
+                                <p class="site-drawer-label">Home</p>
+                                <nav class="site-drawer-nav">
+                                    <a href="/">Main Screen</a>
+                                </nav>
+                            </div>
+                            <div class="site-drawer-section">
+                                <p class="site-drawer-label">Core</p>
+                                <nav class="site-drawer-nav">
+                                    <a href="/">Search</a>
+                                    <a href="/street-brawl-builds">Street Brawl Builds</a>
+                                    <a href="/best-heroes">Best Heroes</a>
+                                    <a href="/best-items">Best Items</a>
+                                </nav>
+                            </div>
+                            <div class="site-drawer-section">
+                                <p class="site-drawer-label">Explore</p>
+                                <nav class="site-drawer-nav">
+                                    <a href="/heroes">Heroes</a>
+                                    <a href="/items">Items</a>
+                                    <a href="/patch-notes">Patch Notes</a>
+                                </nav>
+                            </div>
+                            <div class="site-drawer-section">
+                                <p class="site-drawer-label">More</p>
+                                <nav class="site-drawer-nav">
+                                    <a href="/faq">FAQ</a>
+                                    <a href="/discord-bot">Discord Bot</a>
+                                    <a href="/credits">Credits</a>
+                                    <a href="/disclaimers">Disclaimers</a>
+                                </nav>
+                            </div>
+                        </div>
+                    </details>
                     <a class="brand-mark" href="/">
                         <span class="brand-kicker">Deadlock</span>
                         <strong>Tracker</strong>
@@ -169,71 +171,6 @@
             </div>
         </footer>
     </div>
-    <script>
-    (() => {
-        const drawer = document.getElementById('site-drawer');
-        const openButton = document.querySelector('[data-menu-open]');
-        const closeButtons = document.querySelectorAll('[data-menu-close]');
-        if (!drawer || !openButton) return;
-
-        const positionDrawer = () => {
-            const buttonRect = openButton.getBoundingClientRect();
-            const viewportWidth = window.innerWidth;
-            const drawerWidth = Math.min(296, Math.max(240, viewportWidth - 40));
-            const left = Math.max(12, Math.min(buttonRect.left, viewportWidth - drawerWidth - 12));
-            const top = Math.max(12, buttonRect.bottom + 12);
-
-            drawer.style.left = `${left}px`;
-            drawer.style.top = `${top}px`;
-            drawer.style.width = `${drawerWidth}px`;
-        };
-
-        const setOpen = (open) => {
-            if (open) {
-                positionDrawer();
-                if (!drawer.open) {
-                    drawer.showModal();
-                }
-            } else if (drawer.open) {
-                drawer.close();
-            }
-            drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
-            openButton.setAttribute('aria-expanded', open ? 'true' : 'false');
-        };
-
-        openButton.addEventListener('click', () => setOpen(true));
-        closeButtons.forEach((button) => {
-            button.addEventListener('click', () => setOpen(false));
-        });
-        drawer.addEventListener('click', (event) => {
-            const rect = drawer.getBoundingClientRect();
-            const clickedOutside =
-                event.clientX < rect.left ||
-                event.clientX > rect.right ||
-                event.clientY < rect.top ||
-                event.clientY > rect.bottom;
-            if (clickedOutside) {
-                setOpen(false);
-            }
-        });
-        drawer.addEventListener('close', () => {
-            drawer.setAttribute('aria-hidden', 'true');
-            openButton.setAttribute('aria-expanded', 'false');
-        });
-
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && drawer.open) {
-                setOpen(false);
-            }
-        });
-
-        window.addEventListener('resize', () => {
-            if (drawer.open) {
-                positionDrawer();
-            }
-        });
-    })();
-    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
