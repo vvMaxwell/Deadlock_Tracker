@@ -69,8 +69,8 @@ img {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 22px;
-    padding: 16px 18px;
+    margin-bottom: 18px;
+    padding: 12px 16px;
     background: rgba(12, 10, 8, 0.7);
     border: 1px solid var(--line);
     border-radius: 18px;
@@ -126,7 +126,7 @@ img {
 }
 
 .brand-mark strong {
-    font-size: 1.35rem;
+    font-size: 1.22rem;
 }
 
 .site-nav {
@@ -153,7 +153,7 @@ img {
 
 .site-nav-search {
     margin-right: auto;
-    margin-left: 18px;
+    margin-left: 8px;
 }
 
 .site-nav-search,
