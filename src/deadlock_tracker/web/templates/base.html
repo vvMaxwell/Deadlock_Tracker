@@ -43,12 +43,16 @@
         .menu-button-label { color: var(--accent-strong); font-size: 0.96rem; font-weight: 600; }
         .site-drawer-backdrop {
             position: fixed; inset: 0; z-index: 9988; border: 0; background: rgba(0,0,0,0.36);
+            display: none;
         }
         .site-drawer {
             position: fixed; top: 24px; left: 24px; z-index: 9999; width: min(320px, calc(100vw - 32px)); max-height: calc(100vh - 48px);
             padding: 14px 12px 22px; background: #ece0cd; border: 1px solid #d4c2a8; border-radius: 26px;
             box-shadow: 18px 0 36px rgba(0,0,0,0.16); overflow-y: auto;
+            display: none;
         }
+        #site-drawer:target,
+        #site-drawer:target + .site-drawer-backdrop { display: block; }
         .site-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px 12px; }
         .site-drawer-title { color: #2e2416; font-family: "Space Grotesk", sans-serif; font-size: 1.05rem; font-weight: 700; }
         .site-drawer-close {
@@ -76,14 +80,13 @@
 </head>
 <body>
     <div class="site-backdrop"></div>
-    <button class="site-drawer-backdrop" id="site-drawer-backdrop" hidden onclick="window.closeSiteMenu && window.closeSiteMenu()"></button>
-    <aside class="site-drawer" id="site-drawer" hidden>
+    <aside class="site-drawer" id="site-drawer">
         <div class="site-drawer-head">
             <div>
                 <p class="site-header-eyebrow">Browse</p>
                 <p class="site-drawer-title">Navigation</p>
             </div>
-            <button class="site-drawer-close" type="button" onclick="window.closeSiteMenu && window.closeSiteMenu()">Close</button>
+            <a class="site-drawer-close" href="#">Close</a>
         </div>
         <div class="site-drawer-section">
             <p class="site-drawer-label">Home</p>
@@ -118,18 +121,19 @@
             </nav>
         </div>
     </aside>
+    <a class="site-drawer-backdrop" id="site-drawer-backdrop" href="#" aria-label="Close menu"></a>
     <div class="page-shell">
         <header class="site-header site-header-stacked">
             <div class="site-header-top">
                 <div class="site-brand-row">
-                    <button class="menu-button" type="button" aria-label="Open menu" onclick="window.openSiteMenu && window.openSiteMenu()">
+                    <a class="menu-button" href="#site-drawer" aria-label="Open menu">
                         <span class="menu-button-icon" aria-hidden="true">
                             <span></span>
                             <span></span>
                             <span></span>
                         </span>
                         <span class="menu-button-label">Menu</span>
-                    </button>
+                    </a>
                     <a class="brand-mark" href="/">
                         <span class="brand-kicker">Deadlock</span>
                         <strong>Tracker</strong>
@@ -172,28 +176,6 @@
             </div>
         </footer>
     </div>
-    <script>
-        window.openSiteMenu = function () {
-            var panel = document.getElementById('site-drawer');
-            var backdrop = document.getElementById('site-drawer-backdrop');
-            if (panel) {
-                panel.hidden = false;
-            }
-            if (backdrop) {
-                backdrop.hidden = false;
-            }
-        };
-        window.closeSiteMenu = function () {
-            var panel = document.getElementById('site-drawer');
-            var backdrop = document.getElementById('site-drawer-backdrop');
-            if (panel) {
-                panel.hidden = true;
-            }
-            if (backdrop) {
-                backdrop.hidden = true;
-            }
-        };
-    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

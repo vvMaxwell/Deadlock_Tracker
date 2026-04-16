@@ -132,10 +132,9 @@ def test_home_menu_drawer_renders_outside_header() -> None:
     response = client.get("/")
 
     assert 'id="site-drawer-backdrop"' in response.text
-    assert '<aside class="site-drawer" id="site-drawer" hidden>' in response.text
-    assert 'onclick="window.openSiteMenu && window.openSiteMenu()"' in response.text
-    assert "window.openSiteMenu = function" in response.text
-    assert "window.closeSiteMenu = function" in response.text
+    assert '<aside class="site-drawer" id="site-drawer">' in response.text
+    assert '<a class="menu-button" href="#site-drawer" aria-label="Open menu">' in response.text
+    assert '#site-drawer:target' in response.text
     assert '<span class="menu-button-label">Menu</span>' in response.text
     assert "Main Screen" in response.text
 
