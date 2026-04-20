@@ -11,7 +11,6 @@
         <div>
             <p class="eyebrow">Item Guide</p>
             <h1>{{ item.name }}</h1>
-            <p class="lede">Current Deadlock item snapshot with mode-by-mode performance, role, tier, and buy timing where tracked.</p>
             <div class="section-badge-group">
                 <span class="section-badge section-badge-soft">{{ item.item_slot_type or "utility" }}</span>
                 <span class="section-badge section-badge-soft">{% if item.item_tier %}Tier {{ item.item_tier }}{% else %}Tier unknown{% endif %}</span>

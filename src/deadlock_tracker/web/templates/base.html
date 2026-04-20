@@ -20,18 +20,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', path='/site.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/site.css') }}?v={{ static_css_version }}">
     <style>
         [hidden] { display: none !important; }
-        .site-header-stacked { display: grid; gap: 12px; align-items: stretch; }
-        .site-header-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+        .site-header-stacked { display: grid; gap: 10px; align-items: stretch; }
+        .site-header-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
         .site-brand-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .site-header-copy, .site-header-text, .site-header-eyebrow, .site-drawer-title, .site-drawer-label { margin: 0; }
-        .site-header-copy { display: grid; gap: 2px; max-width: 620px; }
-        .site-header-eyebrow { color: var(--accent); font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; }
-        .site-header-text { color: var(--muted); font-size: 0.98rem; }
-        .site-nav-inline { display: flex; flex-wrap: wrap; gap: 10px; margin-left: 0; }
-        .site-nav-inline a { display: inline-flex; align-items: center; gap: 9px; width: auto; padding: 10px 14px; border-radius: 999px; }
+        .site-header-copy { display: grid; gap: 1px; max-width: 520px; }
+        .site-header-eyebrow { color: var(--accent); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; }
+        .site-header-text { color: var(--muted); font-size: 0.92rem; line-height: 1.25; }
+        .site-nav-inline { display: flex; flex-wrap: wrap; gap: 8px; margin-left: 0; }
+        .site-nav-inline a { display: inline-flex; align-items: center; gap: 8px; width: auto; padding: 9px 13px; border-radius: 999px; }
         .menu-button {
             display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px;
             border-radius: 12px; border: 1px solid rgba(211, 181, 138, 0.18); background: rgba(255,255,255,0.03);
@@ -140,8 +140,8 @@
                     </a>
                 </div>
                 <div class="site-header-copy">
-                    <p class="site-header-eyebrow">Deadlock stat pages</p>
-                    <p class="site-header-text">Player search, hero guides, item pages, patch notes, and meta boards in one place.</p>
+                    <p class="site-header-eyebrow">Deadlock tools</p>
+                    <p class="site-header-text">Search players, browse builds, and check the meta.</p>
                 </div>
             </div>
             <nav class="site-nav site-nav-inline">

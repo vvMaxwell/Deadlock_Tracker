@@ -46,6 +46,7 @@ from deadlock_tracker.web.view_models import (
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+STATIC_CSS_VERSION = int((BASE_DIR / "static" / "site.css").stat().st_mtime)
 
 app = FastAPI(title="Deadlock Tracker", version="0.1.0")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
@@ -84,6 +85,7 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
         "og_type": og_type,
         "og_image": og_image,
         "structured_data": structured_data,
+        "static_css_version": STATIC_CSS_VERSION,
         "request_path": path,
         **context,
     }

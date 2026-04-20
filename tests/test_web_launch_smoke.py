@@ -139,6 +139,13 @@ def test_home_menu_drawer_renders_outside_header() -> None:
     assert "Main Screen" in response.text
 
 
+def test_home_stylesheet_url_is_versioned() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/")
+
+    assert f'/static/site.css?v={web_app.STATIC_CSS_VERSION}' in response.text
+
+
 def test_rank_distribution_includes_top_percent_labels() -> None:
     tiers = web_app._build_player_rank_distribution_views(
         [
