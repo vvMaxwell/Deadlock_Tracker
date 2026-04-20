@@ -63,11 +63,19 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
     path = request.url.path
     brand_logo_url = _public_url(
         request,
-        str(request.url_for("static", path="/branding/deadlock-stats-tracker-logo.png")),
+        str(request.url_for("static", path="/branding/deadlock-stats-tracker-logo-transparent.webp")),
     )
     brand_symbol_url = _public_url(
         request,
-        str(request.url_for("static", path="/branding/deadlock-stats-tracker-symbol.png")),
+        str(request.url_for("static", path="/branding/deadlock-stats-tracker-symbol-transparent.webp")),
+    )
+    favicon_url = _public_url(
+        request,
+        str(request.url_for("static", path="/branding/favicon-48.png")),
+    )
+    apple_touch_icon_url = _public_url(
+        request,
+        str(request.url_for("static", path="/branding/favicon-180.png")),
     )
     canonical_url = context.pop("canonical_url", _public_url(request, str(request.url.replace(query=""))))
     page_title = context.get("page_title") or site_name
@@ -106,7 +114,8 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
         "structured_data": structured_data,
         "brand_logo_url": brand_logo_url,
         "brand_symbol_url": brand_symbol_url,
-        "favicon_url": brand_symbol_url,
+        "favicon_url": favicon_url,
+        "apple_touch_icon_url": apple_touch_icon_url,
         "static_css_version": STATIC_CSS_VERSION,
         "request_path": path,
         **context,
