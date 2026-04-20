@@ -454,7 +454,8 @@ async def patch_notes(request: Request, page: int = 1) -> HTMLResponse:
                 ),
                 published_text=_patch_pub_date_text(patch.pub_date),
                 author_text=patch.creator or _patch_author_text(patch.author),
-                summary_lines=_patch_summary_lines(patch.content_html),
+                summary_lines=_patch_summary_lines(patch.content_html, limit=8),
+                full_summary_lines=_patch_summary_lines(patch.content_html, limit=120),
                 official_url=patch.link,
             )
             for patch in visible_patches

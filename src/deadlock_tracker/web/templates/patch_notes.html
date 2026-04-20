@@ -36,11 +36,31 @@
                 <span class="section-badge section-badge-soft">Source: forums.playdeadlock.com</span>
                 <span class="section-badge section-badge-soft">Author: {{ patch.author_text }}</span>
             </div>
+            {% set has_more = patch.full_summary_lines|length > patch.summary_lines|length %}
+            {% if has_more %}
+            <details class="patch-card-details">
+                <summary class="patch-card-summary-toggle">
+                    <span>Show full patch summary</span>
+                    <span class="patch-card-summary-icon" aria-hidden="true">▾</span>
+                </summary>
+                <div class="patch-card-body">
+                    {% for line in patch.summary_lines %}
+                    <p>{{ line }}</p>
+                    {% endfor %}
+                </div>
+                <div class="patch-card-body patch-card-body-expanded">
+                    {% for line in patch.full_summary_lines[patch.summary_lines|length:] %}
+                    <p>{{ line }}</p>
+                    {% endfor %}
+                </div>
+            </details>
+            {% else %}
             <div class="patch-card-body">
-                {% for line in patch.summary_lines %}
+                {% for line in patch.full_summary_lines %}
                 <p>{{ line }}</p>
                 {% endfor %}
             </div>
+            {% endif %}
         </article>
         {% else %}
         <article class="platform-card faq-card">

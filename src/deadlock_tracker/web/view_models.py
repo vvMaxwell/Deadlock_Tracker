@@ -234,6 +234,7 @@ class PatchNoteView:
     published_text: str
     author_text: str
     summary_lines: list[str]
+    full_summary_lines: list[str]
     official_url: str
 
 

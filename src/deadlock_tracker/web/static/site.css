@@ -544,6 +544,44 @@ h2 {
     line-height: 1.6;
 }
 
+.patch-card-details {
+    display: grid;
+    gap: 10px;
+}
+
+.patch-card-summary-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    width: fit-content;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent-strong);
+    cursor: pointer;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    list-style: none;
+}
+
+.patch-card-summary-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.patch-card-summary-icon {
+    display: inline-block;
+    transition: transform 0.18s ease;
+}
+
+.patch-card-details[open] .patch-card-summary-icon {
+    transform: rotate(180deg);
+}
+
+.patch-card-body-expanded {
+    padding-top: 2px;
+}
+
 .meta-shell {
     display: grid;
     gap: 26px;
