@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.responses import Response as StarletteResponse
 
 from deadlock_tracker.clients.deadlock_api import DeadlockError
 from deadlock_tracker.services.player_service import PlayerService
@@ -49,7 +50,16 @@ TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 STATIC_CSS_VERSION = int((BASE_DIR / "static" / "site.css").stat().st_mtime)
 
 app = FastAPI(title="Deadlock Stats Tracker", version="0.1.0")
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+
+class CachedStaticFiles(StaticFiles):
+    def file_response(self, *args, **kwargs) -> StarletteResponse:
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "public, max-age=2592000"
+        return response
+
+
+app.mount("/static", CachedStaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
 def _html_response(response: HTMLResponse) -> HTMLResponse:
@@ -336,8 +346,8 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
 
 @app.get("/faq", response_class=HTMLResponse)
 async def faq(request: Request) -> HTMLResponse:
-    screenshot_rel = "/help/steam-account-url-guide.png"
-    screenshot_abs = BASE_DIR / "static" / "help" / "steam-account-url-guide.png"
+    screenshot_rel = "/help/steam-account-url-guide.webp"
+    screenshot_abs = BASE_DIR / "static" / "help" / "steam-account-url-guide.webp"
     return _html_response(TEMPLATES.TemplateResponse(
         request,
         "faq.html",
