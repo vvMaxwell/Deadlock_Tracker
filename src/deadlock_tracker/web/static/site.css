@@ -84,6 +84,21 @@ img {
     padding: 18px 0 8px;
 }
 
+.site-cookie-notice {
+    margin-top: 26px;
+    padding: 14px 16px;
+    border: 1px solid rgba(211, 181, 138, 0.14);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.site-cookie-notice p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
 .site-footer-links {
     display: flex;
     gap: 18px;

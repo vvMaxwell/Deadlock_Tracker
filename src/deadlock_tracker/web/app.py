@@ -134,6 +134,12 @@ async def robots_txt(request: Request) -> Response:
     return Response(content=content, media_type="text/plain")
 
 
+@app.get("/ads.txt")
+async def ads_txt() -> Response:
+    content = "google.com, pub-4490992289432217, DIRECT, f08c47fec0942fa0\n"
+    return Response(content=content, media_type="text/plain")
+
+
 @app.get("/sitemap.xml", name="sitemap_xml")
 async def sitemap_xml(request: Request) -> Response:
     api = PlayerService().api
