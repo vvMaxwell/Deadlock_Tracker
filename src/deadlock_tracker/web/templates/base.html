@@ -17,6 +17,8 @@
     <meta name="twitter:title" content="{{ page_title or site_name }}">
     <meta name="twitter:description" content="{{ meta_description }}">
     <meta name="twitter:image" content="{{ og_image }}">
+    <link rel="icon" type="image/png" href="{{ favicon_url }}">
+    <link rel="apple-touch-icon" href="{{ favicon_url }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -135,12 +137,15 @@
                         <span class="menu-button-label">Menu</span>
                     </a>
                     <a class="brand-mark" href="/">
-                        <span class="brand-kicker">Deadlock</span>
-                        <strong>Tracker</strong>
+                        <img class="brand-mark-symbol" src="{{ brand_symbol_url }}" alt="" aria-hidden="true">
+                        <span class="brand-mark-copy">
+                            <span class="brand-kicker">Deadlock</span>
+                            <strong>Stats Tracker</strong>
+                        </span>
                     </a>
                 </div>
                 <div class="site-header-copy">
-                    <p class="site-header-eyebrow">Deadlock tools</p>
+                    <p class="site-header-eyebrow">Deadlock stats</p>
                     <p class="site-header-text">Search players, browse builds, and check the meta.</p>
                 </div>
             </div>

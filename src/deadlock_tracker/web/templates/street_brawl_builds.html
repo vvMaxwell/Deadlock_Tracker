@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Street Brawl Builds | Deadlock Tracker{% endblock %}
+{% block title %}Street Brawl Builds | Deadlock Stats Tracker{% endblock %}
 
 {% block content %}
 <section class="guide-shell meta-shell">
@@ -59,15 +59,15 @@
         </div>
         <div class="street-brawl-hero-grid">
             {% for hero in hero_cards %}
-            <a class="street-brawl-hero-tile" href="{{ hero.build_url }}"{% if hero.hero_background_image_url %} style="background-image: linear-gradient(180deg, rgba(10, 8, 6, 0.3), rgba(10, 8, 6, 0.94)), url('{{ hero.hero_background_image_url }}');"{% endif %}>
+            <a class="street-brawl-hero-tile" href="{{ hero.build_url }}">
                 <div class="street-brawl-hero-tile-copy">
                     <strong>{{ hero.hero_name }}</strong>
                     <span>Open build</span>
                 </div>
                 {% if hero.hero_portrait_url %}
-                <img class="street-brawl-hero-tile-portrait" src="{{ hero.hero_portrait_url }}" alt="{{ hero.hero_name }}">
+                <img class="street-brawl-hero-tile-portrait" src="{{ hero.hero_portrait_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
                 {% elif hero.hero_icon_url %}
-                <img class="street-brawl-hero-tile-portrait street-brawl-hero-tile-portrait-fallback" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}">
+                <img class="street-brawl-hero-tile-portrait street-brawl-hero-tile-portrait-fallback" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
                 {% endif %}
             </a>
             {% endfor %}
@@ -158,8 +158,14 @@
 
             <section class="street-brawl-ability-guide">
                 <div class="section-heading">
-                    <h2>Most Common Level Path</h2>
-                    <p>Ordered by the ability sequence with the most tracked Street Brawl matches for this hero.</p>
+                    <h2>{% if guide.ability_steps|length < 16 %}Most Common Opening Path{% else %}Most Common Level Path{% endif %}</h2>
+                    <p>
+                        {% if guide.ability_steps|length < 16 %}
+                        Ordered by the tracked opening upgrade sequence for this hero. The current Deadlock API response for this view returns {{ guide.ability_steps|length }} upgrades, not a full 16-step ability path.
+                        {% else %}
+                        Ordered by the ability sequence with the most tracked Street Brawl matches for this hero.
+                        {% endif %}
+                    </p>
                 </div>
                 <div class="street-brawl-steps">
                     {% for step in guide.ability_steps %}

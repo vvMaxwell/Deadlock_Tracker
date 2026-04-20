@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Deadlock Heroes | Deadlock Stat Tracker{% endblock %}
+{% block title %}Deadlock Heroes | Deadlock Stats Tracker{% endblock %}
 
 {% block content %}
 <section class="guide-shell faq-shell">
@@ -13,15 +13,15 @@
 
     <div class="street-brawl-hero-grid">
         {% for hero in hero_cards %}
-        <a class="street-brawl-hero-tile" href="{{ hero.detail_url }}"{% if hero.hero_background_image_url %} style="background-image: linear-gradient(180deg, rgba(10, 8, 6, 0.3), rgba(10, 8, 6, 0.94)), url('{{ hero.hero_background_image_url }}');"{% endif %}>
+        <a class="street-brawl-hero-tile" href="{{ hero.detail_url }}">
             <div class="street-brawl-hero-tile-copy">
                 <strong>{{ hero.hero_name }}</strong>
                 <span>Open hero guide</span>
             </div>
             {% if hero.hero_portrait_url %}
-            <img class="street-brawl-hero-tile-portrait" src="{{ hero.hero_portrait_url }}" alt="{{ hero.hero_name }}">
+            <img class="street-brawl-hero-tile-portrait" src="{{ hero.hero_portrait_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
             {% elif hero.hero_icon_url %}
-            <img class="street-brawl-hero-tile-portrait street-brawl-hero-tile-portrait-fallback" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}">
+            <img class="street-brawl-hero-tile-portrait street-brawl-hero-tile-portrait-fallback" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
             {% endif %}
         </a>
         {% endfor %}

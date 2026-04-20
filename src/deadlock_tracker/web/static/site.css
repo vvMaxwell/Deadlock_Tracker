@@ -113,9 +113,21 @@ img {
 
 .brand-mark {
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     gap: 10px;
     font-family: "Space Grotesk", sans-serif;
+}
+
+.brand-mark-symbol {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.28));
+}
+
+.brand-mark-copy {
+    display: grid;
+    gap: 1px;
 }
 
 .brand-kicker {
@@ -127,6 +139,13 @@ img {
 
 .brand-mark strong {
     font-size: 1.12rem;
+}
+
+.hero-wordmark {
+    width: min(420px, 100%);
+    height: auto;
+    margin-bottom: 10px;
+    display: block;
 }
 
 .site-nav {
@@ -698,6 +717,30 @@ h2 {
     transition: transform 160ms ease, border-color 160ms ease, filter 160ms ease;
 }
 
+.street-brawl-hero-tile::before {
+    content: "";
+    position: absolute;
+    inset: auto -14% -22% auto;
+    width: 180px;
+    height: 180px;
+    border-radius: 42px;
+    background:
+        radial-gradient(circle at 35% 35%, rgba(211, 181, 138, 0.22), rgba(211, 181, 138, 0) 68%),
+        linear-gradient(135deg, rgba(125, 245, 159, 0.08), rgba(125, 245, 159, 0));
+    transform: rotate(16deg);
+    pointer-events: none;
+}
+
+.street-brawl-hero-tile::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(140deg, rgba(255, 255, 255, 0.04), transparent 32%),
+        radial-gradient(circle at top left, rgba(211, 181, 138, 0.1), transparent 34%);
+    pointer-events: none;
+}
+
 .street-brawl-hero-tile:hover {
     transform: translateY(-3px);
     border-color: rgba(231, 206, 176, 0.26);
@@ -727,6 +770,7 @@ h2 {
     width: 108px;
     height: 108px;
     object-fit: contain;
+    object-position: bottom center;
     filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.3));
 }
 

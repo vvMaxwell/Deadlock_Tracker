@@ -48,7 +48,7 @@ BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 STATIC_CSS_VERSION = int((BASE_DIR / "static" / "site.css").stat().st_mtime)
 
-app = FastAPI(title="Deadlock Tracker", version="0.1.0")
+app = FastAPI(title="Deadlock Stats Tracker", version="0.1.0")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
@@ -59,20 +59,39 @@ def _html_response(response: HTMLResponse) -> HTMLResponse:
 
 
 def _base_context(request: Request, **context: object) -> dict[str, object]:
-    site_name = "Deadlock Stat Tracker"
+    site_name = "Deadlock Stats Tracker"
     path = request.url.path
+    brand_logo_url = _public_url(
+        request,
+        str(request.url_for("static", path="/branding/deadlock-stats-tracker-logo.png")),
+    )
+    brand_symbol_url = _public_url(
+        request,
+        str(request.url_for("static", path="/branding/deadlock-stats-tracker-symbol.png")),
+    )
     canonical_url = context.pop("canonical_url", _public_url(request, str(request.url.replace(query=""))))
     page_title = context.get("page_title") or site_name
     meta_description = context.get("meta_description") or (
         "Search Deadlock players, ranks, match history, hero performance, best heroes, best items, and Street Brawl builds."
     )
-    og_image = context.get("og_image") or _public_url(
-        request,
-        str(request.url_for("static", path="/community-assets/graphics/background-city.png")),
-    )
+    og_image = context.get("og_image") or brand_logo_url
     meta_robots = context.pop("meta_robots", None) or "index,follow"
     og_type = context.get("og_type") or "website"
     structured_data = context.pop("structured_data", None)
+    site_schema = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": site_name,
+        "url": _public_url(request, str(request.url_for("home"))),
+        "logo": brand_logo_url,
+        "image": brand_logo_url,
+    }
+    if structured_data is None:
+        structured_data = [site_schema]
+    elif isinstance(structured_data, list):
+        structured_data = [site_schema, *structured_data]
+    else:
+        structured_data = [site_schema, structured_data]
     if structured_data is not None:
         structured_data = json.dumps(structured_data, separators=(",", ":"))
 
@@ -85,6 +104,9 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
         "og_type": og_type,
         "og_image": og_image,
         "structured_data": structured_data,
+        "brand_logo_url": brand_logo_url,
+        "brand_symbol_url": brand_symbol_url,
+        "favicon_url": brand_symbol_url,
         "static_css_version": STATIC_CSS_VERSION,
         "request_path": path,
         **context,
@@ -261,9 +283,9 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
         "index.html",
         _base_context(
             request,
-            page_title="Deadlock Stat Tracker",
+            page_title="Deadlock Stats Tracker",
             meta_description=(
-                "Deadlock Stat Tracker lets you search players by Steam name, profile URL, or account ID "
+                "Deadlock Stats Tracker lets you search players by Steam name, profile URL, or account ID "
                 "to view ranks, match history, hero stats, best heroes, best items, and Street Brawl builds."
             ),
             meta_robots="noindex,follow" if query else "index,follow",
@@ -271,7 +293,7 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
                 {
                     "@context": "https://schema.org",
                     "@type": "WebSite",
-                    "name": "Deadlock Stat Tracker",
+                    "name": "Deadlock Stats Tracker",
                     "url": _public_url(request, str(request.url_for("home"))),
                     "potentialAction": {
                         "@type": "SearchAction",
@@ -282,7 +304,7 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
                 {
                     "@context": "https://schema.org",
                     "@type": "WebPage",
-                    "name": "Deadlock Stat Tracker",
+                    "name": "Deadlock Stats Tracker",
                     "url": _public_url(request, str(request.url_for("home"))),
                     "description": (
                         "Search Deadlock players and explore ranks, match history, best heroes, best items, and Street Brawl builds."
@@ -306,9 +328,9 @@ async def faq(request: Request) -> HTMLResponse:
         "faq.html",
         _base_context(
             request,
-            page_title="FAQ | Deadlock Stat Tracker",
+            page_title="FAQ | Deadlock Stats Tracker",
             meta_description=(
-                "Learn how to search Deadlock players by Steam name, profile URL, or account ID, and how to use Deadlock Stat Tracker."
+                "Learn how to search Deadlock players by Steam name, profile URL, or account ID, and how to use Deadlock Stats Tracker."
             ),
             structured_data=[
                 {
@@ -353,8 +375,8 @@ async def discord_bot(request: Request) -> HTMLResponse:
         "discord_bot.html",
         _base_context(
             request,
-            page_title="Discord Bot | Deadlock Stat Tracker",
-            meta_description="Follow the upcoming Deadlock Stat Tracker Discord bot for match lookups, stat snapshots, and future automation features.",
+            page_title="Discord Bot | Deadlock Stats Tracker",
+            meta_description="Follow the upcoming Deadlock Stats Tracker Discord bot for match lookups, stat snapshots, and future automation features.",
         ),
     ))
 
@@ -366,8 +388,8 @@ async def credits(request: Request) -> HTMLResponse:
         "credits.html",
         _base_context(
             request,
-            page_title="Credits | Deadlock Stat Tracker",
-            meta_description="Credits and acknowledgements for the data, assets, and tools behind Deadlock Stat Tracker.",
+            page_title="Credits | Deadlock Stats Tracker",
+            meta_description="Credits and acknowledgements for the data, assets, and tools behind Deadlock Stats Tracker.",
         ),
     ))
 
@@ -379,8 +401,8 @@ async def disclaimers(request: Request) -> HTMLResponse:
         "disclaimers.html",
         _base_context(
             request,
-            page_title="Disclaimers | Deadlock Stat Tracker",
-            meta_description="Read the disclaimers and usage notes for Deadlock Stat Tracker, including data availability and third-party attribution.",
+            page_title="Disclaimers | Deadlock Stats Tracker",
+            meta_description="Read the disclaimers and usage notes for Deadlock Stats Tracker, including data availability and third-party attribution.",
         ),
     ))
 
@@ -440,7 +462,7 @@ async def patch_notes(request: Request, page: int = 1) -> HTMLResponse:
         "patch_notes.html",
         _base_context(
             request,
-            page_title="Deadlock Patch Notes | Deadlock Stat Tracker",
+            page_title="Deadlock Patch Notes | Deadlock Stats Tracker",
             meta_description=(
                 "Read recent Deadlock patch notes sourced from the official Deadlock changelog posts."
             ),
@@ -505,7 +527,7 @@ async def patch_note_detail(request: Request, patch_guid: str, patch_slug: str) 
             "error.html",
             _base_context(
                 request,
-                page_title="Patch Note Not Found | Deadlock Stat Tracker",
+                page_title="Patch Note Not Found | Deadlock Stats Tracker",
                 meta_description="That Deadlock patch note could not be loaded right now.",
                 meta_robots="noindex,follow",
                 message=str(error),
@@ -588,7 +610,7 @@ async def heroes_directory(request: Request) -> HTMLResponse:
             "error.html",
             _base_context(
                 request,
-                page_title="Heroes | Deadlock Stat Tracker",
+                page_title="Heroes | Deadlock Stats Tracker",
                 meta_description="Deadlock hero directory page.",
                 meta_robots="noindex,follow",
                 message=str(error),
@@ -612,7 +634,7 @@ async def heroes_directory(request: Request) -> HTMLResponse:
         "heroes_directory.html",
         _base_context(
             request,
-            page_title="Deadlock Heroes | Deadlock Stat Tracker",
+            page_title="Deadlock Heroes | Deadlock Stats Tracker",
             meta_description="Browse the full Deadlock hero directory and open dedicated hero guide pages.",
             structured_data=[
                 {
@@ -646,7 +668,7 @@ async def items_directory(request: Request) -> HTMLResponse:
             "error.html",
             _base_context(
                 request,
-                page_title="Items | Deadlock Stat Tracker",
+                page_title="Items | Deadlock Stats Tracker",
                 meta_description="Deadlock item directory page.",
                 meta_robots="noindex,follow",
                 message=str(error),
@@ -675,7 +697,7 @@ async def items_directory(request: Request) -> HTMLResponse:
         "items_directory.html",
         _base_context(
             request,
-            page_title="Deadlock Items | Deadlock Stat Tracker",
+            page_title="Deadlock Items | Deadlock Stats Tracker",
             meta_description="Browse the full Deadlock item directory and open dedicated item guide pages.",
             structured_data=[
                 {
@@ -792,7 +814,7 @@ async def best_items(
         "best_items.html",
         _base_context(
             request,
-            page_title="Best Deadlock Items | Deadlock Stat Tracker",
+            page_title="Best Deadlock Items | Deadlock Stats Tracker",
             meta_description=(
                 "Browse the best Deadlock items by win rate, hero, rank floor, mode, and time window using live meta analytics."
             ),
@@ -851,7 +873,7 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
             "error.html",
             _base_context(
                 request,
-                page_title="Item Not Found | Deadlock Stat Tracker",
+                page_title="Item Not Found | Deadlock Stats Tracker",
                 meta_description="That Deadlock item page could not be loaded right now.",
                 meta_robots="noindex,follow",
                 error_subject="item",
@@ -877,7 +899,7 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
             "error.html",
             _base_context(
                 request,
-                page_title="Item Not Found | Deadlock Stat Tracker",
+                page_title="Item Not Found | Deadlock Stats Tracker",
                 meta_description="That Deadlock item page could not be loaded right now.",
                 meta_robots="noindex,follow",
                 error_subject="item",
@@ -913,7 +935,7 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
         "item_detail.html",
         _base_context(
             request,
-            page_title=f"{item.name} Item Guide | Deadlock Stat Tracker",
+            page_title=f"{item.name} Item Guide | Deadlock Stats Tracker",
             meta_description=f"See Deadlock item stats and current mode-by-mode performance for {item.name}.",
             canonical_url=canonical_url,
             structured_data=[
@@ -1027,7 +1049,7 @@ async def best_heroes(
         "best_heroes.html",
         _base_context(
             request,
-            page_title="Best Deadlock Heroes | Deadlock Stat Tracker",
+            page_title="Best Deadlock Heroes | Deadlock Stats Tracker",
             meta_description=(
                 "Track the best Deadlock heroes by win rate, pick rate, rank floor, mode, and time window with live meta data."
             ),
@@ -1078,7 +1100,7 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             "error.html",
             _base_context(
                 request,
-                page_title="Hero Not Found | Deadlock Stat Tracker",
+                page_title="Hero Not Found | Deadlock Stats Tracker",
                 meta_description="That Deadlock hero page could not be loaded right now.",
                 meta_robots="noindex,follow",
                 error_subject="hero",
@@ -1105,7 +1127,7 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             "error.html",
             _base_context(
                 request,
-                page_title="Hero Not Found | Deadlock Stat Tracker",
+                page_title="Hero Not Found | Deadlock Stats Tracker",
                 meta_description="That Deadlock hero page could not be loaded right now.",
                 meta_robots="noindex,follow",
                 error_subject="hero",
@@ -1160,7 +1182,7 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
         "hero_detail.html",
         _base_context(
             request,
-            page_title=f"{hero.name} Guide | Deadlock Stat Tracker",
+            page_title=f"{hero.name} Guide | Deadlock Stats Tracker",
             meta_description=f"See current Deadlock stats, win rate, and top items for {hero.name}.",
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
@@ -1205,7 +1227,7 @@ async def hero_items(request: Request, hero_id: str, hero_slug: str) -> HTMLResp
             "error.html",
             _base_context(
                 request,
-                page_title="Hero Items Not Found | Deadlock Stat Tracker",
+                page_title="Hero Items Not Found | Deadlock Stats Tracker",
                 meta_description="That Deadlock hero item page could not be loaded right now.",
                 meta_robots="noindex,follow",
                 error_subject="hero",
@@ -1232,7 +1254,7 @@ async def hero_items(request: Request, hero_id: str, hero_slug: str) -> HTMLResp
             "error.html",
             _base_context(
                 request,
-                page_title="Hero Items Not Found | Deadlock Stat Tracker",
+                page_title="Hero Items Not Found | Deadlock Stats Tracker",
                 meta_description="That Deadlock hero item page could not be loaded right now.",
                 meta_robots="noindex,follow",
                 error_subject="hero",
@@ -1278,7 +1300,7 @@ async def hero_items(request: Request, hero_id: str, hero_slug: str) -> HTMLResp
         "hero_items.html",
         _base_context(
             request,
-            page_title=f"Best Items for {hero.name} | Deadlock Stat Tracker",
+            page_title=f"Best Items for {hero.name} | Deadlock Stats Tracker",
             meta_description=f"See the strongest tracked items and current build trends for {hero.name} in Deadlock.",
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
@@ -1321,7 +1343,7 @@ async def hero_matchups(request: Request, hero_id: str, hero_slug: str) -> HTMLR
             "error.html",
             _base_context(
                 request,
-                page_title="Hero Matchups Not Found | Deadlock Stat Tracker",
+                page_title="Hero Matchups Not Found | Deadlock Stats Tracker",
                 meta_description="That Deadlock hero matchup page could not be loaded right now.",
                 meta_robots="noindex,follow",
                 error_subject="hero",
@@ -1348,7 +1370,7 @@ async def hero_matchups(request: Request, hero_id: str, hero_slug: str) -> HTMLR
             "error.html",
             _base_context(
                 request,
-                page_title="Hero Matchups Not Found | Deadlock Stat Tracker",
+                page_title="Hero Matchups Not Found | Deadlock Stats Tracker",
                 meta_description="That Deadlock hero matchup page could not be loaded right now.",
                 meta_robots="noindex,follow",
                 error_subject="hero",
@@ -1376,7 +1398,7 @@ async def hero_matchups(request: Request, hero_id: str, hero_slug: str) -> HTMLR
         "hero_matchups.html",
         _base_context(
             request,
-            page_title=f"{hero.name} Matchups | Deadlock Stat Tracker",
+            page_title=f"{hero.name} Matchups | Deadlock Stats Tracker",
             meta_description=f"See favorable lanes, difficult opponents, and top synergy partners for {hero.name} in Deadlock.",
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
@@ -1442,7 +1464,7 @@ async def street_brawl_builds(
             "error.html",
             _base_context(
                 request,
-                page_title="Street Brawl Builds Unavailable | Deadlock Stat Tracker",
+                page_title="Street Brawl Builds Unavailable | Deadlock Stats Tracker",
                 meta_description="Street Brawl builds are temporarily unavailable because no active heroes were returned.",
                 meta_robots="noindex,follow",
                 message="No active heroes are currently available.",
@@ -1475,7 +1497,7 @@ async def street_brawl_builds(
             "street_brawl_builds.html",
                 _base_context(
                     request,
-                    page_title="Street Brawl Builds | Deadlock Stat Tracker",
+                    page_title="Street Brawl Builds | Deadlock Stats Tracker",
                     meta_description=(
                         "Find the best Street Brawl builds in Deadlock, including high-win-rate items and common ability paths by hero."
                     ),
@@ -1616,9 +1638,9 @@ async def street_brawl_builds(
         _base_context(
             request,
             page_title=(
-                f"{selected_hero.name} Street Brawl Build | Deadlock Stat Tracker"
+                f"{selected_hero.name} Street Brawl Build | Deadlock Stats Tracker"
                 if selected_hero is not None
-                else "Street Brawl Builds | Deadlock Stat Tracker"
+                else "Street Brawl Builds | Deadlock Stats Tracker"
             ),
             meta_description=(
                 f"See the latest {selected_hero.name} Street Brawl build in Deadlock, including high-win-rate items and tracked ability path data."
@@ -1702,7 +1724,7 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
                 "error.html",
                 _base_context(
                     request,
-                    page_title="Player Search Ambiguous | Deadlock Stat Tracker",
+                    page_title="Player Search Ambiguous | Deadlock Stats Tracker",
                     meta_description="That player search matched multiple Deadlock profiles. Refine the search to find the right player.",
                     meta_robots="noindex,follow",
                     message="That search matched multiple players. Use the search page to choose the right one.",
@@ -1792,7 +1814,7 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             "error.html",
             _base_context(
                 request,
-                page_title="Player Not Found | Deadlock Stat Tracker",
+                page_title="Player Not Found | Deadlock Stats Tracker",
                 meta_description="That Deadlock player profile could not be loaded right now.",
                 meta_robots="noindex,follow",
                 message=str(error),
@@ -1805,7 +1827,7 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
         "player.html",
         _base_context(
             request,
-            page_title=f"{summary.player.personaname} Stats | Deadlock Stat Tracker",
+            page_title=f"{summary.player.personaname} Stats | Deadlock Stats Tracker",
             meta_description=(
                 f"View {summary.player.personaname}'s Deadlock rank, recent matches, hero stats, and profile summary."
             ),
@@ -1873,7 +1895,7 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
                 "error.html",
                 _base_context(
                     request,
-                    page_title="Player Search Ambiguous | Deadlock Stat Tracker",
+                    page_title="Player Search Ambiguous | Deadlock Stats Tracker",
                     meta_description="That player lookup matched multiple Deadlock profiles. Refine the search to find the right player.",
                     meta_robots="noindex,follow",
                     message="That player lookup matched multiple profiles.",
@@ -1969,7 +1991,7 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
             "error.html",
             _base_context(
                 request,
-                page_title="Match Not Found | Deadlock Stat Tracker",
+                page_title="Match Not Found | Deadlock Stats Tracker",
                 meta_description="That Deadlock match detail page could not be loaded right now.",
                 meta_robots="noindex,follow",
                 message=str(error),
@@ -1982,7 +2004,7 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
         "match_detail.html",
         _base_context(
             request,
-            page_title=f"Match {metadata.match_id} | Deadlock Stat Tracker",
+            page_title=f"Match {metadata.match_id} | Deadlock Stats Tracker",
             meta_description=(
                 f"View Deadlock match {metadata.match_id} for {resolved.personaname}, including matchup lines, players, items, and outcome."
             ),
