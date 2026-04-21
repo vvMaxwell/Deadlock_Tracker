@@ -46,7 +46,7 @@
             <details class="patch-card-details">
                 <summary class="patch-card-summary-toggle">
                     <span>Show full patch summary</span>
-                    <span class="patch-card-summary-icon" aria-hidden="true">▾</span>
+                    <span class="patch-card-summary-icon" aria-hidden="true">&darr;</span>
                 </summary>
                 <div class="patch-card-body patch-card-body-expanded">
                     {% for line in patch.full_summary_lines[patch.summary_lines|length:] %}
@@ -58,7 +58,7 @@
             <div class="patch-card-actions">
                 <a class="patch-card-summary-link" href="{{ patch.detail_url }}">
                     <span>Read full summary page</span>
-                    <span aria-hidden="true">▾</span>
+                    <span aria-hidden="true">&darr;</span>
                 </a>
             </div>
             {% endif %}

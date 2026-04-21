@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urlparse
 
@@ -627,6 +628,16 @@ class DeadlockAPI:
         ]
         return patches[:limit]
 
+    async def get_patch_full_content_html(self, url: str) -> str | None:
+        try:
+            html = await self._get_text(url)
+        except DeadlockError:
+            return None
+
+        extractor = _ForumPostContentExtractor()
+        extractor.feed(html)
+        return extractor.content_html()
+
     async def _get_json(self, url: str, params: dict[str, str] | None = None) -> Any:
         headers = self._request_headers()
         timeout = aiohttp.ClientTimeout(total=20)
@@ -656,6 +667,27 @@ class DeadlockAPI:
             raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.") from None
         except aiohttp.ClientError as error:
             raise DeadlockError(f"Deadlock API request failed: {error}") from error
+
+    async def _get_text(self, url: str, params: dict[str, str] | None = None) -> str:
+        headers = self._request_headers()
+        timeout = aiohttp.ClientTimeout(total=20)
+        try:
+            async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+                async with session.get(url, params=params) as response:
+                    if response.status == 404:
+                        raise DeadlockError("That official patch post could not be found.")
+                    if response.status == 429:
+                        raise DeadlockError("Official patch post is rate-limited right now. Try again shortly.")
+                    if response.status >= 400:
+                        message = await response.text()
+                        raise DeadlockError(
+                            f"Official patch post request failed with HTTP {response.status}: {message[:200]}"
+                        )
+                    return await response.text()
+        except TimeoutError:
+            raise DeadlockError("Official patch post took too long to respond. Try again in a moment.") from None
+        except aiohttp.ClientError as error:
+            raise DeadlockError(f"Official patch post request failed: {error}") from error
 
     def _request_headers(self) -> dict[str, str]:
         headers = {"User-Agent": "DeadlockTracker/1.0"}
@@ -703,3 +735,55 @@ def friendly_rank_name(rank: int | None) -> str:
     if rank is None:
         return "Unknown"
     return RANK_NAME_BY_CODE.get(rank, str(rank))
+
+
+class _ForumPostContentExtractor(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self._capturing = False
+        self._depth = 0
+        self._parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        classes = {
+            class_name
+            for key, value in attrs
+            if key == "class" and value
+            for class_name in value.split()
+        }
+        if not self._capturing and "bbWrapper" in classes:
+            self._capturing = True
+            self._depth = 1
+            return
+        if self._capturing:
+            self._depth += 1
+            self._parts.append(self.get_starttag_text() or f"<{tag}>")
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self._capturing:
+            self._parts.append(self.get_starttag_text() or f"<{tag} />")
+
+    def handle_endtag(self, tag: str) -> None:
+        if not self._capturing:
+            return
+        self._depth -= 1
+        if self._depth == 0:
+            self._capturing = False
+            return
+        self._parts.append(f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        if self._capturing:
+            self._parts.append(data)
+
+    def handle_entityref(self, name: str) -> None:
+        if self._capturing:
+            self._parts.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        if self._capturing:
+            self._parts.append(f"&#{name};")
+
+    def content_html(self) -> str | None:
+        html = "".join(self._parts).strip()
+        return html or None

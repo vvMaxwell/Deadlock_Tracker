@@ -554,6 +554,13 @@ async def patch_note_detail(request: Request, patch_guid: str, patch_slug: str) 
         patch_index = next((index for index, item in enumerate(patches) if item is patch), None)
         previous_patch = patches[patch_index + 1] if patch_index is not None and patch_index + 1 < len(patches) else None
         next_patch = patches[patch_index - 1] if patch_index is not None and patch_index - 1 >= 0 else None
+        patch_lines = _patch_summary_lines(patch.content_html, limit=400)
+        if _patch_lines_need_forum_fallback(patch_lines):
+            full_content_html = await api.get_patch_full_content_html(patch.link)
+            if full_content_html:
+                full_patch_lines = _patch_summary_lines(full_content_html, limit=400)
+                if len(full_patch_lines) >= len(patch_lines):
+                    patch_lines = full_patch_lines
     except DeadlockError as error:
         return _html_response(TEMPLATES.TemplateResponse(
             request,
@@ -603,7 +610,7 @@ async def patch_note_detail(request: Request, patch_guid: str, patch_slug: str) 
             patch_title=patch.title,
             patch_published_text=_patch_pub_date_text(patch.pub_date),
             patch_author_text=patch.creator or _patch_author_text(patch.author),
-            patch_lines=_patch_summary_lines(patch.content_html, limit=120),
+            patch_lines=patch_lines,
             official_url=patch.link,
             previous_patch_url=(
                 str(
@@ -2311,6 +2318,12 @@ def _patch_summary_lines(content_html: str, *, limit: int = 18) -> list[str]:
     if not lines:
         return ["Open the official post for the full patch notes."]
     return lines[:limit]
+
+
+def _patch_lines_need_forum_fallback(lines: list[str]) -> bool:
+    if not lines:
+        return True
+    return any(line.endswith("...") for line in lines)
 
 
 class _PatchHtmlSummaryParser(HTMLParser):
