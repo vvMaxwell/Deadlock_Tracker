@@ -83,10 +83,24 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
         request,
         str(request.url_for("static", path="/branding/favicon-48.png")),
     )
+    favicon_32_url = _public_url(
+        request,
+        str(request.url_for("static", path="/branding/favicon-32.png")),
+    )
+    favicon_192_url = _public_url(
+        request,
+        str(request.url_for("static", path="/branding/favicon-192.png")),
+    )
+    favicon_512_url = _public_url(
+        request,
+        str(request.url_for("static", path="/branding/favicon-512.png")),
+    )
     apple_touch_icon_url = _public_url(
         request,
         str(request.url_for("static", path="/branding/favicon-180.png")),
     )
+    favicon_ico_url = _public_url(request, str(request.url_for("favicon_ico")))
+    webmanifest_url = _public_url(request, str(request.url_for("site_webmanifest")))
     canonical_url = context.pop("canonical_url", _public_url(request, str(request.url.replace(query=""))))
     page_title = context.get("page_title") or site_name
     meta_description = context.get("meta_description") or (
@@ -101,7 +115,13 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
         "@type": "Organization",
         "name": site_name,
         "url": _public_url(request, str(request.url_for("home"))),
-        "logo": brand_logo_url,
+        "logo": {
+            "@type": "ImageObject",
+            "url": brand_symbol_url,
+            "contentUrl": brand_symbol_url,
+            "width": 512,
+            "height": 512,
+        },
         "image": brand_logo_url,
     }
     if structured_data is None:
@@ -125,7 +145,12 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
         "brand_logo_url": brand_logo_url,
         "brand_symbol_url": brand_symbol_url,
         "favicon_url": favicon_url,
+        "favicon_32_url": favicon_32_url,
+        "favicon_192_url": favicon_192_url,
+        "favicon_512_url": favicon_512_url,
+        "favicon_ico_url": favicon_ico_url,
         "apple_touch_icon_url": apple_touch_icon_url,
+        "webmanifest_url": webmanifest_url,
         "static_css_version": STATIC_CSS_VERSION,
         "request_path": path,
         **context,
@@ -148,6 +173,41 @@ async def robots_txt(request: Request) -> Response:
 async def ads_txt() -> Response:
     content = "google.com, pub-4490992289432217, DIRECT, f08c47fec0942fa0\n"
     return Response(content=content, media_type="text/plain")
+
+
+@app.get("/favicon.ico", name="favicon_ico")
+async def favicon_ico(request: Request) -> RedirectResponse:
+    return RedirectResponse(
+        url=str(request.url_for("static", path="/branding/favicon-48.png")),
+        status_code=307,
+    )
+
+
+@app.get("/site.webmanifest", name="site_webmanifest")
+async def site_webmanifest(request: Request) -> Response:
+    payload = {
+        "name": "Deadlock Stats Tracker",
+        "short_name": "Deadlock Stats",
+        "icons": [
+            {
+                "src": _public_url(request, str(request.url_for("static", path="/branding/favicon-192.png"))),
+                "sizes": "192x192",
+                "type": "image/png",
+            },
+            {
+                "src": _public_url(request, str(request.url_for("static", path="/branding/favicon-512.png"))),
+                "sizes": "512x512",
+                "type": "image/png",
+            },
+        ],
+        "theme_color": "#13100d",
+        "background_color": "#13100d",
+        "display": "standalone",
+    }
+    return Response(
+        content=json.dumps(payload, separators=(",", ":")),
+        media_type="application/manifest+json",
+    )
 
 
 @app.get("/sitemap.xml", name="sitemap_xml")

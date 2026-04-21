@@ -124,7 +124,39 @@ def test_home_json_ld_is_valid_json() -> None:
 
     parsed = json.loads(payload)
     assert isinstance(parsed, list)
-    assert parsed[0]["@type"] == "WebSite"
+    assert parsed[0]["@type"] == "Organization"
+    assert parsed[0]["logo"]["@type"] == "ImageObject"
+    assert parsed[1]["@type"] == "WebSite"
+
+
+def test_home_head_exposes_standard_favicon_links() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/")
+
+    assert 'rel="manifest" href="http://testserver/site.webmanifest"' in response.text
+    assert 'rel="shortcut icon" href="http://testserver/favicon.ico"' in response.text
+    assert 'sizes="32x32" href="http://testserver/static/branding/favicon-32.png"' in response.text
+    assert 'sizes="192x192" href="http://testserver/static/branding/favicon-192.png"' in response.text
+
+
+def test_favicon_ico_redirects_to_png_asset() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/favicon.ico", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "http://testserver/static/branding/favicon-48.png"
+
+
+def test_site_webmanifest_lists_brand_icons() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/site.webmanifest")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/manifest+json")
+    payload = response.json()
+    assert payload["name"] == "Deadlock Stats Tracker"
+    assert payload["icons"][0]["src"] == "http://testserver/static/branding/favicon-192.png"
+    assert payload["icons"][1]["src"] == "http://testserver/static/branding/favicon-512.png"
 
 
 def test_home_menu_drawer_renders_outside_header() -> None:
