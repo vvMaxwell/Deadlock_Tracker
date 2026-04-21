@@ -452,24 +452,31 @@ async def patch_notes(request: Request, page: int = 1) -> HTMLResponse:
         end_index = start_index + page_size
         visible_patches = patch_feed[start_index:end_index]
         has_next_page = len(patch_feed) > end_index
-        patches = [
-            PatchNoteView(
-                title=patch.title,
-                detail_url=str(
-                    request.url_for(
-                        "patch_note_detail",
-                        patch_guid=patch.guid or _slugify(patch.title),
-                        patch_slug=_slugify(patch.title),
-                    )
-                ),
-                published_text=_patch_pub_date_text(patch.pub_date),
-                author_text=patch.creator or _patch_author_text(patch.author),
-                summary_lines=_patch_summary_lines(patch.content_html, limit=8),
-                full_summary_lines=_patch_summary_lines(patch.content_html, limit=120),
-                official_url=patch.link,
+        patches = []
+        for patch in visible_patches:
+            summary_lines = _patch_summary_lines(patch.content_html, limit=8)
+            full_summary_lines = _patch_summary_lines(patch.content_html, limit=120)
+            patches.append(
+                PatchNoteView(
+                    title=patch.title,
+                    detail_url=str(
+                        request.url_for(
+                            "patch_note_detail",
+                            patch_guid=patch.guid or _slugify(patch.title),
+                            patch_slug=_slugify(patch.title),
+                        )
+                    ),
+                    published_text=_patch_pub_date_text(patch.pub_date),
+                    author_text=patch.creator or _patch_author_text(patch.author),
+                    summary_lines=summary_lines,
+                    full_summary_lines=full_summary_lines,
+                    summary_truncated=(
+                        len(full_summary_lines) > len(summary_lines)
+                        or any(line.endswith("...") for line in summary_lines)
+                    ),
+                    official_url=patch.link,
+                )
             )
-            for patch in visible_patches
-        ]
         if current_page > 1:
             previous_url = str(request.url_for("patch_notes")) if current_page == 2 else str(request.url.include_query_params(page=current_page - 1))
             pagination_links.append(PaginationLinkView(label="Newer patch notes", url=previous_url))

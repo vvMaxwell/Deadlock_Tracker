@@ -582,6 +582,27 @@ h2 {
     padding-top: 2px;
 }
 
+.patch-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.patch-card-summary-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--accent-strong);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.patch-card-summary-link:hover {
+    color: var(--text);
+}
+
 .meta-shell {
     display: grid;
     gap: 26px;

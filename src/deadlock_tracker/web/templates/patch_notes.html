@@ -36,6 +36,11 @@
                 <span class="section-badge section-badge-soft">Source: forums.playdeadlock.com</span>
                 <span class="section-badge section-badge-soft">Author: {{ patch.author_text }}</span>
             </div>
+            <div class="patch-card-body">
+                {% for line in patch.summary_lines %}
+                <p>{{ line }}</p>
+                {% endfor %}
+            </div>
             {% set has_more = patch.full_summary_lines|length > patch.summary_lines|length %}
             {% if has_more %}
             <details class="patch-card-details">
@@ -43,22 +48,18 @@
                     <span>Show full patch summary</span>
                     <span class="patch-card-summary-icon" aria-hidden="true">▾</span>
                 </summary>
-                <div class="patch-card-body">
-                    {% for line in patch.summary_lines %}
-                    <p>{{ line }}</p>
-                    {% endfor %}
-                </div>
                 <div class="patch-card-body patch-card-body-expanded">
                     {% for line in patch.full_summary_lines[patch.summary_lines|length:] %}
                     <p>{{ line }}</p>
                     {% endfor %}
                 </div>
             </details>
-            {% else %}
-            <div class="patch-card-body">
-                {% for line in patch.full_summary_lines %}
-                <p>{{ line }}</p>
-                {% endfor %}
+            {% elif patch.summary_truncated %}
+            <div class="patch-card-actions">
+                <a class="patch-card-summary-link" href="{{ patch.detail_url }}">
+                    <span>Read full summary page</span>
+                    <span aria-hidden="true">▾</span>
+                </a>
             </div>
             {% endif %}
         </article>
