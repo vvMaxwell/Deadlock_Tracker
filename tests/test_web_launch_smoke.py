@@ -787,14 +787,14 @@ def test_leaderboards_hub_page_renders(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert "Deadlock Leaderboards" in response.text
-    assert "/leaderboards/row" in response.text
-    assert "/leaderboards/row/1/abrams" in response.text
+    assert "/leaderboards/north-america" in response.text
+    assert "/leaderboards/north-america/1/abrams" in response.text
 
 
 def test_leaderboard_region_page_renders(monkeypatch) -> None:
     class FakeApi:
         async def get_leaderboard(self, *, region: str, hero_id: int | None = None) -> list:
-            assert region == "row"
+            assert region == "NAmerica"
             assert hero_id is None
             return [
                 type(
@@ -841,13 +841,13 @@ def test_leaderboard_region_page_renders(monkeypatch) -> None:
     monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
 
     client = TestClient(web_app.app)
-    response = client.get("/leaderboards/row")
+    response = client.get("/leaderboards/north-america")
 
     assert response.status_code == 200
-    assert "Global Deadlock Leaderboard" in response.text
+    assert "North America Deadlock Leaderboard" in response.text
     assert "TopPlayer" in response.text
     assert "/players/123/topplayer" in response.text
-    assert "/leaderboards/row/1/abrams" in response.text
+    assert "/leaderboards/north-america/1/abrams" in response.text
 
 
 def test_rank_distribution_page_renders(monkeypatch) -> None:

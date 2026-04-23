@@ -54,14 +54,20 @@ STATIC_CSS_VERSION = int((BASE_DIR / "static" / "site.css").stat().st_mtime)
 
 app = FastAPI(title="Deadlock Stats Tracker", version="0.1.0")
 
-LEADERBOARD_REGIONS: list[tuple[str, str, str]] = [
-    ("row", "Global", "Broader global leaderboard across tracked regions."),
-    ("europe", "Europe", "Top tracked Deadlock players competing on Europe."),
-    ("se_asia", "Southeast Asia", "Tracked leaderboard players across Southeast Asia."),
-    ("s_america", "South America", "Tracked leaderboard players across South America."),
-    ("russia", "Russia", "Tracked leaderboard players across Russia."),
-    ("oceania", "Oceania", "Tracked leaderboard players across Oceania."),
+LEADERBOARD_REGIONS: list[tuple[str, str, str, str]] = [
+    ("north-america", "North America", "Top tracked Deadlock players competing in North America.", "NAmerica"),
+    ("europe", "Europe", "Top tracked Deadlock players competing in Europe.", "Europe"),
+    ("asia", "Asia", "Tracked leaderboard players across Asia.", "Asia"),
+    ("south-america", "South America", "Tracked leaderboard players across South America.", "SAmerica"),
+    ("oceania", "Oceania", "Tracked leaderboard players across Oceania.", "Oceania"),
 ]
+
+LEADERBOARD_REGION_REDIRECTS: dict[str, str] = {
+    "row": "north-america",
+    "se_asia": "asia",
+    "s_america": "south-america",
+    "russia": "europe",
+}
 
 
 class CachedStaticFiles(StaticFiles):
@@ -242,7 +248,7 @@ async def sitemap_xml(request: Request) -> Response:
     ]
     urls.extend(
         _public_url(request, str(request.url_for("leaderboard_region", region_slug=region_slug)))
-        for region_slug, _, _ in LEADERBOARD_REGIONS
+        for region_slug, _, _, _ in LEADERBOARD_REGIONS
     )
     try:
         hero_info = await api.get_hero_info()
@@ -877,7 +883,7 @@ async def leaderboards(request: Request) -> HTMLResponse:
             detail_url=str(request.url_for("leaderboard_region", region_slug=region_slug)),
             description=description,
         )
-        for region_slug, region_name, description in LEADERBOARD_REGIONS
+        for region_slug, region_name, description, _ in LEADERBOARD_REGIONS
     ]
     hero_cards = [
         StreetBrawlHeroCardView(
@@ -889,7 +895,7 @@ async def leaderboards(request: Request) -> HTMLResponse:
             build_url=str(
                 request.url_for(
                     "leaderboard_region_hero",
-                    region_slug="row",
+                    region_slug="north-america",
                     hero_id=str(hero.hero_id),
                     hero_slug=_slugify(hero.name),
                 )
@@ -929,6 +935,10 @@ async def leaderboards(request: Request) -> HTMLResponse:
 
 @app.get("/leaderboards/{region_slug}", response_class=HTMLResponse, name="leaderboard_region")
 async def leaderboard_region(request: Request, region_slug: str) -> HTMLResponse:
+    redirect_slug = LEADERBOARD_REGION_REDIRECTS.get(region_slug)
+    if redirect_slug is not None:
+        return RedirectResponse(url=str(request.url_for("leaderboard_region", region_slug=redirect_slug)), status_code=308)
+
     api = PlayerService().api
     region_name = _region_name(region_slug)
     if region_name is None:
@@ -946,7 +956,7 @@ async def leaderboard_region(request: Request, region_slug: str) -> HTMLResponse
         ))
 
     try:
-        entries = await api.get_leaderboard(region=region_slug)
+        entries = await api.get_leaderboard(region=_region_api_value(region_slug))
         hero_info = await api.get_hero_info()
         rank_info = await api.get_rank_info()
     except DeadlockError as error:
@@ -1036,6 +1046,20 @@ async def leaderboard_region_hero(
     hero_id: str,
     hero_slug: str,
 ) -> HTMLResponse:
+    redirect_slug = LEADERBOARD_REGION_REDIRECTS.get(region_slug)
+    if redirect_slug is not None:
+        return RedirectResponse(
+            url=str(
+                request.url_for(
+                    "leaderboard_region_hero",
+                    region_slug=redirect_slug,
+                    hero_id=hero_id,
+                    hero_slug=hero_slug,
+                )
+            ),
+            status_code=308,
+        )
+
     api = PlayerService().api
     region_name = _region_name(region_slug)
     parsed_hero_id = _parse_optional_int(hero_id)
@@ -1058,7 +1082,7 @@ async def leaderboard_region_hero(
         hero = hero_info.get(parsed_hero_id)
         if hero is None:
             raise DeadlockError("That hero could not be found.")
-        entries = await api.get_leaderboard(region=region_slug, hero_id=parsed_hero_id)
+        entries = await api.get_leaderboard(region=_region_api_value(region_slug), hero_id=parsed_hero_id)
         rank_info = await api.get_rank_info()
     except DeadlockError as error:
         return _html_response(TEMPLATES.TemplateResponse(
@@ -1830,7 +1854,7 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             hero_global_leaderboard_url=str(
                 request.url_for(
                     "leaderboard_region_hero",
-                    region_slug="row",
+                    region_slug="north-america",
                     hero_id=str(hero.hero_id),
                     hero_slug=_slugify(hero.name),
                 )
@@ -2670,10 +2694,17 @@ def _relative_time_text(timestamp: int | None) -> str:
 
 
 def _region_name(region_slug: str) -> str | None:
-    for slug, name, _ in LEADERBOARD_REGIONS:
+    for slug, name, _, _ in LEADERBOARD_REGIONS:
         if slug == region_slug:
             return name
     return None
+
+
+def _region_api_value(region_slug: str) -> str:
+    for slug, _, _, api_value in LEADERBOARD_REGIONS:
+        if slug == region_slug:
+            return api_value
+    return region_slug
 
 
 def _leaderboard_player_url(
