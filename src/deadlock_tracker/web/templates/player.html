@@ -19,7 +19,7 @@
         </div>
         <div class="hero-notes">
             <span>Latest match {{ overview.latest_match_text }}</span>
-            <span>Live refresh can be rate-limited, so cached history is the default.</span>
+            <span>Public match history is available again. Manual refresh can still be rate-limited.</span>
         </div>
     </div>
     {% if overview.avatarfull %}
@@ -29,15 +29,15 @@
 
 {% if refresh_status == "success" %}
 <section class="status-banner">
-    <strong>Fresh match history loaded.</strong>
-    <span>Recent matches were refreshed from the available API history.</span>
+    <strong>Fresh public match history loaded.</strong>
+    <span>Recent matches were refreshed from the latest available API history.</span>
 </section>
 {% endif %}
 
 {% if refresh_status == "fallback" %}
 <section class="status-banner">
-    <strong>Live refresh is temporarily limited.</strong>
-    <span>Showing the latest cached match history instead so the page still loads normally.</span>
+    <strong>Manual refresh is temporarily limited.</strong>
+    <span>Showing the latest available match history instead so the page still loads normally.</span>
 </section>
 {% endif %}
 

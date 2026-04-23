@@ -15,6 +15,7 @@ from deadlock_tracker.models import (
     DeadlockMatch,
     DeadlockPatch,
     DeadlockPlayer,
+    DeadlockPlayerRankDistribution,
     DeadlockRank,
     DeadlockRankInfo,
     PlayerSummary,
@@ -47,6 +48,8 @@ def test_sitemap_lists_core_pages() -> None:
     assert "<loc>http://testserver/</loc>" in response.text
     assert "<loc>http://testserver/heroes</loc>" in response.text
     assert "<loc>http://testserver/items</loc>" in response.text
+    assert "<loc>http://testserver/leaderboards</loc>" in response.text
+    assert "<loc>http://testserver/rank-distribution</loc>" in response.text
     assert "<loc>http://testserver/best-heroes</loc>" in response.text
     assert "<loc>http://testserver/best-items</loc>" in response.text
     assert "<loc>http://testserver/street-brawl-builds</loc>" in response.text
@@ -109,6 +112,7 @@ def test_sitemap_lists_hero_item_and_patch_detail_pages(monkeypatch) -> None:
     assert "<loc>http://testserver/heroes/1/abrams</loc>" in response.text
     assert "<loc>http://testserver/heroes/1/abrams/items</loc>" in response.text
     assert "<loc>http://testserver/heroes/1/abrams/matchups</loc>" in response.text
+    assert "<loc>http://testserver/heroes/1/abrams/rank-distribution</loc>" in response.text
     assert "<loc>http://testserver/items/101/mystic-shot</loc>" in response.text
     assert "<loc>http://testserver/patch-notes/125825/04-10-2026-update</loc>" in response.text
 
@@ -759,6 +763,133 @@ def test_items_directory_page_renders(monkeypatch) -> None:
     assert "/items/101/mystic-shot" in response.text
 
 
+def test_leaderboards_hub_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small="https://example.com/abrams.png",
+                    portrait_url=None,
+                    background_image_url=None,
+                )
+            }
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/leaderboards")
+
+    assert response.status_code == 200
+    assert "Deadlock Leaderboards" in response.text
+    assert "/leaderboards/row" in response.text
+    assert "/leaderboards/row/1/abrams" in response.text
+
+
+def test_leaderboard_region_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_leaderboard(self, *, region: str, hero_id: int | None = None) -> list:
+            assert region == "row"
+            assert hero_id is None
+            return [
+                type(
+                    "LeaderboardEntry",
+                    (),
+                    {
+                        "account_name": "TopPlayer",
+                        "badge_level": 81,
+                        "rank": 81,
+                        "ranked_rank": None,
+                        "ranked_subrank": None,
+                        "possible_account_ids": [123],
+                        "top_hero_ids": [1],
+                    },
+                )()
+            ]
+
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small="https://example.com/abrams.png",
+                    portrait_url=None,
+                    background_image_url=None,
+                )
+            }
+
+        async def get_rank_info(self) -> list[DeadlockRankInfo]:
+            return [
+                DeadlockRankInfo(
+                    tier=8,
+                    name="Oracle",
+                    color="#888",
+                    image_small="https://example.com/oracle.png",
+                    image_small_by_division={1: "https://example.com/oracle-1.png"},
+                )
+            ]
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/leaderboards/row")
+
+    assert response.status_code == 200
+    assert "Global Deadlock Leaderboard" in response.text
+    assert "TopPlayer" in response.text
+    assert "/players/123/topplayer" in response.text
+    assert "/leaderboards/row/1/abrams" in response.text
+
+
+def test_rank_distribution_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_player_rank_distribution(self) -> list[DeadlockPlayerRankDistribution]:
+            return [
+                DeadlockPlayerRankDistribution(rank=11, players=50),
+                DeadlockPlayerRankDistribution(rank=81, players=20),
+            ]
+
+        async def get_rank_info(self) -> list[DeadlockRankInfo]:
+            return [
+                DeadlockRankInfo(tier=1, name="Initiate", color="#111", image_small=None, image_small_by_division={}),
+                DeadlockRankInfo(tier=8, name="Oracle", color="#888", image_small=None, image_small_by_division={}),
+            ]
+
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small="https://example.com/abrams.png",
+                    portrait_url=None,
+                    background_image_url=None,
+                )
+            }
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/rank-distribution")
+
+    assert response.status_code == 200
+    assert "Deadlock Rank Distribution" in response.text
+    assert "Tracked Players" in response.text
+    assert "/heroes/1/abrams/rank-distribution" in response.text
+
+
 def test_filtered_best_heroes_page_is_noindex(monkeypatch) -> None:
     class FakeApi:
         async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
@@ -898,8 +1029,8 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
     response = client.get("/players/123?refresh=1")
 
     assert response.status_code == 200
-    assert "Live refresh is temporarily limited." in response.text
-    assert "Showing the latest cached match history instead" in response.text
+    assert "Manual refresh is temporarily limited." in response.text
+    assert "Showing the latest available match history instead" in response.text
     assert "oracle-1.png" in response.text
     assert '<link rel="canonical" href="http://testserver/players/123/tester">' in response.text
 

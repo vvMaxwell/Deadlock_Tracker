@@ -293,3 +293,28 @@ class ItemDirectoryCardView:
     slot_type: str
     tier_text: str
     cost_text: str
+
+
+@dataclass(slots=True)
+class LeaderboardRegionCardView:
+    region_slug: str
+    region_name: str
+    detail_url: str
+    description: str
+
+
+@dataclass(slots=True)
+class LeaderboardEntryView:
+    rank_number: int
+    player_name: str
+    player_url: str | None
+    hero_names_text: str
+    rank_name: str
+    rank_badge_image_url: str | None
+
+
+@dataclass(slots=True)
+class RankDistributionSummaryView:
+    label: str
+    value: str
+    detail: str

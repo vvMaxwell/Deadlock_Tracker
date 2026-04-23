@@ -14,6 +14,7 @@ from deadlock_tracker.models import (
     DeadlockHeroAnalytics,
     DeadlockHeroCounterStat,
     DeadlockHeroInfo,
+    DeadlockLeaderboardEntry,
     DeadlockHeroSynergyStat,
     DeadlockItemInfo,
     DeadlockItemStat,
@@ -236,7 +237,7 @@ class DeadlockAPI:
         *,
         limit: int = 10,
         force_refetch: bool = False,
-        only_stored_history: bool = True,
+        only_stored_history: bool = False,
     ) -> list[DeadlockMatch]:
         params: dict[str, str] = {}
         if force_refetch:
@@ -534,6 +535,54 @@ class DeadlockAPI:
             )
             for item in payload
             if item.get("rank") is not None and item.get("players") is not None
+        ]
+
+    async def get_hero_rank_distribution(self, hero_id: int) -> list[DeadlockPlayerRankDistribution]:
+        payload = await self._get_json(f"{self.base_url}/v1/players/mmr/distribution/{hero_id}")
+        return [
+            DeadlockPlayerRankDistribution(
+                rank=item["rank"],
+                players=item["players"],
+            )
+            for item in payload
+            if item.get("rank") is not None and item.get("players") is not None
+        ]
+
+    async def get_leaderboard(
+        self,
+        *,
+        region: str,
+        hero_id: int | None = None,
+    ) -> list[DeadlockLeaderboardEntry]:
+        path = (
+            f"{self.base_url}/v1/leaderboard/{region}/{hero_id}"
+            if hero_id is not None
+            else f"{self.base_url}/v1/leaderboard/{region}"
+        )
+        payload = await self._get_json(path)
+        entries = payload.get("entries") if isinstance(payload, dict) else None
+        if not isinstance(entries, list):
+            return []
+        return [
+            DeadlockLeaderboardEntry(
+                account_name=item.get("account_name"),
+                badge_level=item.get("badge_level"),
+                rank=item.get("rank"),
+                ranked_rank=item.get("ranked_rank"),
+                ranked_subrank=item.get("ranked_subrank"),
+                possible_account_ids=[
+                    int(account_id)
+                    for account_id in (item.get("possible_account_ids") or [])
+                    if isinstance(account_id, int)
+                ],
+                top_hero_ids=[
+                    int(hero_id_value)
+                    for hero_id_value in (item.get("top_hero_ids") or [])
+                    if isinstance(hero_id_value, int)
+                ],
+            )
+            for item in entries
+            if isinstance(item, dict)
         ]
 
     async def get_ability_order_stats(

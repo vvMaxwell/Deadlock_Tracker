@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.responses import Response as StarletteResponse
 
-from deadlock_tracker.clients.deadlock_api import DeadlockError
+from deadlock_tracker.clients.deadlock_api import DeadlockError, friendly_rank_name
 from deadlock_tracker.services.player_service import PlayerService
 from deadlock_tracker.web.view_models import (
     BestItemView,
@@ -26,6 +26,8 @@ from deadlock_tracker.web.view_models import (
     HeroPeerStatView,
     ItemDirectoryCardView,
     ItemModeStatView,
+    LeaderboardEntryView,
+    LeaderboardRegionCardView,
     MatchDetailItemView,
     MatchLaneView,
     MatchDetailOverviewView,
@@ -36,6 +38,7 @@ from deadlock_tracker.web.view_models import (
     PatchNoteView,
     ProfileOverviewView,
     RankDistributionBarView,
+    RankDistributionSummaryView,
     RankDistributionTierView,
     SearchResultView,
     StreetBrawlAbilityStepView,
@@ -50,6 +53,15 @@ TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 STATIC_CSS_VERSION = int((BASE_DIR / "static" / "site.css").stat().st_mtime)
 
 app = FastAPI(title="Deadlock Stats Tracker", version="0.1.0")
+
+LEADERBOARD_REGIONS: list[tuple[str, str, str]] = [
+    ("row", "Global", "Broader global leaderboard across tracked regions."),
+    ("europe", "Europe", "Top tracked Deadlock players competing on Europe."),
+    ("se_asia", "Southeast Asia", "Tracked leaderboard players across Southeast Asia."),
+    ("s_america", "South America", "Tracked leaderboard players across South America."),
+    ("russia", "Russia", "Tracked leaderboard players across Russia."),
+    ("oceania", "Oceania", "Tracked leaderboard players across Oceania."),
+]
 
 
 class CachedStaticFiles(StaticFiles):
@@ -217,6 +229,8 @@ async def sitemap_xml(request: Request) -> Response:
         _public_url(request, str(request.url_for("home"))),
         _public_url(request, str(request.url_for("heroes_directory"))),
         _public_url(request, str(request.url_for("items_directory"))),
+        _public_url(request, str(request.url_for("leaderboards"))),
+        _public_url(request, str(request.url_for("rank_distribution"))),
         _public_url(request, str(request.url_for("best_heroes"))),
         _public_url(request, str(request.url_for("best_items"))),
         _public_url(request, str(request.url_for("street_brawl_builds"))),
@@ -226,6 +240,10 @@ async def sitemap_xml(request: Request) -> Response:
         _public_url(request, str(request.url_for("credits"))),
         _public_url(request, str(request.url_for("disclaimers"))),
     ]
+    urls.extend(
+        _public_url(request, str(request.url_for("leaderboard_region", region_slug=region_slug)))
+        for region_slug, _, _ in LEADERBOARD_REGIONS
+    )
     try:
         hero_info = await api.get_hero_info()
         urls.extend(
@@ -260,6 +278,19 @@ async def sitemap_xml(request: Request) -> Response:
                 str(
                     request.url_for(
                         "hero_matchups",
+                        hero_id=str(hero.hero_id),
+                        hero_slug=_slugify(hero.name),
+                    )
+                ),
+            )
+            for hero in hero_info.values()
+        )
+        urls.extend(
+            _public_url(
+                request,
+                str(
+                    request.url_for(
+                        "hero_rank_distribution",
                         hero_id=str(hero.hero_id),
                         hero_slug=_slugify(hero.name),
                     )
@@ -820,6 +851,482 @@ async def items_directory(request: Request) -> HTMLResponse:
     ))
 
 
+@app.get("/leaderboards", response_class=HTMLResponse, name="leaderboards")
+async def leaderboards(request: Request) -> HTMLResponse:
+    api = PlayerService().api
+    try:
+        hero_info = await api.get_hero_info()
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Deadlock Leaderboards | Deadlock Stats Tracker",
+                meta_description="Deadlock leaderboard hub page.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    region_cards = [
+        LeaderboardRegionCardView(
+            region_slug=region_slug,
+            region_name=region_name,
+            detail_url=str(request.url_for("leaderboard_region", region_slug=region_slug)),
+            description=description,
+        )
+        for region_slug, region_name, description in LEADERBOARD_REGIONS
+    ]
+    hero_cards = [
+        StreetBrawlHeroCardView(
+            hero_id=hero.hero_id,
+            hero_name=hero.name,
+            hero_icon_url=hero.icon_small,
+            hero_portrait_url=hero.portrait_url,
+            hero_background_image_url=hero.background_image_url,
+            build_url=str(
+                request.url_for(
+                    "leaderboard_region_hero",
+                    region_slug="row",
+                    hero_id=str(hero.hero_id),
+                    hero_slug=_slugify(hero.name),
+                )
+            ),
+        )
+        for hero in sorted(hero_info.values(), key=lambda item: item.name.casefold())
+    ]
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "leaderboards.html",
+        _base_context(
+            request,
+            page_title="Deadlock Leaderboards | Deadlock Stats Tracker",
+            meta_description="Browse Deadlock leaderboard pages by region and by hero to find top tracked players.",
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": "Deadlock Leaderboards",
+                    "url": _public_url(request, str(request.url_for("leaderboards"))),
+                    "description": "Browse Deadlock leaderboard pages by region and hero.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Leaderboards", str(request.url_for("leaderboards"))),
+                    ],
+                ),
+            ],
+            region_cards=region_cards,
+            hero_cards=hero_cards,
+        ),
+    ))
+
+
+@app.get("/leaderboards/{region_slug}", response_class=HTMLResponse, name="leaderboard_region")
+async def leaderboard_region(request: Request, region_slug: str) -> HTMLResponse:
+    api = PlayerService().api
+    region_name = _region_name(region_slug)
+    if region_name is None:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Leaderboard Not Found | Deadlock Stats Tracker",
+                meta_description="That Deadlock leaderboard page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message="That leaderboard region could not be found.",
+            ),
+            status_code=404,
+        ))
+
+    try:
+        entries = await api.get_leaderboard(region=region_slug)
+        hero_info = await api.get_hero_info()
+        rank_info = await api.get_rank_info()
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title=f"{region_name} Leaderboard | Deadlock Stats Tracker",
+                meta_description=f"That {region_name} Deadlock leaderboard page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    rows = [
+        LeaderboardEntryView(
+            rank_number=index,
+            player_name=entry.account_name or f"Player {index}",
+            player_url=_leaderboard_player_url(request, entry.account_name, entry.possible_account_ids),
+            hero_names_text=_leaderboard_hero_names(entry.top_hero_ids, hero_info),
+            rank_name=friendly_rank_name(entry.badge_level or entry.rank),
+            rank_badge_image_url=_rank_badge_image_url(entry.badge_level or entry.rank, rank_info),
+        )
+        for index, entry in enumerate(entries[:50], start=1)
+    ]
+    hero_cards = [
+        StreetBrawlHeroCardView(
+            hero_id=hero.hero_id,
+            hero_name=hero.name,
+            hero_icon_url=hero.icon_small,
+            hero_portrait_url=hero.portrait_url,
+            hero_background_image_url=hero.background_image_url,
+            build_url=str(
+                request.url_for(
+                    "leaderboard_region_hero",
+                    region_slug=region_slug,
+                    hero_id=str(hero.hero_id),
+                    hero_slug=_slugify(hero.name),
+                )
+            ),
+        )
+        for hero in sorted(hero_info.values(), key=lambda item: item.name.casefold())
+    ]
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "leaderboard_region.html",
+        _base_context(
+            request,
+            page_title=f"{region_name} Deadlock Leaderboard | Deadlock Stats Tracker",
+            meta_description=f"Browse the top tracked Deadlock players for {region_name}, with current badge estimates and top heroes.",
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": f"{region_name} Deadlock Leaderboard",
+                    "url": _public_url(request, str(request.url_for("leaderboard_region", region_slug=region_slug))),
+                    "description": f"Browse the top tracked Deadlock players for {region_name}.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Leaderboards", str(request.url_for("leaderboards"))),
+                        (region_name, str(request.url_for("leaderboard_region", region_slug=region_slug))),
+                    ],
+                ),
+            ],
+            region_slug=region_slug,
+            region_name=region_name,
+            rows=rows,
+            hero_cards=hero_cards,
+        ),
+    ))
+
+
+@app.get(
+    "/leaderboards/{region_slug}/{hero_id}/{hero_slug}",
+    response_class=HTMLResponse,
+    name="leaderboard_region_hero",
+)
+async def leaderboard_region_hero(
+    request: Request,
+    region_slug: str,
+    hero_id: str,
+    hero_slug: str,
+) -> HTMLResponse:
+    api = PlayerService().api
+    region_name = _region_name(region_slug)
+    parsed_hero_id = _parse_optional_int(hero_id)
+    if region_name is None or parsed_hero_id is None:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Leaderboard Not Found | Deadlock Stats Tracker",
+                meta_description="That Deadlock hero leaderboard page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message="That hero leaderboard could not be found.",
+            ),
+            status_code=404,
+        ))
+
+    try:
+        hero_info = await api.get_hero_info()
+        hero = hero_info.get(parsed_hero_id)
+        if hero is None:
+            raise DeadlockError("That hero could not be found.")
+        entries = await api.get_leaderboard(region=region_slug, hero_id=parsed_hero_id)
+        rank_info = await api.get_rank_info()
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Leaderboard Not Found | Deadlock Stats Tracker",
+                meta_description="That Deadlock hero leaderboard page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    canonical_url = _public_url(
+        request,
+        str(
+            request.url_for(
+                "leaderboard_region_hero",
+                region_slug=region_slug,
+                hero_id=str(hero.hero_id),
+                hero_slug=_slugify(hero.name),
+            )
+        ),
+    )
+    if request.url.path != _url_path(canonical_url):
+        return RedirectResponse(url=canonical_url, status_code=308)
+
+    rows = [
+        LeaderboardEntryView(
+            rank_number=index,
+            player_name=entry.account_name or f"Player {index}",
+            player_url=_leaderboard_player_url(request, entry.account_name, entry.possible_account_ids),
+            hero_names_text=_leaderboard_hero_names(entry.top_hero_ids, hero_info),
+            rank_name=friendly_rank_name(entry.badge_level or entry.rank),
+            rank_badge_image_url=_rank_badge_image_url(entry.badge_level or entry.rank, rank_info),
+        )
+        for index, entry in enumerate(entries[:50], start=1)
+    ]
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "leaderboard_hero.html",
+        _base_context(
+            request,
+            page_title=f"Best {hero.name} Players in {region_name} | Deadlock Stats Tracker",
+            meta_description=f"Browse the top tracked {hero.name} players in {region_name} with current badge estimates and linked player pages.",
+            canonical_url=canonical_url,
+            og_image=hero.portrait_url or hero.background_image_url or _public_url(
+                request,
+                str(request.url_for("static", path="/branding/deadlock-stats-tracker-logo-transparent.webp")),
+            ),
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": f"Best {hero.name} Players in {region_name}",
+                    "url": canonical_url,
+                    "description": f"Browse the top tracked {hero.name} players in {region_name}.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Leaderboards", str(request.url_for("leaderboards"))),
+                        (region_name, str(request.url_for("leaderboard_region", region_slug=region_slug))),
+                        (hero.name, canonical_url),
+                    ],
+                ),
+            ],
+            region_slug=region_slug,
+            region_name=region_name,
+            hero=hero,
+            rows=rows,
+            leaderboard_region_url=str(request.url_for("leaderboard_region", region_slug=region_slug)),
+            hero_detail_url=str(
+                request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))
+            ),
+            hero_rank_distribution_url=str(
+                request.url_for(
+                    "hero_rank_distribution",
+                    hero_id=str(hero.hero_id),
+                    hero_slug=_slugify(hero.name),
+                )
+            ),
+        ),
+    ))
+
+
+@app.get("/rank-distribution", response_class=HTMLResponse, name="rank_distribution")
+async def rank_distribution(request: Request) -> HTMLResponse:
+    api = PlayerService().api
+    try:
+        distribution = await api.get_player_rank_distribution()
+        rank_info = await api.get_rank_info()
+        hero_info = await api.get_hero_info()
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Deadlock Rank Distribution | Deadlock Stats Tracker",
+                meta_description="Deadlock rank distribution page.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    tiers = _build_player_rank_distribution_views(distribution, rank_info)
+    summary_cards = _build_rank_distribution_summary_views(distribution, rank_info)
+    hero_cards = [
+        StreetBrawlHeroCardView(
+            hero_id=hero.hero_id,
+            hero_name=hero.name,
+            hero_icon_url=hero.icon_small,
+            hero_portrait_url=hero.portrait_url,
+            hero_background_image_url=hero.background_image_url,
+            build_url=str(
+                request.url_for(
+                    "hero_rank_distribution",
+                    hero_id=str(hero.hero_id),
+                    hero_slug=_slugify(hero.name),
+                )
+            ),
+        )
+        for hero in sorted(hero_info.values(), key=lambda item: item.name.casefold())
+    ]
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "rank_distribution.html",
+        _base_context(
+            request,
+            page_title="Deadlock Rank Distribution | Deadlock Stats Tracker",
+            meta_description="See the estimated Deadlock rank distribution and open hero-specific rank-distribution pages.",
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": "Deadlock Rank Distribution",
+                    "url": _public_url(request, str(request.url_for("rank_distribution"))),
+                    "description": "See the estimated Deadlock rank distribution and open hero-specific rank-distribution pages.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Rank Distribution", str(request.url_for("rank_distribution"))),
+                    ],
+                ),
+            ],
+            rank_distribution=tiers,
+            summary_cards=summary_cards,
+            hero_cards=hero_cards,
+        ),
+    ))
+
+
+@app.get(
+    "/heroes/{hero_id}/{hero_slug}/rank-distribution",
+    response_class=HTMLResponse,
+    name="hero_rank_distribution",
+)
+async def hero_rank_distribution(request: Request, hero_id: str, hero_slug: str) -> HTMLResponse:
+    api = PlayerService().api
+    parsed_hero_id = _parse_optional_int(hero_id)
+    if parsed_hero_id is None:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Rank Distribution Not Found | Deadlock Stats Tracker",
+                meta_description="That Deadlock hero rank distribution page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message="That hero could not be found.",
+            ),
+            status_code=404,
+        ))
+
+    try:
+        hero_info = await api.get_hero_info()
+        hero = hero_info.get(parsed_hero_id)
+        if hero is None:
+            raise DeadlockError("That hero could not be found.")
+        distribution = await api.get_hero_rank_distribution(parsed_hero_id)
+        rank_info = await api.get_rank_info()
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Hero Rank Distribution Not Found | Deadlock Stats Tracker",
+                meta_description="That Deadlock hero rank distribution page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    canonical_url = _public_url(
+        request,
+        str(
+            request.url_for(
+                "hero_rank_distribution",
+                hero_id=str(hero.hero_id),
+                hero_slug=_slugify(hero.name),
+            )
+        ),
+    )
+    if request.url.path != _url_path(canonical_url):
+        return RedirectResponse(url=canonical_url, status_code=308)
+
+    tiers = _build_player_rank_distribution_views(distribution, rank_info)
+    summary_cards = _build_rank_distribution_summary_views(distribution, rank_info)
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "hero_rank_distribution.html",
+        _base_context(
+            request,
+            page_title=f"{hero.name} Rank Distribution | Deadlock Stats Tracker",
+            meta_description=f"See the estimated rank distribution for tracked {hero.name} players in Deadlock.",
+            canonical_url=canonical_url,
+            og_image=hero.portrait_url or hero.background_image_url or _public_url(
+                request,
+                str(request.url_for("static", path="/branding/deadlock-stats-tracker-logo-transparent.webp")),
+            ),
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": f"{hero.name} Rank Distribution",
+                    "url": canonical_url,
+                    "description": f"See the estimated rank distribution for tracked {hero.name} players in Deadlock.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Heroes", str(request.url_for("heroes_directory"))),
+                        (hero.name, str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name)))),
+                        ("Rank Distribution", canonical_url),
+                    ],
+                ),
+            ],
+            hero=hero,
+            rank_distribution=tiers,
+            summary_cards=summary_cards,
+            hero_detail_url=str(
+                request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))
+            ),
+            global_leaderboard_url=str(
+                request.url_for(
+                    "leaderboard_region_hero",
+                    region_slug="row",
+                    hero_id=str(hero.hero_id),
+                    hero_slug=_slugify(hero.name),
+                )
+            ),
+        ),
+    ))
+
+
 @app.get("/help/steam-account-url", response_class=HTMLResponse)
 async def steam_account_url_help(request: Request) -> HTMLResponse:
     return RedirectResponse(url=str(request.url_for("faq")) + "#steam-account-url", status_code=307)
@@ -1313,6 +1820,21 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             data_warning=data_warning,
             hero_items_url=str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
             hero_matchups_url=str(request.url_for("hero_matchups", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+            hero_rank_distribution_url=str(
+                request.url_for(
+                    "hero_rank_distribution",
+                    hero_id=str(hero.hero_id),
+                    hero_slug=_slugify(hero.name),
+                )
+            ),
+            hero_global_leaderboard_url=str(
+                request.url_for(
+                    "leaderboard_region_hero",
+                    region_slug="row",
+                    hero_id=str(hero.hero_id),
+                    hero_slug=_slugify(hero.name),
+                )
+            ),
         ),
     ))
 
@@ -2147,6 +2669,39 @@ def _relative_time_text(timestamp: int | None) -> str:
     return f"{days} day{'s' if days != 1 else ''} ago"
 
 
+def _region_name(region_slug: str) -> str | None:
+    for slug, name, _ in LEADERBOARD_REGIONS:
+        if slug == region_slug:
+            return name
+    return None
+
+
+def _leaderboard_player_url(
+    request: Request,
+    account_name: str | None,
+    possible_account_ids: list[int],
+) -> str | None:
+    if not possible_account_ids:
+        return None
+    player_name = (account_name or "player").strip() or "player"
+    return str(
+        request.url_for(
+            "player_profile_canonical",
+            account_id=str(possible_account_ids[0]),
+            player_slug=_slugify(player_name),
+        )
+    )
+
+
+def _leaderboard_hero_names(top_hero_ids: list[int], hero_info: dict[int, object]) -> str:
+    names = [
+        hero_info[hero_id].name
+        for hero_id in top_hero_ids[:3]
+        if hero_id in hero_info
+    ]
+    return ", ".join(names) if names else "Top heroes unavailable"
+
+
 def _friendly_mode_label(game_mode: int | None) -> str | None:
     mapping = {
         1: "Normal",
@@ -2488,6 +3043,42 @@ def _build_player_rank_distribution_views(
             bars=grouped[tier],
         )
         for tier in sorted_tiers
+    ]
+
+
+def _build_rank_distribution_summary_views(
+    player_rank_distribution: list,
+    rank_info: list,
+) -> list[RankDistributionSummaryView]:
+    if not player_rank_distribution or not rank_info:
+        return []
+
+    total_players = sum(entry.players for entry in player_rank_distribution)
+    highest_rank = max((entry.rank for entry in player_rank_distribution if entry.players > 0), default=None)
+    most_common_rank = max(player_rank_distribution, key=lambda entry: entry.players, default=None)
+    highest_tier_name = friendly_rank_name(highest_rank) if highest_rank is not None else "Unknown"
+    most_common_name = friendly_rank_name(most_common_rank.rank) if most_common_rank is not None else "Unknown"
+    most_common_share = (
+        f"{(most_common_rank.players / total_players) * 100:.1f}%"
+        if most_common_rank is not None and total_players
+        else "0.0%"
+    )
+    return [
+        RankDistributionSummaryView(
+            label="Tracked Players",
+            value=f"{total_players:,}",
+            detail="Estimated from the current tracked leaderboard and badge data.",
+        ),
+        RankDistributionSummaryView(
+            label="Most Common Badge",
+            value=most_common_name,
+            detail=f"{most_common_share} of tracked players sit in this exact sub-rank." if total_players else "No tracked players yet.",
+        ),
+        RankDistributionSummaryView(
+            label="Highest Badge Seen",
+            value=highest_tier_name,
+            detail="Highest populated tracked sub-rank in the current distribution snapshot.",
+        ),
     ]
 
 

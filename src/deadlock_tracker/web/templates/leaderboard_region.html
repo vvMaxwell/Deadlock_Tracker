@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}{{ region_name }} Deadlock Leaderboard | Deadlock Stats Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="/leaderboards">Back to leaderboards</a>
+        <a class="back-link" href="/rank-distribution">Rank distribution</a>
+    </div>
+    <p class="eyebrow">Regional Leaderboard</p>
+    <h1>{{ region_name }} Deadlock Leaderboard</h1>
+    <p class="lede">Top tracked players for {{ region_name }}, with estimated current badges and fast links into player profiles when account resolution is available.</p>
+
+    <section class="panel panel-matches">
+        <div class="section-heading">
+            <div class="section-heading-top">
+                <h2>Top Players</h2>
+                <span class="section-badge">Top 50</span>
+            </div>
+            <p>The API can attach possible account IDs to leaderboard entries. When that data is available, player names link directly into profile pages on this site.</p>
+        </div>
+        <div class="match-feed">
+            {% for row in rows %}
+            <article class="match-card">
+                <div class="match-card-top">
+                    <div class="match-card-title">
+                        <div class="hero-icon hero-icon-fallback hero-icon-match">#{{ row.rank_number }}</div>
+                        <div>
+                            {% if row.player_url %}
+                            <p class="match-hero"><a class="text-link" href="{{ row.player_url }}">{{ row.player_name }}</a></p>
+                            {% else %}
+                            <p class="match-hero">{{ row.player_name }}</p>
+                            {% endif %}
+                            <h3>{{ row.rank_name }}</h3>
+                        </div>
+                    </div>
+                    <div class="match-top-right">
+                        {% if row.rank_badge_image_url %}
+                        <img class="hero-icon" src="{{ row.rank_badge_image_url }}" alt="{{ row.rank_name }}">
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="match-summary">
+                    <span>Top heroes {{ row.hero_names_text }}</span>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="results-section">
+        <div class="section-heading">
+            <h2>{{ region_name }} Hero Leaderboards</h2>
+            <p>Open a hero-specific leaderboard to see the strongest tracked players for that hero in this region.</p>
+        </div>
+        <div class="street-brawl-hero-grid">
+            {% for hero in hero_cards %}
+            <a class="street-brawl-hero-tile" href="{{ hero.build_url }}">
+                <div class="street-brawl-hero-tile-copy">
+                    <strong>{{ hero.hero_name }}</strong>
+                    <span>Open {{ region_name }} hero leaderboard</span>
+                </div>
+                {% if hero.hero_portrait_url %}
+                <img class="street-brawl-hero-tile-portrait" src="{{ hero.hero_portrait_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
+                {% elif hero.hero_icon_url %}
+                <img class="street-brawl-hero-tile-portrait street-brawl-hero-tile-portrait-fallback" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+</section>
+{% endblock %}

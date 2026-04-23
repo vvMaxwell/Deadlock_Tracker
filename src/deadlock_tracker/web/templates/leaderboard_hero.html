@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Best {{ hero.name }} Players in {{ region_name }} | Deadlock Stats Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="{{ leaderboard_region_url }}">Back to {{ region_name }}</a>
+        <a class="back-link" href="{{ hero_detail_url }}">{{ hero.name }} guide</a>
+        <a class="back-link" href="{{ hero_rank_distribution_url }}">{{ hero.name }} rank distribution</a>
+    </div>
+    <section class="player-hero"{% if hero.background_image_url %} style="background-image: linear-gradient(180deg, rgba(8, 6, 4, 0.3), rgba(8, 6, 4, 0.94)), url('{{ hero.background_image_url }}'); background-size: cover; background-position: center;"{% endif %}>
+        <div>
+            <p class="eyebrow">Hero Leaderboard</p>
+            <h1>Best {{ hero.name }} Players in {{ region_name }}</h1>
+            <p class="lede">Top tracked {{ hero.name }} players for {{ region_name }}, linked into player profiles when the leaderboard entry includes a usable account match.</p>
+        </div>
+        <div class="card-preview">
+            {% if hero.portrait_url %}
+            <img src="{{ hero.portrait_url }}" alt="{{ hero.name }}">
+            {% elif hero.icon_small %}
+            <img src="{{ hero.icon_small }}" alt="{{ hero.name }}">
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="panel panel-matches">
+        <div class="section-heading">
+            <div class="section-heading-top">
+                <h2>Top {{ hero.name }} Players</h2>
+                <span class="section-badge">Top 50</span>
+            </div>
+            <p>These rows are ordered by the API leaderboard rank for this hero and region.</p>
+        </div>
+        <div class="match-feed">
+            {% for row in rows %}
+            <article class="match-card">
+                <div class="match-card-top">
+                    <div class="match-card-title">
+                        <div class="hero-icon hero-icon-fallback hero-icon-match">#{{ row.rank_number }}</div>
+                        <div>
+                            {% if row.player_url %}
+                            <p class="match-hero"><a class="text-link" href="{{ row.player_url }}">{{ row.player_name }}</a></p>
+                            {% else %}
+                            <p class="match-hero">{{ row.player_name }}</p>
+                            {% endif %}
+                            <h3>{{ row.rank_name }}</h3>
+                        </div>
+                    </div>
+                    <div class="match-top-right">
+                        {% if row.rank_badge_image_url %}
+                        <img class="hero-icon" src="{{ row.rank_badge_image_url }}" alt="{{ row.rank_name }}">
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="match-summary">
+                    <span>Top heroes {{ row.hero_names_text }}</span>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+</section>
+{% endblock %}

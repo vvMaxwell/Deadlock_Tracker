@@ -124,6 +124,17 @@ class DeadlockPlayerRankDistribution:
 
 
 @dataclass(slots=True)
+class DeadlockLeaderboardEntry:
+    account_name: str | None
+    badge_level: int | None
+    rank: int | None
+    ranked_rank: int | None
+    ranked_subrank: int | None
+    possible_account_ids: list[int]
+    top_hero_ids: list[int]
+
+
+@dataclass(slots=True)
 class DeadlockItemInfo:
     item_id: int
     name: str
