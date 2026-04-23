@@ -308,6 +308,7 @@ class LeaderboardEntryView:
     rank_number: int
     player_name: str
     player_url: str | None
+    avatarfull: str | None
     hero_names_text: str
     rank_name: str
     rank_badge_image_url: str | None

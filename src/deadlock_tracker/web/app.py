@@ -959,6 +959,7 @@ async def leaderboard_region(request: Request, region_slug: str) -> HTMLResponse
         entries = await api.get_leaderboard(region=_region_api_value(region_slug))
         hero_info = await api.get_hero_info()
         rank_info = await api.get_rank_info()
+        steam_profiles = await api.get_steam_profiles(_leaderboard_account_ids(entries[:50]))
     except DeadlockError as error:
         return _html_response(TEMPLATES.TemplateResponse(
             request,
@@ -978,6 +979,7 @@ async def leaderboard_region(request: Request, region_slug: str) -> HTMLResponse
             rank_number=index,
             player_name=entry.account_name or f"Player {index}",
             player_url=_leaderboard_player_url(request, entry.account_name, entry.possible_account_ids),
+            avatarfull=(steam_profiles.get(entry.possible_account_ids[0]).avatarfull if entry.possible_account_ids and steam_profiles.get(entry.possible_account_ids[0]) else None),
             hero_names_text=_leaderboard_hero_names(entry.top_hero_ids, hero_info),
             rank_name=friendly_rank_name(entry.badge_level or entry.rank),
             rank_badge_image_url=_rank_badge_image_url(entry.badge_level or entry.rank, rank_info),
@@ -1084,6 +1086,7 @@ async def leaderboard_region_hero(
             raise DeadlockError("That hero could not be found.")
         entries = await api.get_leaderboard(region=_region_api_value(region_slug), hero_id=parsed_hero_id)
         rank_info = await api.get_rank_info()
+        steam_profiles = await api.get_steam_profiles(_leaderboard_account_ids(entries[:50]))
     except DeadlockError as error:
         return _html_response(TEMPLATES.TemplateResponse(
             request,
@@ -1117,6 +1120,7 @@ async def leaderboard_region_hero(
             rank_number=index,
             player_name=entry.account_name or f"Player {index}",
             player_url=_leaderboard_player_url(request, entry.account_name, entry.possible_account_ids),
+            avatarfull=(steam_profiles.get(entry.possible_account_ids[0]).avatarfull if entry.possible_account_ids and steam_profiles.get(entry.possible_account_ids[0]) else None),
             hero_names_text=_leaderboard_hero_names(entry.top_hero_ids, hero_info),
             rank_name=friendly_rank_name(entry.badge_level or entry.rank),
             rank_badge_image_url=_rank_badge_image_url(entry.badge_level or entry.rank, rank_info),
@@ -2722,6 +2726,18 @@ def _leaderboard_player_url(
             player_slug=_slugify(player_name),
         )
     )
+
+
+def _leaderboard_account_ids(entries: list[object]) -> list[int]:
+    account_ids: list[int] = []
+    seen: set[int] = set()
+    for entry in entries:
+        for account_id in getattr(entry, "possible_account_ids", []):
+            if account_id not in seen:
+                seen.add(account_id)
+                account_ids.append(account_id)
+                break
+    return account_ids
 
 
 def _leaderboard_hero_names(top_hero_ids: list[int], hero_info: dict[int, object]) -> str:

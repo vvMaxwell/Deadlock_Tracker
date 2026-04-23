@@ -25,7 +25,11 @@
             <article class="match-card">
                 <div class="match-card-top">
                     <div class="match-card-title">
+                        {% if row.avatarfull %}
+                        <img class="hero-icon hero-icon-match" src="{{ row.avatarfull }}" alt="{{ row.player_name }}" loading="lazy" decoding="async">
+                        {% else %}
                         <div class="hero-icon hero-icon-fallback hero-icon-match">#{{ row.rank_number }}</div>
+                        {% endif %}
                         <div>
                             {% if row.player_url %}
                             <p class="match-hero"><a class="text-link" href="{{ row.player_url }}">{{ row.player_name }}</a></p>
@@ -33,6 +37,7 @@
                             <p class="match-hero">{{ row.player_name }}</p>
                             {% endif %}
                             <h3>{{ row.rank_name }}</h3>
+                            <p class="match-played">Leaderboard rank #{{ row.rank_number }}</p>
                         </div>
                     </div>
                     <div class="match-top-right">

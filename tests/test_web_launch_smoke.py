@@ -812,6 +812,18 @@ def test_leaderboard_region_page_renders(monkeypatch) -> None:
                 )()
             ]
 
+        async def get_steam_profiles(self, account_ids: list[int]) -> dict[int, object]:
+            assert account_ids == [123]
+            return {
+                123: type(
+                    "SteamProfile",
+                    (),
+                    {
+                        "avatarfull": "https://example.com/avatar.png",
+                    },
+                )()
+            }
+
         async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
             return {
                 1: DeadlockHeroInfo(
@@ -848,6 +860,7 @@ def test_leaderboard_region_page_renders(monkeypatch) -> None:
     assert "TopPlayer" in response.text
     assert "/players/123/topplayer" in response.text
     assert "/leaderboards/north-america/1/abrams" in response.text
+    assert "https://example.com/avatar.png" in response.text
 
 
 def test_rank_distribution_page_renders(monkeypatch) -> None:
