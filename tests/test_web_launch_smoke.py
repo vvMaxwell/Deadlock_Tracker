@@ -5,6 +5,11 @@ from fastapi.testclient import TestClient
 from deadlock_tracker.clients.deadlock_api import DeadlockAPI
 from deadlock_tracker.clients.deadlock_api import DeadlockError
 from deadlock_tracker.models import (
+    DeadlockBuild,
+    DeadlockBuildCategory,
+    DeadlockBuildMod,
+    DeadlockHeroBuild,
+    DeadlockHeroBuildStat,
     DeadlockAbilityOrderStat,
     DeadlockHeroInfo,
     DeadlockHeroCounterStat,
@@ -46,6 +51,7 @@ def test_sitemap_lists_core_pages() -> None:
 
     assert response.status_code == 200
     assert "<loc>http://testserver/</loc>" in response.text
+    assert "<loc>http://testserver/builds</loc>" in response.text
     assert "<loc>http://testserver/heroes</loc>" in response.text
     assert "<loc>http://testserver/items</loc>" in response.text
     assert "<loc>http://testserver/leaderboards</loc>" in response.text
@@ -110,6 +116,7 @@ def test_sitemap_lists_hero_item_and_patch_detail_pages(monkeypatch) -> None:
     response = client.get("/sitemap.xml")
 
     assert "<loc>http://testserver/heroes/1/abrams</loc>" in response.text
+    assert "<loc>http://testserver/builds/1/abrams</loc>" in response.text
     assert "<loc>http://testserver/heroes/1/abrams/items</loc>" in response.text
     assert "<loc>http://testserver/heroes/1/abrams/matchups</loc>" in response.text
     assert "<loc>http://testserver/heroes/1/abrams/rank-distribution</loc>" in response.text
@@ -763,6 +770,150 @@ def test_items_directory_page_renders(monkeypatch) -> None:
     assert "/items/101/mystic-shot" in response.text
 
 
+def test_builds_hub_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small="https://example.com/abrams.png",
+                    portrait_url=None,
+                    background_image_url=None,
+                )
+            }
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/builds")
+
+    assert response.status_code == 200
+    assert "Normal Builds" in response.text
+    assert "/builds/1/abrams" in response.text
+
+
+def test_hero_builds_page_renders(monkeypatch) -> None:
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small="https://example.com/abrams.png",
+                    portrait_url=None,
+                    background_image_url=None,
+                )
+            }
+
+        async def search_builds(self, **_: object) -> list[DeadlockBuild]:
+            return [
+                DeadlockBuild(
+                    hero_build=DeadlockHeroBuild(
+                        hero_build_id=777,
+                        hero_id=1,
+                        author_account_id=123,
+                        name="Ranked Core",
+                        description="Fast lane into midgame.",
+                        language=0,
+                        version=3,
+                        origin_build_id=777,
+                        publish_timestamp=1,
+                        last_updated_timestamp=1,
+                        development_build=False,
+                        tags=[],
+                        mod_categories=[
+                            DeadlockBuildCategory(
+                                name="Core",
+                                description=None,
+                                optional=False,
+                                mods=[
+                                    DeadlockBuildMod(
+                                        ability_id=101,
+                                        annotation=None,
+                                        imbue_target_ability_id=None,
+                                        required_flex_slots=None,
+                                        sell_priority=None,
+                                    )
+                                ],
+                            )
+                        ],
+                        ability_order=[],
+                    ),
+                    num_favorites=50,
+                    num_ignores=0,
+                    num_reports=0,
+                    num_weekly_favorites=12,
+                    rollup_category=None,
+                )
+            ]
+
+        async def get_hero_build_stats(self, **_: object) -> list[DeadlockHeroBuildStat]:
+            return [
+                DeadlockHeroBuildStat(
+                    hero_id=1,
+                    hero_build_id=777,
+                    wins=30,
+                    losses=10,
+                    matches=40,
+                    players=25,
+                )
+            ]
+
+        async def get_item_stats(self, **_: object) -> list[DeadlockItemStat]:
+            return [
+                DeadlockItemStat(
+                    item_id=101,
+                    wins=25,
+                    losses=5,
+                    matches=30,
+                    players=20,
+                    avg_buy_time_s=120.0,
+                    avg_sell_time_s=None,
+                    avg_buy_time_relative=None,
+                    avg_sell_time_relative=None,
+                )
+            ]
+
+        async def get_ability_order_stats(self, **_: object) -> list[DeadlockAbilityOrderStat]:
+            return []
+
+        async def get_all_item_info(self) -> dict[int, DeadlockItemInfo]:
+            return {
+                101: DeadlockItemInfo(
+                    item_id=101,
+                    name="Mystic Shot",
+                    image="https://example.com/item.png",
+                    shop_image="https://example.com/item-shop.png",
+                    item_slot_type="weapon",
+                    item_tier=1,
+                    cost=500,
+                    is_active_item=False,
+                    item_type="upgrade",
+                    ability_type=None,
+                    hero_id=None,
+                )
+            }
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/builds/1/abrams")
+
+    assert response.status_code == 200
+    assert "Abrams Normal Build" in response.text
+    assert "Ranked Core" in response.text
+    assert "Mystic Shot" in response.text
+
+
 def test_leaderboards_hub_page_renders(monkeypatch) -> None:
     class FakeApi:
         async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
@@ -1042,8 +1193,8 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
     response = client.get("/players/123?refresh=1")
 
     assert response.status_code == 200
-    assert "Manual refresh is temporarily limited." in response.text
-    assert "Showing the latest available match history instead" in response.text
+    assert "Refresh is temporarily unavailable." in response.text
+    assert "Showing the latest history currently returned by the API." in response.text
     assert "oracle-1.png" in response.text
     assert '<link rel="canonical" href="http://testserver/players/123/tester">' in response.text
 

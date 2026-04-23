@@ -7,7 +7,7 @@
     <div>
         <div class="hero-actions">
             <a class="back-link" href="/">Back to search</a>
-            <a class="refresh-link" href="{{ player_refresh_url }}">Try Live Refresh</a>
+            <a class="refresh-link" href="{{ player_refresh_url }}">Refresh Match History</a>
         </div>
         <p class="eyebrow">Player Overview</p>
         <h1>{{ overview.personaname }}</h1>
@@ -19,7 +19,7 @@
         </div>
         <div class="hero-notes">
             <span>Latest match {{ overview.latest_match_text }}</span>
-            <span>Public match history is available again. Manual refresh can still be rate-limited.</span>
+            <span>Showing the latest history currently returned by the API.</span>
         </div>
     </div>
     {% if overview.avatarfull %}
@@ -29,15 +29,15 @@
 
 {% if refresh_status == "success" %}
 <section class="status-banner">
-    <strong>Fresh public match history loaded.</strong>
-    <span>Recent matches were refreshed from the latest available API history.</span>
+    <strong>Match history refreshed.</strong>
+    <span>Showing the latest history currently returned by the API.</span>
 </section>
 {% endif %}
 
 {% if refresh_status == "fallback" %}
 <section class="status-banner">
-    <strong>Manual refresh is temporarily limited.</strong>
-    <span>Showing the latest available match history instead so the page still loads normally.</span>
+    <strong>Refresh is temporarily unavailable.</strong>
+    <span>Showing the latest history currently returned by the API.</span>
 </section>
 {% endif %}
 
@@ -45,7 +45,7 @@
     <article class="overview-card overview-card-highlight">
         <p class="eyebrow">Latest Match Seen</p>
         <h2>{{ overview.latest_match_text }}</h2>
-        <p class="overview-stat">Most recent match loaded from the available player history.</p>
+        <p class="overview-stat">Most recent match returned by the player history API.</p>
     </article>
     <article class="overview-card">
         <p class="eyebrow">Estimated Rank</p>

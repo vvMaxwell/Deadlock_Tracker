@@ -319,3 +319,19 @@ class RankDistributionSummaryView:
     label: str
     value: str
     detail: str
+
+
+@dataclass(slots=True)
+class HeroBuildCardView:
+    build_name: str
+    build_id: int
+    version_text: str
+    updated_text: str
+    description: str | None
+    favorite_text: str
+    weekly_favorite_text: str
+    win_rate_percent: str | None
+    matches_text: str | None
+    players_text: str | None
+    categories: list[str]
+    item_names: list[str]

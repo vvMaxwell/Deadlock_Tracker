@@ -23,6 +23,7 @@ from deadlock_tracker.web.view_models import (
     HeroStatView,
     HeroDirectoryCardView,
     HeroDetailItemView,
+    HeroBuildCardView,
     HeroPeerStatView,
     ItemDirectoryCardView,
     ItemModeStatView,
@@ -233,6 +234,7 @@ async def sitemap_xml(request: Request) -> Response:
     api = PlayerService().api
     urls = [
         _public_url(request, str(request.url_for("home"))),
+        _public_url(request, str(request.url_for("builds_hub"))),
         _public_url(request, str(request.url_for("heroes_directory"))),
         _public_url(request, str(request.url_for("items_directory"))),
         _public_url(request, str(request.url_for("leaderboards"))),
@@ -258,6 +260,19 @@ async def sitemap_xml(request: Request) -> Response:
                 str(
                     request.url_for(
                         "hero_detail",
+                        hero_id=str(hero.hero_id),
+                        hero_slug=_slugify(hero.name),
+                    )
+                ),
+            )
+            for hero in hero_info.values()
+        )
+        urls.extend(
+            _public_url(
+                request,
+                str(
+                    request.url_for(
+                        "hero_builds",
                         hero_id=str(hero.hero_id),
                         hero_slug=_slugify(hero.name),
                     )
@@ -1360,6 +1375,297 @@ async def steam_account_url_help(request: Request) -> HTMLResponse:
     return RedirectResponse(url=str(request.url_for("faq")) + "#steam-account-url", status_code=307)
 
 
+@app.get("/builds", response_class=HTMLResponse, name="builds_hub")
+async def builds_hub(request: Request, hero_id: str | None = None) -> HTMLResponse:
+    api = PlayerService().api
+    hero_info = await api.get_hero_info()
+    sorted_heroes = sorted(hero_info.values(), key=lambda item: item.name.casefold())
+    parsed_hero_id = _parse_optional_int(hero_id)
+    if parsed_hero_id is not None and parsed_hero_id in hero_info:
+        hero = hero_info[parsed_hero_id]
+        return RedirectResponse(
+            url=str(request.url_for("hero_builds", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+            status_code=303,
+        )
+
+    hero_cards = [
+        StreetBrawlHeroCardView(
+            hero_id=hero.hero_id,
+            hero_name=hero.name,
+            hero_icon_url=hero.icon_small,
+            hero_portrait_url=hero.portrait_url,
+            hero_background_image_url=hero.background_image_url,
+            build_url=str(
+                request.url_for("hero_builds", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))
+            ),
+        )
+        for hero in sorted_heroes
+    ]
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "builds.html",
+        _base_context(
+            request,
+            page_title="Deadlock Builds | Deadlock Stats Tracker",
+            meta_description="Browse Normal mode Deadlock builds by hero, then compare them with Street Brawl builds and live item trends.",
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": "Deadlock Builds",
+                    "url": _public_url(request, str(request.url_for("builds_hub"))),
+                    "description": "Browse Normal mode Deadlock builds by hero.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Builds", str(request.url_for("builds_hub"))),
+                    ],
+                ),
+            ],
+            hero_options=[
+                FilterOptionView(value=str(hero.hero_id), label=hero.name)
+                for hero in sorted_heroes
+            ],
+            selected_hero_id="",
+            selected_hero_name=None,
+            hero_cards=hero_cards,
+            build_cards=[],
+            item_rows=[],
+            guide=None,
+            error_message=None,
+            current_mode_name="Normal",
+            current_mode_description="Browse Normal mode builds from the public build database and compare them against live tracked item performance.",
+        ),
+    ))
+
+
+@app.get("/builds/{hero_id}/{hero_slug}", response_class=HTMLResponse, name="hero_builds")
+async def hero_builds(request: Request, hero_id: str, hero_slug: str) -> HTMLResponse:
+    api = PlayerService().api
+    parsed_hero_id = _parse_optional_int(hero_id)
+    if parsed_hero_id is None:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Builds Not Found | Deadlock Stats Tracker",
+                meta_description="That Deadlock build page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message="That hero could not be found.",
+            ),
+            status_code=404,
+        ))
+
+    try:
+        hero_info = await api.get_hero_info()
+        hero = hero_info.get(parsed_hero_id)
+        if hero is None:
+            raise DeadlockError("That hero could not be found.")
+        canonical_url = _public_url(
+            request,
+            str(request.url_for("hero_builds", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+        )
+        if request.url.path != _url_path(canonical_url):
+            return RedirectResponse(url=canonical_url, status_code=308)
+    except DeadlockError as error:
+        return _html_response(TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            _base_context(
+                request,
+                page_title="Builds Not Found | Deadlock Stats Tracker",
+                meta_description="That Deadlock build page could not be loaded right now.",
+                meta_robots="noindex,follow",
+                message=str(error),
+            ),
+            status_code=404,
+        ))
+
+    sorted_heroes = sorted(hero_info.values(), key=lambda item: item.name.casefold())
+    hero_cards = [
+        StreetBrawlHeroCardView(
+            hero_id=item.hero_id,
+            hero_name=item.name,
+            hero_icon_url=item.icon_small,
+            hero_portrait_url=item.portrait_url,
+            hero_background_image_url=item.background_image_url,
+            build_url=str(
+                request.url_for("hero_builds", hero_id=str(item.hero_id), hero_slug=_slugify(item.name))
+            ),
+        )
+        for item in sorted_heroes
+    ]
+
+    build_cards: list[HeroBuildCardView] = []
+    item_rows: list[StreetBrawlBuildItemView] = []
+    guide: StreetBrawlGuideView | None = None
+    error_message: str | None = None
+    try:
+        builds = await api.search_builds(
+            hero_id=hero.hero_id,
+            limit=12,
+            sort_by="weekly_favorites",
+            sort_direction="desc",
+            only_latest=True,
+            min_unix_timestamp=int(time()) - 90 * 86400,
+        )
+        build_stats = await api.get_hero_build_stats(
+            hero_id=hero.hero_id,
+            min_matches=20,
+            min_unix_timestamp=int(time()) - 30 * 86400,
+        )
+        item_stats = await api.get_item_stats(
+            hero_id=hero.hero_id,
+            game_mode="normal",
+            min_matches=100,
+            min_unix_timestamp=int(time()) - 7 * 86400,
+        )
+        ability_orders = await api.get_ability_order_stats(
+            hero_id=hero.hero_id,
+            game_mode="normal",
+            min_matches=50,
+            min_unix_timestamp=int(time()) - 30 * 86400,
+        )
+        item_info_map = await api.get_all_item_info()
+
+        stats_by_build_id = {entry.hero_build_id: entry for entry in build_stats}
+        ranked_builds = sorted(
+            builds,
+            key=lambda build: (
+                (stats_by_build_id[build.hero_build.hero_build_id].wins / stats_by_build_id[build.hero_build.hero_build_id].matches)
+                if build.hero_build.hero_build_id in stats_by_build_id and stats_by_build_id[build.hero_build.hero_build_id].matches
+                else 0.0,
+                build.num_weekly_favorites or 0,
+                build.num_favorites or 0,
+            ),
+            reverse=True,
+        )
+        for build in ranked_builds[:8]:
+            stat = stats_by_build_id.get(build.hero_build.hero_build_id)
+            categories = [
+                category.name
+                for category in build.hero_build.mod_categories
+                if category.mods
+            ][:3]
+            item_names = _build_item_names_from_build(build.hero_build.mod_categories, item_info_map)
+            build_cards.append(
+                HeroBuildCardView(
+                    build_name=build.hero_build.name,
+                    build_id=build.hero_build.hero_build_id,
+                    version_text=f"Version {build.hero_build.version}",
+                    updated_text=_relative_time_text(build.hero_build.last_updated_timestamp or build.hero_build.publish_timestamp),
+                    description=build.hero_build.description,
+                    favorite_text=f"{build.num_favorites or 0:,} favorites",
+                    weekly_favorite_text=f"{build.num_weekly_favorites or 0:,} weekly favorites",
+                    win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat and stat.matches else None,
+                    matches_text=f"{stat.matches:,} matches" if stat and stat.matches else None,
+                    players_text=f"{stat.players:,} players" if stat and stat.players else None,
+                    categories=categories,
+                    item_names=item_names,
+                )
+            )
+
+        ranked_items = sorted(
+            [
+                (stat, item_info_map.get(stat.item_id))
+                for stat in item_stats
+                if item_info_map.get(stat.item_id) is not None and item_info_map[stat.item_id].item_type == "upgrade"
+            ],
+            key=lambda entry: (((entry[0].wins / entry[0].matches) if entry[0].matches else 0.0), entry[0].matches),
+            reverse=True,
+        )[:10]
+        for index, (stat, item_info) in enumerate(ranked_items, start=1):
+            if item_info is None:
+                continue
+            item_rows.append(
+                StreetBrawlBuildItemView(
+                    rank_number=index,
+                    item_name=item_info.name,
+                    item_image_url=item_info.shop_image or item_info.image,
+                    slot_type=_friendly_slot_type(item_info.item_slot_type),
+                    tier_text=_friendly_item_tier_text(item_info.item_tier),
+                    cost_text=f"{item_info.cost:,} souls" if item_info.cost else "Cost Unknown",
+                    win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat.matches else "0.0%",
+                    matches_text=f"{stat.matches:,} matches",
+                    players_text=f"{stat.players:,} players",
+                    avg_buy_time_text=_friendly_time_seconds(stat.avg_buy_time_s),
+                    wins_text=f"{stat.wins:,} wins",
+                    losses_text=f"{stat.losses:,} losses",
+                )
+            )
+
+        most_common_path = max(ability_orders, key=lambda entry: entry.matches, default=None)
+        if most_common_path is not None:
+            guide = StreetBrawlGuideView(
+                hero_name=hero.name,
+                hero_icon_url=hero.icon_small,
+                hero_portrait_url=hero.portrait_url,
+                hero_background_image_url=hero.background_image_url,
+                ability_steps=[
+                    StreetBrawlAbilityStepView(
+                        step_number=index,
+                        ability_name=(item_info_map.get(ability_id).name if item_info_map.get(ability_id) else f"Ability {index}"),
+                        ability_image_url=item_info_map.get(ability_id).image if item_info_map.get(ability_id) else None,
+                        ability_type=_friendly_ability_type(item_info_map.get(ability_id).ability_type if item_info_map.get(ability_id) else None),
+                    )
+                    for index, ability_id in enumerate(most_common_path.abilities, start=1)
+                ],
+                path_matches_text=f"{most_common_path.matches:,} matches",
+                path_players_text=f"{most_common_path.players:,} players",
+                path_win_rate_percent=f"{(most_common_path.wins / most_common_path.matches):.1%}" if most_common_path.matches else "0.0%",
+            )
+    except DeadlockError as error:
+        error_message = str(error)
+
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "builds.html",
+        _base_context(
+            request,
+            page_title=f"{hero.name} Normal Build | Deadlock Stats Tracker",
+            meta_description=f"See the latest {hero.name} Normal mode builds in Deadlock, plus tracked item performance and common opening paths.",
+            canonical_url=canonical_url,
+            og_image=hero.portrait_url or hero.background_image_url or _public_url(
+                request, str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
+            ),
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "CollectionPage",
+                    "name": f"{hero.name} Normal Builds",
+                    "url": canonical_url,
+                    "description": f"See the latest {hero.name} Normal mode builds in Deadlock.",
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Builds", str(request.url_for("builds_hub"))),
+                        (hero.name, canonical_url),
+                    ],
+                ),
+            ],
+            hero_options=[
+                FilterOptionView(value=str(item.hero_id), label=item.name)
+                for item in sorted_heroes
+            ],
+            selected_hero_id=str(hero.hero_id),
+            selected_hero_name=hero.name,
+            hero_cards=hero_cards,
+            build_cards=build_cards,
+            item_rows=item_rows,
+            guide=guide,
+            error_message=error_message,
+            current_mode_name="Normal",
+            current_mode_description="Public build database entries sorted with live build performance, then paired with tracked Normal mode item and ability-order data.",
+        ),
+    ))
+
+
 @app.get("/best-items", response_class=HTMLResponse)
 async def best_items(
     request: Request,
@@ -1848,6 +2154,7 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             data_warning=data_warning,
             hero_items_url=str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
             hero_matchups_url=str(request.url_for("hero_matchups", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+            hero_builds_url=str(request.url_for("hero_builds", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
             hero_rank_distribution_url=str(
                 request.url_for(
                     "hero_rank_distribution",
@@ -2747,6 +3054,23 @@ def _leaderboard_hero_names(top_hero_ids: list[int], hero_info: dict[int, object
         if hero_id in hero_info
     ]
     return ", ".join(names) if names else "Top heroes unavailable"
+
+
+def _build_item_names_from_build(categories: list[object], item_info_map: dict[int, object]) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for category in categories:
+        for mod in getattr(category, "mods", []):
+            item = item_info_map.get(getattr(mod, "ability_id", None))
+            if item is None:
+                continue
+            if item.name in seen:
+                continue
+            seen.add(item.name)
+            names.append(item.name)
+            if len(names) >= 5:
+                return names
+    return names
 
 
 def _friendly_mode_label(game_mode: int | None) -> str | None:

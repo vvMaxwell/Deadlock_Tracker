@@ -13,7 +13,12 @@ from deadlock_tracker.models import (
     DeadlockBadgeDistribution,
     DeadlockHeroAnalytics,
     DeadlockHeroCounterStat,
+    DeadlockBuild,
+    DeadlockBuildCategory,
+    DeadlockBuildMod,
     DeadlockHeroInfo,
+    DeadlockHeroBuild,
+    DeadlockHeroBuildStat,
     DeadlockLeaderboardEntry,
     DeadlockHeroSynergyStat,
     DeadlockItemInfo,
@@ -548,6 +553,69 @@ class DeadlockAPI:
             if item.get("rank") is not None and item.get("players") is not None
         ]
 
+    async def search_builds(
+        self,
+        *,
+        hero_id: int | None = None,
+        limit: int = 12,
+        sort_by: str = "weekly_favorites",
+        sort_direction: str = "desc",
+        only_latest: bool = True,
+        min_unix_timestamp: int | None = None,
+    ) -> list[DeadlockBuild]:
+        params: dict[str, str] = {
+            "limit": str(limit),
+            "sort_by": sort_by,
+            "sort_direction": sort_direction,
+        }
+        if hero_id is not None:
+            params["hero_id"] = str(hero_id)
+        if only_latest:
+            params["only_latest"] = "true"
+        if min_unix_timestamp is not None:
+            params["min_unix_timestamp"] = str(min_unix_timestamp)
+
+        payload = await self._get_json(f"{self.base_url}/v1/builds", params=params)
+        return [
+            DeadlockBuild(
+                hero_build=_parse_build_hero(item.get("hero_build") or {}),
+                num_favorites=item.get("num_favorites"),
+                num_ignores=item.get("num_ignores"),
+                num_reports=item.get("num_reports"),
+                num_weekly_favorites=item.get("num_weekly_favorites"),
+                rollup_category=item.get("rollup_category"),
+            )
+            for item in payload
+            if isinstance(item, dict) and isinstance(item.get("hero_build"), dict)
+        ]
+
+    async def get_hero_build_stats(
+        self,
+        *,
+        hero_id: int,
+        min_matches: int = 20,
+        min_unix_timestamp: int | None = None,
+    ) -> list[DeadlockHeroBuildStat]:
+        params: dict[str, str] = {
+            "min_matches": str(min_matches),
+        }
+        if min_unix_timestamp is not None:
+            params["min_unix_timestamp"] = str(min_unix_timestamp)
+
+        payload = await self._get_json(f"{self.base_url}/v1/analytics/hero-build-stats/{hero_id}", params=params)
+        return [
+            DeadlockHeroBuildStat(
+                hero_id=item["hero_id"],
+                hero_build_id=item["hero_build_id"],
+                wins=item["wins"],
+                losses=item["losses"],
+                matches=item["matches"],
+                players=item["players"],
+            )
+            for item in payload
+            if item.get("hero_build_id") is not None
+        ]
+
     async def get_leaderboard(
         self,
         *,
@@ -763,6 +831,51 @@ def _parse_last_updated(raw: Any) -> int | None:
         except ValueError:
             return None
     return None
+
+
+def _parse_build_hero(payload: dict[str, Any]) -> DeadlockHeroBuild:
+    details = payload.get("details") or {}
+    mod_categories = [
+        DeadlockBuildCategory(
+            name=category.get("name", "Category"),
+            description=category.get("description"),
+            optional=category.get("optional"),
+            mods=[
+                DeadlockBuildMod(
+                    ability_id=mod["ability_id"],
+                    annotation=mod.get("annotation"),
+                    imbue_target_ability_id=mod.get("imbue_target_ability_id"),
+                    required_flex_slots=mod.get("required_flex_slots"),
+                    sell_priority=mod.get("sell_priority"),
+                )
+                for mod in (category.get("mods") or [])
+                if isinstance(mod, dict) and mod.get("ability_id") is not None
+            ],
+        )
+        for category in (details.get("mod_categories") or [])
+        if isinstance(category, dict)
+    ]
+    ability_order = [
+        int(entry.get("ability_id"))
+        for entry in (((details.get("ability_order") or {}).get("currency_changes") or []))
+        if isinstance(entry, dict) and entry.get("ability_id") is not None
+    ]
+    return DeadlockHeroBuild(
+        hero_build_id=payload["hero_build_id"],
+        hero_id=payload["hero_id"],
+        author_account_id=payload["author_account_id"],
+        name=payload["name"],
+        description=payload.get("description"),
+        language=payload["language"],
+        version=payload["version"],
+        origin_build_id=payload["origin_build_id"],
+        publish_timestamp=payload.get("publish_timestamp"),
+        last_updated_timestamp=payload.get("last_updated_timestamp"),
+        development_build=payload.get("development_build"),
+        tags=[int(tag) for tag in (payload.get("tags") or []) if isinstance(tag, int)],
+        mod_categories=mod_categories,
+        ability_order=ability_order,
+    )
 
 
 def _final_stat_value(stats: Any, field: str) -> int | None:

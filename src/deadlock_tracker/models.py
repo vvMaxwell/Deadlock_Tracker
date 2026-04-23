@@ -172,6 +172,61 @@ class DeadlockAbilityOrderStat:
 
 
 @dataclass(slots=True)
+class DeadlockBuildMod:
+    ability_id: int
+    annotation: str | None
+    imbue_target_ability_id: int | None
+    required_flex_slots: int | None
+    sell_priority: int | None
+
+
+@dataclass(slots=True)
+class DeadlockBuildCategory:
+    name: str
+    description: str | None
+    optional: bool | None
+    mods: list[DeadlockBuildMod]
+
+
+@dataclass(slots=True)
+class DeadlockHeroBuild:
+    hero_build_id: int
+    hero_id: int
+    author_account_id: int
+    name: str
+    description: str | None
+    language: int
+    version: int
+    origin_build_id: int
+    publish_timestamp: int | None
+    last_updated_timestamp: int | None
+    development_build: bool | None
+    tags: list[int]
+    mod_categories: list[DeadlockBuildCategory]
+    ability_order: list[int]
+
+
+@dataclass(slots=True)
+class DeadlockBuild:
+    hero_build: DeadlockHeroBuild
+    num_favorites: int | None
+    num_ignores: int | None
+    num_reports: int | None
+    num_weekly_favorites: int | None
+    rollup_category: int | None
+
+
+@dataclass(slots=True)
+class DeadlockHeroBuildStat:
+    hero_id: int
+    hero_build_id: int
+    wins: int
+    losses: int
+    matches: int
+    players: int
+
+
+@dataclass(slots=True)
 class DeadlockRankInfo:
     tier: int
     name: str

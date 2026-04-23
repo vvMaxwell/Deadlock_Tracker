@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Deadlock Builds | Deadlock Stats Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell meta-shell">
+    <div class="section-heading">
+        <p class="eyebrow">Build Database</p>
+        <h1>{{ current_mode_name }} Builds</h1>
+        <p class="lede">
+            {% if selected_hero_name %}
+            Pick a hero and we’ll show the strongest public {{ current_mode_name }} builds first, then live tracked item performance and the most common opening path.
+            {% else %}
+            Start on the hero splash below, then jump into a dedicated {{ current_mode_name }} build page for any hero in the active roster.
+            {% endif %}
+        </p>
+        <p class="meta-filter-note">{{ current_mode_description }}</p>
+    </div>
+
+    <div class="hero-actions">
+        <a class="back-link" href="/builds">Normal</a>
+        <a class="back-link" href="/street-brawl-builds">Street Brawl</a>
+    </div>
+
+    <form class="meta-filter-form meta-filter-form-builds" method="get" action="/builds" data-auto-submit>
+        <label>
+            <span>Hero</span>
+            <select name="hero_id">
+                <option value="">Choose a hero</option>
+                {% for option in hero_options %}
+                <option value="{{ option.value }}"{% if option.value == selected_hero_id %} selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button class="meta-filter-submit" type="submit">Open Build Page</button>
+    </form>
+
+    {% if error_message %}
+    <p class="error-message">{{ error_message }}</p>
+    {% endif %}
+
+    {% if not selected_hero_name %}
+    <section class="street-brawl-splash">
+        <div class="section-heading">
+            <h2>Choose A Hero</h2>
+            <p>Alphabetical roster. Click any hero to open their public Normal mode build page.</p>
+        </div>
+        <div class="street-brawl-hero-grid">
+            {% for hero in hero_cards %}
+            <a class="street-brawl-hero-tile" href="{{ hero.build_url }}">
+                <div class="street-brawl-hero-tile-copy">
+                    <strong>{{ hero.hero_name }}</strong>
+                    <span>Open build page</span>
+                </div>
+                {% if hero.hero_portrait_url %}
+                <img class="street-brawl-hero-tile-portrait" src="{{ hero.hero_portrait_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
+                {% elif hero.hero_icon_url %}
+                <img class="street-brawl-hero-tile-portrait street-brawl-hero-tile-portrait-fallback" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% else %}
+    <section class="street-brawl-layout">
+        <div class="street-brawl-item-panel">
+            <div class="section-heading">
+                <h2>Best Public Builds</h2>
+                <p>These come from the public build database and are ordered using recent favorites plus tracked build performance where available.</p>
+            </div>
+            <div class="street-brawl-item-list">
+                {% for build in build_cards %}
+                <article class="street-brawl-item-row">
+                    <div class="street-brawl-item-rank">{{ loop.index }}</div>
+                    <div class="street-brawl-item-main">
+                        <div class="street-brawl-item-copy">
+                            <strong>{{ build.build_name }}</strong>
+                            <div class="street-brawl-inline-meta">
+                                <span>#{{ build.build_id }}</span>
+                                <span>{{ build.version_text }}</span>
+                                <span>{{ build.updated_text }}</span>
+                            </div>
+                            {% if build.description %}
+                            <p>{{ build.description }}</p>
+                            {% endif %}
+                            <div class="street-brawl-inline-meta">
+                                <span>{{ build.favorite_text }}</span>
+                                <span>{{ build.weekly_favorite_text }}</span>
+                                {% if build.win_rate_percent %}<span>{{ build.win_rate_percent }} win rate</span>{% endif %}
+                                {% if build.matches_text %}<span>{{ build.matches_text }}</span>{% endif %}
+                                {% if build.players_text %}<span>{{ build.players_text }}</span>{% endif %}
+                            </div>
+                            {% if build.categories %}
+                            <div class="street-brawl-inline-meta">
+                                {% for category in build.categories %}
+                                <span>{{ category }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% if build.item_names %}
+                            <div class="street-brawl-inline-meta">
+                                {% for item_name in build.item_names %}
+                                <span>{{ item_name }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+
+            {% if not build_cards and not error_message %}
+            <p class="empty-state">No public Normal mode builds were returned for {{ selected_hero_name }} yet.</p>
+            {% endif %}
+        </div>
+
+        <aside class="street-brawl-guide-panel">
+            <section class="street-brawl-ability-guide">
+                <div class="section-heading">
+                    <h2>Tracked Normal Meta</h2>
+                    <p>Use the live item board below to compare the public build database with current tracked Normal mode results.</p>
+                </div>
+                <div class="street-brawl-item-list">
+                    {% for item in item_rows %}
+                    <article class="street-brawl-item-row">
+                        <div class="street-brawl-item-rank">{{ item.rank_number }}</div>
+                        <div class="street-brawl-item-main">
+                            {% if item.item_image_url %}
+                            <img class="street-brawl-item-icon" src="{{ item.item_image_url }}" alt="{{ item.item_name }}">
+                            {% endif %}
+                            <div class="street-brawl-item-copy">
+                                <strong>{{ item.item_name }}</strong>
+                                <div class="street-brawl-inline-meta">
+                                    <span>{{ item.slot_type }}</span>
+                                    <span>{{ item.tier_text }}</span>
+                                    <span>{{ item.cost_text }}</span>
+                                    <span>{{ item.win_rate_percent }}</span>
+                                    <span>{{ item.matches_text }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+                {% if guide %}
+                <div class="section-heading" style="margin-top: 18px;">
+                    <h2>Most Common Opening Path</h2>
+                    <p>Tracked from live Normal mode matches and shown as an opening upgrade sequence rather than a full guide script.</p>
+                </div>
+                <div class="street-brawl-steps">
+                    {% for step in guide.ability_steps %}
+                    <article class="street-brawl-step">
+                        <div class="street-brawl-step-number">{{ step.step_number }}</div>
+                        {% if step.ability_image_url %}
+                        <img class="street-brawl-step-icon" src="{{ step.ability_image_url }}" alt="{{ step.ability_name }}">
+                        {% endif %}
+                        <div class="street-brawl-step-copy">
+                            <strong>{{ step.ability_name }}</strong>
+                            <span>{{ step.ability_type }}</span>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </section>
+        </aside>
+    </section>
+    {% endif %}
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <h2>What this page shows</h2>
+            <p>Normal Builds combines public build database entries with tracked live item and ability-order data, so you can compare what creators publish against what the current meta is actually doing.</p>
+        </article>
+        <article class="platform-card faq-card">
+            <h2>Related pages</h2>
+            <p>Compare this mode with <a class="text-link" href="/street-brawl-builds">Street Brawl Builds</a>, then branch into <a class="text-link" href="/best-heroes">Best Heroes</a>, <a class="text-link" href="/best-items">Best Items</a>, and <a class="text-link" href="/patch-notes">Patch Notes</a>.</p>
+        </article>
+    </section>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector("[data-auto-submit]");
+    if (!form) {
+        return;
+    }
+
+    const heroSelect = form.querySelector('select[name="hero_id"]');
+    if (heroSelect) {
+        heroSelect.addEventListener("change", function () {
+            if (!heroSelect.value) {
+                return;
+            }
+            form.requestSubmit();
+        });
+    }
+});
+</script>
+{% endblock %}
