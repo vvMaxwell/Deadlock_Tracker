@@ -65,56 +65,40 @@
     <section class="street-brawl-layout">
         <div class="street-brawl-item-panel">
             <div class="section-heading">
-                <h2>Best Public Builds</h2>
+                <h2>Popular Builds</h2>
                 <p>Top public builds for {{ selected_hero_name }}, ordered with recent favorites and live tracked performance where available.</p>
             </div>
             <div class="street-brawl-item-list normal-build-list">
                 {% for build in build_cards %}
-                <article class="normal-build-card">
-                    <div class="normal-build-rank">{{ loop.index }}</div>
-                    <div class="normal-build-body">
-                        <div class="normal-build-head">
+                <details class="normal-build-popout"{% if loop.first %} open{% endif %}>
+                    <summary class="normal-build-summary">
+                        <div class="normal-build-summary-main">
+                            <div class="normal-build-rank">{{ loop.index }}</div>
                             <div class="normal-build-title-block">
                                 <strong>{{ build.build_name }}</strong>
                                 <div class="street-brawl-inline-meta normal-build-id-row">
                                     <span>#{{ build.build_id }}</span>
                                     <span>{{ build.version_text }}</span>
+                                    <span>Updated {{ build.updated_text }}</span>
                                 </div>
                             </div>
-                            <span class="normal-build-updated">Updated {{ build.updated_text }}</span>
                         </div>
+                        <div class="street-brawl-inline-meta normal-build-stat-row">
+                            <span>{{ build.weekly_favorite_text|replace(' weekly favorites', ' weekly') }}</span>
+                            {% if build.win_rate_percent %}<span>WR {{ build.win_rate_percent }}</span>{% endif %}
+                            {% if build.matches_text %}<span>{{ build.matches_text }}</span>{% endif %}
+                        </div>
+                        <span class="normal-build-chevron" aria-hidden="true">&darr;</span>
+                    </summary>
 
+                    <div class="normal-build-body">
                         {% if build.description %}
                         <p class="normal-build-description">{{ build.description }}</p>
                         {% endif %}
 
-                        <div class="normal-build-metrics">
-                            <div class="normal-build-metric">
-                                <span>Weekly Favorites</span>
-                                <strong>{{ build.weekly_favorite_text }}</strong>
-                            </div>
-                            <div class="normal-build-metric">
-                                <span>Total Favorites</span>
-                                <strong>{{ build.favorite_text }}</strong>
-                            </div>
-                            {% if build.win_rate_percent %}
-                            <div class="normal-build-metric">
-                                <span>Win Rate</span>
-                                <strong>{{ build.win_rate_percent }}</strong>
-                            </div>
-                            {% endif %}
-                            {% if build.matches_text %}
-                            <div class="normal-build-metric">
-                                <span>Tracked Matches</span>
-                                <strong>{{ build.matches_text }}</strong>
-                            </div>
-                            {% endif %}
-                            {% if build.players_text %}
-                            <div class="normal-build-metric">
-                                <span>Tracked Players</span>
-                                <strong>{{ build.players_text }}</strong>
-                            </div>
-                            {% endif %}
+                        <div class="street-brawl-inline-meta normal-build-detail-row">
+                            <span>{{ build.favorite_text }}</span>
+                            {% if build.players_text %}<span>{{ build.players_text }}</span>{% endif %}
                         </div>
 
                         {% if build.categories %}
@@ -132,14 +116,14 @@
                         <div class="normal-build-group">
                             <p class="normal-build-group-label">Sample Core Items</p>
                             <div class="street-brawl-inline-meta">
-                                {% for item_name in build.item_names[:8] %}
+                                {% for item_name in build.item_names[:6] %}
                                 <span>{{ item_name }}</span>
                                 {% endfor %}
                             </div>
                         </div>
                         {% endif %}
                     </div>
-                </article>
+                </details>
                 {% endfor %}
             </div>
 

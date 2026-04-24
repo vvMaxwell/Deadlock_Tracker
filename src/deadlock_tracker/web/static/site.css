@@ -1013,19 +1013,41 @@ h2 {
 .normal-build-list,
 .normal-meta-list {
     gap: 14px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    max-height: none;
+    overflow: visible;
 }
 
-.normal-build-card {
-    display: grid;
-    grid-template-columns: 48px minmax(0, 1fr);
-    gap: 16px;
-    align-items: start;
-    padding: 18px;
+.normal-build-popout {
     border: 1px solid rgba(211, 181, 138, 0.12);
     border-radius: 22px;
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 30%),
-        rgba(19, 15, 11, 0.88);
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 30%),
+        rgba(19, 15, 11, 0.62);
+    overflow: hidden;
+}
+
+.normal-build-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 14px;
+    align-items: center;
+    padding: 18px 20px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.normal-build-summary::-webkit-details-marker {
+    display: none;
+}
+
+.normal-build-summary-main {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    min-width: 0;
 }
 
 .normal-build-rank {
@@ -1045,14 +1067,9 @@ h2 {
 .normal-build-body {
     display: grid;
     gap: 14px;
+    padding: 0 20px 18px 72px;
     min-width: 0;
-}
-
-.normal-build-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
+    border-top: 1px solid rgba(211, 181, 138, 0.08);
 }
 
 .normal-build-title-block {
@@ -1072,37 +1089,22 @@ h2 {
     align-items: center;
 }
 
-.normal-build-updated {
-    flex-shrink: 0;
-    color: var(--muted);
-    font-size: 0.82rem;
-    line-height: 1.4;
-    text-align: right;
-}
-
 .normal-build-description {
     margin: 0;
     color: var(--muted);
-    line-height: 1.65;
+    line-height: 1.55;
     overflow-wrap: anywhere;
 }
 
-.normal-build-metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+.normal-build-stat-row {
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.normal-build-detail-row {
     gap: 10px;
 }
 
-.normal-build-metric {
-    display: grid;
-    gap: 5px;
-    padding: 12px 14px;
-    border: 1px solid rgba(211, 181, 138, 0.1);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.normal-build-metric span,
 .normal-build-group-label {
     margin: 0;
     color: var(--muted);
@@ -1112,14 +1114,19 @@ h2 {
     text-transform: uppercase;
 }
 
-.normal-build-metric strong {
-    font-family: "Space Grotesk", sans-serif;
-    font-size: 0.96rem;
-}
-
 .normal-build-group {
     display: grid;
     gap: 8px;
+}
+
+.normal-build-chevron {
+    color: var(--muted);
+    font-size: 1rem;
+    transition: transform 140ms ease;
+}
+
+.normal-build-popout[open] .normal-build-chevron {
+    transform: rotate(180deg);
 }
 
 .normal-build-hero-card {
@@ -1127,11 +1134,18 @@ h2 {
 }
 
 .normal-meta-row {
-    grid-template-columns: 42px minmax(0, 1fr) minmax(220px, 0.9fr);
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
 }
 
 .normal-meta-metrics {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-column: 2;
+}
+
+.normal-meta-row .street-brawl-item-main {
+    align-items: flex-start;
 }
 
 .normal-build-subsection {
@@ -2474,17 +2488,16 @@ h2 {
         grid-template-columns: 42px 1fr;
     }
 
-    .normal-build-card,
     .normal-meta-row {
         grid-template-columns: 42px 1fr;
     }
 
-    .normal-build-head {
-        flex-direction: column;
+    .normal-build-summary {
+        grid-template-columns: 1fr;
     }
 
-    .normal-build-updated {
-        text-align: left;
+    .normal-build-body {
+        padding-left: 20px;
     }
 
     .street-brawl-item-metrics {
@@ -2611,7 +2624,6 @@ h2 {
         grid-template-columns: 1fr;
     }
 
-    .normal-build-card,
     .normal-meta-row {
         grid-template-columns: 1fr;
     }
@@ -2624,6 +2636,10 @@ h2 {
     .normal-build-rank {
         width: 30px;
         height: 30px;
+    }
+
+    .normal-build-summary-main {
+        align-items: flex-start;
     }
 
     .street-brawl-item-main,
