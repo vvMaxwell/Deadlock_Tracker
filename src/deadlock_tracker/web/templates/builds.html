@@ -17,9 +17,9 @@
         <p class="meta-filter-note">{{ current_mode_description }}</p>
     </div>
 
-    <div class="hero-actions">
-        <a class="back-link" href="/builds">Normal</a>
-        <a class="back-link" href="/street-brawl-builds">Street Brawl</a>
+    <div class="hero-actions build-mode-tabs" aria-label="Build mode">
+        <a class="back-link build-mode-tab build-mode-tab-active" href="/builds">Normal</a>
+        <a class="back-link build-mode-tab" href="/street-brawl-builds">Street Brawl</a>
     </div>
 
     <form class="meta-filter-form meta-filter-form-builds" method="get" action="/builds" data-auto-submit>
@@ -63,15 +63,32 @@
     </section>
     {% else %}
     <section class="street-brawl-layout">
-        <div class="street-brawl-item-panel">
+        <div class="street-brawl-item-panel normal-build-board-panel">
             <div class="section-heading">
-                <h2>Popular Builds</h2>
-                <p>Top public builds for {{ selected_hero_name }}, ordered with recent favorites and live tracked performance where available.</p>
+                <p class="eyebrow">Public Build Board</p>
+                <h2>{{ selected_hero_name }} Builds</h2>
+                <p>Top public builds ordered by recent favorites, with tracked performance and core item hints when available.</p>
             </div>
-            <div class="street-brawl-item-list normal-build-list">
+            <div class="normal-build-overview">
+                <div>
+                    <span>Builds</span>
+                    <strong>{{ build_cards|length }}</strong>
+                </div>
+                {% if build_cards %}
+                <div>
+                    <span>Top Build</span>
+                    <strong>{{ build_cards[0].build_name }}</strong>
+                </div>
+                <div>
+                    <span>Momentum</span>
+                    <strong>{{ build_cards[0].weekly_favorite_text|replace(' weekly favorites', ' weekly') }}</strong>
+                </div>
+                {% endif %}
+            </div>
+            <div class="normal-build-list">
                 {% for build in build_cards %}
-                <details class="normal-build-popout"{% if loop.first %} open{% endif %}>
-                    <summary class="normal-build-summary">
+                <article class="normal-build-card{% if loop.first %} normal-build-card-featured{% endif %}">
+                    <div class="normal-build-summary">
                         <div class="normal-build-summary-main">
                             <div class="normal-build-rank">{{ loop.index }}</div>
                             <div class="normal-build-title-block">
@@ -88,8 +105,7 @@
                             {% if build.win_rate_percent %}<span>WR {{ build.win_rate_percent }}</span>{% endif %}
                             {% if build.matches_text %}<span>{{ build.matches_text }}</span>{% endif %}
                         </div>
-                        <span class="normal-build-chevron" aria-hidden="true">&darr;</span>
-                    </summary>
+                    </div>
 
                     <div class="normal-build-body">
                         {% if build.description %}
@@ -123,7 +139,7 @@
                         </div>
                         {% endif %}
                     </div>
-                </details>
+                </article>
                 {% endfor %}
             </div>
 
@@ -156,7 +172,8 @@
 
             <section class="street-brawl-ability-guide">
                 <div class="section-heading">
-                    <h2>Live Normal Meta</h2>
+                    <p class="eyebrow">Tracked Meta</p>
+                    <h2>Live Normal Items</h2>
                     <p>Use the tracked item board below to compare public builds with the current Normal mode item meta.</p>
                 </div>
                 <div class="street-brawl-item-list normal-meta-list">
@@ -197,6 +214,11 @@
                     <h2>Most Common Opening Path</h2>
                     <p>Tracked from live Normal mode matches and shown as an opening upgrade sequence rather than a full guide script.</p>
                 </div>
+                <div class="street-brawl-point-path" aria-label="Most common opening ability point path">
+                    {% for point in guide.ability_path_text.split() %}
+                    <span>{{ point }}</span>
+                    {% endfor %}
+                </div>
                 <div class="street-brawl-steps">
                     {% for step in guide.ability_steps %}
                     <article class="street-brawl-step">
@@ -205,8 +227,8 @@
                         <img class="street-brawl-step-icon" src="{{ step.ability_image_url }}" alt="{{ step.ability_name }}">
                         {% endif %}
                         <div class="street-brawl-step-copy">
-                            <strong>{{ step.ability_name }}</strong>
-                            <span>{{ step.ability_type }}</span>
+                            <strong>Ability {{ step.ability_point }}</strong>
+                            <span>{{ step.ability_name }}</span>
                         </div>
                     </article>
                     {% endfor %}

@@ -285,6 +285,16 @@ class DeadlockAPI:
                 icon_small=(item.get("images") or {}).get("icon_image_small_webp") or (item.get("images") or {}).get("icon_image_small"),
                 portrait_url=(item.get("images") or {}).get("top_bar_vertical_image_webp") or (item.get("images") or {}).get("top_bar_vertical_image"),
                 background_image_url=(item.get("images") or {}).get("background_image_webp") or (item.get("images") or {}).get("background_image"),
+                signature_ability_class_names=[
+                    class_name
+                    for class_name in [
+                        (item.get("items") or {}).get("signature1"),
+                        (item.get("items") or {}).get("signature2"),
+                        (item.get("items") or {}).get("signature3"),
+                        (item.get("items") or {}).get("signature4"),
+                    ]
+                    if class_name
+                ],
             )
             for item in payload
             if item.get("player_selectable", True)
@@ -306,6 +316,7 @@ class DeadlockAPI:
         payload = await self._get_json(f"{self.assets_url}/v2/items/{item_id}")
         item = DeadlockItemInfo(
             item_id=payload["id"],
+            class_name=payload["class_name"],
             name=payload["name"],
             image=payload.get("image"),
             shop_image=payload.get("shop_image"),
@@ -328,6 +339,7 @@ class DeadlockAPI:
         self._item_info = {
             item["id"]: DeadlockItemInfo(
                 item_id=item["id"],
+                class_name=item["class_name"],
                 name=item["name"],
                 image=item.get("image"),
                 shop_image=item.get("shop_image"),

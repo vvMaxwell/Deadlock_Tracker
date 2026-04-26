@@ -774,6 +774,8 @@ async def heroes_directory(request: Request) -> HTMLResponse:
         HeroDirectoryCardView(
             hero_name=hero.name,
             detail_url=str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
+            build_url=f"{request.url_for('builds_hub')}?hero_id={hero.hero_id}",
+            street_brawl_build_url=f"{request.url_for('street_brawl_builds')}?hero_id={hero.hero_id}",
             hero_icon_url=hero.icon_small,
             hero_portrait_url=hero.portrait_url,
             hero_background_image_url=hero.background_image_url,
@@ -1600,20 +1602,14 @@ async def hero_builds(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
 
         most_common_path = max(ability_orders, key=lambda entry: entry.matches, default=None)
         if most_common_path is not None:
+            ability_steps = _build_ability_path_steps(hero, most_common_path.abilities, item_info_map)
             guide = StreetBrawlGuideView(
                 hero_name=hero.name,
                 hero_icon_url=hero.icon_small,
                 hero_portrait_url=hero.portrait_url,
                 hero_background_image_url=hero.background_image_url,
-                ability_steps=[
-                    StreetBrawlAbilityStepView(
-                        step_number=index,
-                        ability_name=(item_info_map.get(ability_id).name if item_info_map.get(ability_id) else f"Ability {index}"),
-                        ability_image_url=item_info_map.get(ability_id).image if item_info_map.get(ability_id) else None,
-                        ability_type=_friendly_ability_type(item_info_map.get(ability_id).ability_type if item_info_map.get(ability_id) else None),
-                    )
-                    for index, ability_id in enumerate(most_common_path.abilities, start=1)
-                ],
+                ability_steps=ability_steps,
+                ability_path_text=" ".join(step.ability_point for step in ability_steps),
                 path_matches_text=f"{most_common_path.matches:,} matches",
                 path_players_text=f"{most_common_path.players:,} players",
                 path_win_rate_percent=f"{(most_common_path.wins / most_common_path.matches):.1%}" if most_common_path.matches else "0.0%",
@@ -2525,9 +2521,15 @@ async def street_brawl_builds(
         ability_orders = await api.get_ability_order_stats(
             hero_id=selected_hero.hero_id,
             game_mode="street_brawl",
-            min_matches=selected_min_matches,
+            min_matches=1,
             min_unix_timestamp=int(time()) - selected_window_days * 86400,
         )
+        if not ability_orders:
+            ability_orders = await api.get_ability_order_stats(
+                hero_id=selected_hero.hero_id,
+                game_mode="street_brawl",
+                min_matches=1,
+            )
         item_info_map = await api.get_all_item_info()
 
         filtered_items = []
@@ -2568,20 +2570,14 @@ async def street_brawl_builds(
 
         most_common_path = max(ability_orders, key=lambda entry: entry.matches, default=None)
         if most_common_path is not None:
+            ability_steps = _build_ability_path_steps(selected_hero, most_common_path.abilities, item_info_map)
             guide = StreetBrawlGuideView(
                 hero_name=selected_hero.name,
                 hero_icon_url=selected_hero.icon_small,
                 hero_portrait_url=selected_hero.portrait_url,
                 hero_background_image_url=selected_hero.background_image_url,
-                ability_steps=[
-                    StreetBrawlAbilityStepView(
-                        step_number=index,
-                        ability_name=(item_info_map.get(ability_id).name if item_info_map.get(ability_id) else f"Ability {index}"),
-                        ability_image_url=item_info_map.get(ability_id).image if item_info_map.get(ability_id) else None,
-                        ability_type=_friendly_ability_type(item_info_map.get(ability_id).ability_type if item_info_map.get(ability_id) else None),
-                    )
-                    for index, ability_id in enumerate(most_common_path.abilities, start=1)
-                ],
+                ability_steps=ability_steps,
+                ability_path_text=" ".join(step.ability_point for step in ability_steps),
                 path_matches_text=f"{most_common_path.matches:,} matches",
                 path_players_text=f"{most_common_path.players:,} players",
                 path_win_rate_percent=f"{(most_common_path.wins / most_common_path.matches):.1%}" if most_common_path.matches else "0.0%",
@@ -3071,6 +3067,33 @@ def _build_item_names_from_build(categories: list[object], item_info_map: dict[i
             if len(names) >= 5:
                 return names
     return names
+
+
+def _build_ability_path_steps(hero: object, ability_ids: list[int], item_info_map: dict[int, object]) -> list[StreetBrawlAbilityStepView]:
+    class_name_to_point = {
+        class_name: str(index)
+        for index, class_name in enumerate(getattr(hero, "signature_ability_class_names", []), start=1)
+    }
+    ability_id_to_point = {
+        item.item_id: class_name_to_point[item.class_name]
+        for item in item_info_map.values()
+        if getattr(item, "class_name", None) in class_name_to_point
+    }
+
+    steps: list[StreetBrawlAbilityStepView] = []
+    for index, ability_id in enumerate(ability_ids, start=1):
+        item = item_info_map.get(ability_id)
+        ability_point = ability_id_to_point.get(ability_id, "?")
+        steps.append(
+            StreetBrawlAbilityStepView(
+                step_number=index,
+                ability_point=ability_point,
+                ability_name=(item.name if item else f"Ability {ability_point}"),
+                ability_image_url=item.image if item else None,
+                ability_type=_friendly_ability_type(item.ability_type if item else None),
+            )
+        )
+    return steps
 
 
 def _friendly_mode_label(game_mode: int | None) -> str | None:

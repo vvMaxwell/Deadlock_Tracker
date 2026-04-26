@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(slots=True)
@@ -52,6 +52,7 @@ class DeadlockHeroInfo:
     icon_small: str | None
     portrait_url: str | None
     background_image_url: str | None
+    signature_ability_class_names: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -147,6 +148,7 @@ class DeadlockItemInfo:
     item_type: str | None
     ability_type: str | None
     hero_id: int | None
+    class_name: str = ""
 
 
 @dataclass(slots=True)

@@ -100,6 +100,7 @@ class StreetBrawlBuildItemView:
 @dataclass(slots=True)
 class StreetBrawlAbilityStepView:
     step_number: int
+    ability_point: str
     ability_name: str
     ability_image_url: str | None
     ability_type: str
@@ -112,6 +113,7 @@ class StreetBrawlGuideView:
     hero_portrait_url: str | None
     hero_background_image_url: str | None
     ability_steps: list[StreetBrawlAbilityStepView]
+    ability_path_text: str
     path_matches_text: str
     path_players_text: str
     path_win_rate_percent: str
@@ -280,6 +282,8 @@ class ItemModeStatView:
 class HeroDirectoryCardView:
     hero_name: str
     detail_url: str
+    build_url: str
+    street_brawl_build_url: str
     hero_icon_url: str | None
     hero_portrait_url: str | None
     hero_background_image_url: str | None

@@ -9,21 +9,26 @@
     </div>
     <p class="eyebrow">Hero Directory</p>
     <h1>All Deadlock Heroes</h1>
-    <p class="lede">Browse the current Deadlock hero roster and open dedicated guide pages for each hero’s stats, item trends, and current meta snapshot.</p>
+    <p class="lede">Browse the current Deadlock hero roster and jump straight into hero stats, Normal builds, or Street Brawl level paths.</p>
 
     <div class="street-brawl-hero-grid">
         {% for hero in hero_cards %}
-        <a class="street-brawl-hero-tile" href="{{ hero.detail_url }}">
-            <div class="street-brawl-hero-tile-copy">
+        <article class="street-brawl-hero-tile hero-directory-tile">
+            <a class="hero-directory-primary-link" href="{{ hero.detail_url }}" aria-label="Open {{ hero.hero_name }} hero guide"></a>
+            <div class="street-brawl-hero-tile-copy hero-directory-tile-copy">
                 <strong>{{ hero.hero_name }}</strong>
-                <span>Open hero guide</span>
+                <div class="hero-directory-actions" aria-label="{{ hero.hero_name }} pages">
+                    <a href="{{ hero.detail_url }}">Guide</a>
+                    <a href="{{ hero.build_url }}">Builds</a>
+                    <a href="{{ hero.street_brawl_build_url }}">Street Brawl</a>
+                </div>
             </div>
             {% if hero.hero_portrait_url %}
             <img class="street-brawl-hero-tile-portrait" src="{{ hero.hero_portrait_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
             {% elif hero.hero_icon_url %}
             <img class="street-brawl-hero-tile-portrait street-brawl-hero-tile-portrait-fallback" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
             {% endif %}
-        </a>
+        </article>
         {% endfor %}
     </div>
 </section>

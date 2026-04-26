@@ -832,6 +832,49 @@ h2 {
     font-size: 0.9rem;
 }
 
+.hero-directory-tile {
+    text-decoration: none;
+}
+
+.hero-directory-primary-link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.hero-directory-tile-copy,
+.hero-directory-tile .street-brawl-hero-tile-portrait {
+    z-index: 2;
+}
+
+.hero-directory-actions {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.hero-directory-actions a {
+    position: relative;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 7px 10px;
+    border: 1px solid rgba(211, 181, 138, 0.16);
+    border-radius: 999px;
+    background: rgba(9, 7, 6, 0.55);
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.hero-directory-actions a:hover {
+    border-color: rgba(231, 206, 176, 0.34);
+    color: var(--accent-strong);
+}
+
 .street-brawl-hero-tile-portrait {
     position: relative;
     z-index: 1;
@@ -1003,6 +1046,27 @@ h2 {
     gap: 10px;
 }
 
+.street-brawl-point-path {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.street-brawl-point-path span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(231, 206, 176, 0.22);
+    border-radius: 999px;
+    background: rgba(231, 206, 176, 0.12);
+    color: var(--cream);
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 800;
+}
+
 .street-brawl-step {
     padding: 12px;
     border: 1px solid rgba(211, 181, 138, 0.1);
@@ -1012,7 +1076,6 @@ h2 {
 
 .normal-build-list,
 .normal-meta-list {
-    gap: 14px;
     padding: 0;
     border: 0;
     background: transparent;
@@ -1020,7 +1083,63 @@ h2 {
     overflow: visible;
 }
 
-.normal-build-popout {
+.normal-build-board-panel {
+    gap: 16px;
+}
+
+.build-mode-tabs {
+    gap: 10px;
+}
+
+.build-mode-tab {
+    min-width: 118px;
+    justify-content: center;
+}
+
+.build-mode-tab-active {
+    border-color: rgba(231, 206, 176, 0.36);
+    background: linear-gradient(135deg, rgba(231, 206, 176, 0.16), rgba(211, 181, 138, 0.06));
+    color: var(--accent-strong);
+}
+
+.normal-build-overview {
+    display: grid;
+    grid-template-columns: minmax(86px, 0.45fr) minmax(0, 1.3fr) minmax(120px, 0.7fr);
+    gap: 12px;
+}
+
+.normal-build-overview div {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid rgba(211, 181, 138, 0.11);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.normal-build-overview span {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.normal-build-overview strong {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.normal-build-list {
+    display: grid;
+    gap: 14px;
+}
+
+.normal-build-card {
     border: 1px solid rgba(211, 181, 138, 0.12);
     border-radius: 22px;
     background:
@@ -1029,13 +1148,19 @@ h2 {
     overflow: hidden;
 }
 
+.normal-build-card-featured {
+    border-color: rgba(231, 206, 176, 0.24);
+    background:
+        linear-gradient(135deg, rgba(231, 206, 176, 0.08), transparent 38%),
+        rgba(19, 15, 11, 0.72);
+}
+
 .normal-build-summary {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 14px;
     align-items: center;
     padding: 18px 20px;
-    cursor: pointer;
     list-style: none;
 }
 
@@ -1067,9 +1192,8 @@ h2 {
 .normal-build-body {
     display: grid;
     gap: 14px;
-    padding: 0 20px 18px 72px;
+    padding: 0 20px 20px 72px;
     min-width: 0;
-    border-top: 1px solid rgba(211, 181, 138, 0.08);
 }
 
 .normal-build-title-block {
@@ -1117,16 +1241,6 @@ h2 {
 .normal-build-group {
     display: grid;
     gap: 8px;
-}
-
-.normal-build-chevron {
-    color: var(--muted);
-    font-size: 1rem;
-    transition: transform 140ms ease;
-}
-
-.normal-build-popout[open] .normal-build-chevron {
-    transform: rotate(180deg);
 }
 
 .normal-build-hero-card {
@@ -2496,6 +2610,10 @@ h2 {
         grid-template-columns: 1fr;
     }
 
+    .normal-build-overview {
+        grid-template-columns: 1fr;
+    }
+
     .normal-build-body {
         padding-left: 20px;
     }
@@ -2639,6 +2757,11 @@ h2 {
     }
 
     .normal-build-summary-main {
+        align-items: flex-start;
+    }
+
+    .hero-directory-actions {
+        flex-direction: column;
         align-items: flex-start;
     }
 

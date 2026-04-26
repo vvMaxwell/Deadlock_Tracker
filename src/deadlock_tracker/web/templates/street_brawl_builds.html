@@ -158,14 +158,13 @@
 
             <section class="street-brawl-ability-guide">
                 <div class="section-heading">
-                    <h2>{% if guide.ability_steps|length < 16 %}Most Common Opening Path{% else %}Most Common Level Path{% endif %}</h2>
-                    <p>
-                        {% if guide.ability_steps|length < 16 %}
-                        Ordered by the tracked opening upgrade sequence for this hero. The current Deadlock API response for this view returns {{ guide.ability_steps|length }} upgrades, not a full 16-step ability path.
-                        {% else %}
-                        Ordered by the ability sequence with the most tracked Street Brawl matches for this hero.
-                        {% endif %}
-                    </p>
+                    <h2>Most Common Level Path</h2>
+                    <p>Ordered as ability points from the Street Brawl sequence with the most tracked matches for this hero.</p>
+                </div>
+                <div class="street-brawl-point-path" aria-label="Most common ability point path">
+                    {% for point in guide.ability_path_text.split() %}
+                    <span>{{ point }}</span>
+                    {% endfor %}
                 </div>
                 <div class="street-brawl-steps">
                     {% for step in guide.ability_steps %}
@@ -175,8 +174,8 @@
                         <img class="street-brawl-step-icon" src="{{ step.ability_image_url }}" alt="{{ step.ability_name }}">
                         {% endif %}
                         <div class="street-brawl-step-copy">
-                            <strong>{{ step.ability_name }}</strong>
-                            <span>{{ step.ability_type }}</span>
+                            <strong>Ability {{ step.ability_point }}</strong>
+                            <span>{{ step.ability_name }}</span>
                         </div>
                     </article>
                     {% endfor %}
