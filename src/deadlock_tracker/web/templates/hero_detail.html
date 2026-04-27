@@ -79,6 +79,42 @@
         {% endif %}
     </section>
 
+    {% if guide %}
+    <section class="results-section">
+        <div class="section-heading">
+            <h2>{{ hero.name }} Skill Path</h2>
+            <p>Most popular standard-mode ability leveling order from tracked matches.</p>
+        </div>
+        <div class="street-brawl-ability-guide hero-skill-path-panel">
+            <div class="street-brawl-inline-meta">
+                <span>{{ guide.path_win_rate_percent }} path win rate</span>
+                <span>{{ guide.path_matches_text }}</span>
+                <span>{{ guide.path_players_text }}</span>
+            </div>
+            <div class="skill-path-board" aria-label="Most popular skill leveling order">
+                {% for row in guide.skill_path_rows %}
+                <div class="skill-path-row">
+                    <div class="skill-path-ability">
+                        {% if row.ability_image_url %}
+                        <img src="{{ row.ability_image_url }}" alt="{{ row.ability_name }}">
+                        {% endif %}
+                        <span>{{ row.ability_name }}</span>
+                    </div>
+                    <div class="skill-path-cells">
+                        {% for cell in row.cells %}
+                        <span
+                            class="skill-path-cell{% if cell.is_active %} skill-path-cell-active{% endif %}{% if cell.is_unlock %} skill-path-cell-unlock{% endif %}"
+                            title="{% if cell.is_active %}Step {{ cell.step_number }}: {{ row.ability_name }}{% else %}Step {{ cell.step_number }}{% endif %}"
+                        >{% if cell.is_active and not cell.is_unlock %}{{ cell.marker }}{% endif %}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
     <section class="faq-grid">
         <article class="platform-card faq-card">
             <p class="eyebrow">Strong Matchups</p>

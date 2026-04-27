@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from deadlock_tracker.models import DeadlockHeroInfo, DeadlockHeroStat, DeadlockMatch, DeadlockPlayer
@@ -121,3 +123,29 @@ async def test_build_player_summary_refresh_uses_force_refetch_mode() -> None:
             "only_stored_history": False,
         }
     ]
+
+
+def test_resolve_numeric_player_does_not_fall_back_to_search() -> None:
+    class FakeApi:
+        def __init__(self) -> None:
+            self.search_called = False
+
+        async def resolve_player_input(self, raw_input: str) -> int:
+            return int(raw_input)
+
+        async def get_steam_profile(self, account_id: int) -> None:
+            return None
+
+        async def search_players(self, query: str) -> list[DeadlockPlayer]:
+            self.search_called = True
+            raise AssertionError("numeric account lookup should not use steam-search")
+
+    api = FakeApi()
+    service = PlayerService(api=api)
+
+    player = asyncio.run(service.resolve_player("123"))
+
+    assert isinstance(player, DeadlockPlayer)
+    assert player.account_id == 123
+    assert player.profileurl == "https://steamcommunity.com/profiles/76561197960265851"
+    assert api.search_called is False

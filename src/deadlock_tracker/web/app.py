@@ -42,6 +42,8 @@ from deadlock_tracker.web.view_models import (
     RankDistributionSummaryView,
     RankDistributionTierView,
     SearchResultView,
+    SkillPathCellView,
+    SkillPathRowView,
     StreetBrawlAbilityStepView,
     StreetBrawlBuildItemView,
     StreetBrawlGuideView,
@@ -1602,18 +1604,7 @@ async def hero_builds(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
 
         most_common_path = max(ability_orders, key=lambda entry: entry.matches, default=None)
         if most_common_path is not None:
-            ability_steps = _build_ability_path_steps(hero, most_common_path.abilities, item_info_map)
-            guide = StreetBrawlGuideView(
-                hero_name=hero.name,
-                hero_icon_url=hero.icon_small,
-                hero_portrait_url=hero.portrait_url,
-                hero_background_image_url=hero.background_image_url,
-                ability_steps=ability_steps,
-                ability_path_text=" ".join(step.ability_point for step in ability_steps),
-                path_matches_text=f"{most_common_path.matches:,} matches",
-                path_players_text=f"{most_common_path.players:,} players",
-                path_win_rate_percent=f"{(most_common_path.wins / most_common_path.matches):.1%}" if most_common_path.matches else "0.0%",
-            )
+            guide = _build_skill_path_guide(hero, most_common_path, item_info_map)
     except DeadlockError as error:
         error_message = str(error)
 
@@ -2078,6 +2069,7 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
     top_items: list[HeroDetailItemView] = []
     matchup_preview: list[HeroPeerStatView] = []
     synergy_preview: list[HeroPeerStatView] = []
+    guide: StreetBrawlGuideView | None = None
     data_warning: str | None = None
     try:
         analytics = await api.get_hero_analytics(game_mode="normal", min_matches=500)
@@ -2111,6 +2103,16 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
         ]
         matchup_preview = _build_counter_views(counter_stats, hero_info, request=request, view="favorable", limit=3)
         synergy_preview = _build_synergy_views(synergy_stats, hero.hero_id, hero_info, request=request, limit=3)
+        if hasattr(api, "get_ability_order_stats"):
+            ability_orders = await api.get_ability_order_stats(
+                hero_id=hero.hero_id,
+                game_mode="normal",
+                min_matches=50,
+                min_unix_timestamp=int(time()) - 30 * 86400,
+            )
+            most_common_path = max(ability_orders, key=lambda entry: entry.matches, default=None)
+            if most_common_path is not None:
+                guide = _build_skill_path_guide(hero, most_common_path, item_info_map)
     except DeadlockError as error:
         data_warning = _friendly_meta_error_message(error, topic=f"{hero.name} hero details")
 
@@ -2147,6 +2149,7 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             hero_top_items=top_items,
             hero_matchup_preview=matchup_preview,
             hero_synergy_preview=synergy_preview,
+            guide=guide,
             data_warning=data_warning,
             hero_items_url=str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
             hero_matchups_url=str(request.url_for("hero_matchups", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
@@ -2570,18 +2573,7 @@ async def street_brawl_builds(
 
         most_common_path = max(ability_orders, key=lambda entry: entry.matches, default=None)
         if most_common_path is not None:
-            ability_steps = _build_ability_path_steps(selected_hero, most_common_path.abilities, item_info_map)
-            guide = StreetBrawlGuideView(
-                hero_name=selected_hero.name,
-                hero_icon_url=selected_hero.icon_small,
-                hero_portrait_url=selected_hero.portrait_url,
-                hero_background_image_url=selected_hero.background_image_url,
-                ability_steps=ability_steps,
-                ability_path_text=" ".join(step.ability_point for step in ability_steps),
-                path_matches_text=f"{most_common_path.matches:,} matches",
-                path_players_text=f"{most_common_path.players:,} players",
-                path_win_rate_percent=f"{(most_common_path.wins / most_common_path.matches):.1%}" if most_common_path.matches else "0.0%",
-            )
+            guide = _build_skill_path_guide(selected_hero, most_common_path, item_info_map)
     except DeadlockError as error:
         error_message = str(error)
 
@@ -3094,6 +3086,101 @@ def _build_ability_path_steps(hero: object, ability_ids: list[int], item_info_ma
             )
         )
     return steps
+
+
+def _build_skill_path_guide(hero: object, path: object, item_info_map: dict[int, object]) -> StreetBrawlGuideView:
+    ability_steps = _build_ability_path_steps(hero, getattr(path, "abilities", []), item_info_map)
+    return StreetBrawlGuideView(
+        hero_name=getattr(hero, "name", "Hero"),
+        hero_icon_url=getattr(hero, "icon_small", None),
+        hero_portrait_url=getattr(hero, "portrait_url", None),
+        hero_background_image_url=getattr(hero, "background_image_url", None),
+        ability_steps=ability_steps,
+        skill_path_rows=_build_skill_path_rows(hero, getattr(path, "abilities", []), item_info_map),
+        ability_path_text=" ".join(step.ability_point for step in ability_steps),
+        path_matches_text=f"{getattr(path, 'matches', 0):,} matches",
+        path_players_text=f"{getattr(path, 'players', 0):,} players",
+        path_win_rate_percent=(
+            f"{(getattr(path, 'wins', 0) / getattr(path, 'matches', 0)):.1%}"
+            if getattr(path, "matches", 0)
+            else "0.0%"
+        ),
+    )
+
+
+def _build_skill_path_rows(
+    hero: object,
+    ability_ids: list[int],
+    item_info_map: dict[int, object],
+) -> list[SkillPathRowView]:
+    steps = _build_ability_path_steps(hero, ability_ids, item_info_map)
+    total_steps = max(len(steps), 1)
+    signature_class_names = list(getattr(hero, "signature_ability_class_names", []))
+    class_name_to_point = {
+        class_name: str(index)
+        for index, class_name in enumerate(signature_class_names, start=1)
+    }
+    signature_items = [
+        item
+        for item in item_info_map.values()
+        if getattr(item, "class_name", None) in class_name_to_point
+    ]
+    signature_items_by_point = {
+        class_name_to_point[getattr(item, "class_name")]: item
+        for item in signature_items
+    }
+    seen_points = {step.ability_point for step in steps}
+    ordered_points = [
+        str(index)
+        for index in range(1, max(4, len(signature_class_names)) + 1)
+        if str(index) in seen_points or str(index) in signature_items_by_point or index <= 4
+    ]
+
+    rows: list[SkillPathRowView] = []
+    for point in ordered_points:
+        item = signature_items_by_point.get(point)
+        upgrade_count = 0
+        cells: list[SkillPathCellView] = []
+        for step in steps:
+            is_active = step.ability_point == point
+            marker = ""
+            is_unlock = False
+            if is_active:
+                upgrade_count += 1
+                is_unlock = upgrade_count == 1
+                marker = "x" if is_unlock else str(upgrade_count - 1)
+            cells.append(
+                SkillPathCellView(
+                    step_number=step.step_number,
+                    marker=marker,
+                    is_active=is_active,
+                    is_unlock=is_unlock,
+                )
+            )
+        while len(cells) < total_steps:
+            cells.append(
+                SkillPathCellView(
+                    step_number=len(cells) + 1,
+                    marker="",
+                    is_active=False,
+                    is_unlock=False,
+                )
+            )
+        rows.append(
+            SkillPathRowView(
+                ability_point=point,
+                ability_name=(getattr(item, "name", None) or f"Ability {point}"),
+                ability_image_url=(
+                    getattr(item, "image", None)
+                    or getattr(item, "shop_image", None)
+                    if item is not None
+                    else None
+                ),
+                cells=cells,
+            )
+        )
+
+    return rows
 
 
 def _friendly_mode_label(game_mode: int | None) -> str | None:

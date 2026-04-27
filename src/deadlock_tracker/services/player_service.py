@@ -11,7 +11,13 @@ class PlayerService:
         self.api = api or DeadlockAPI()
 
     async def search_players(self, query: str) -> list[DeadlockPlayer]:
-        return await self.api.search_players(query.strip())
+        cleaned = query.strip()
+        if not cleaned:
+            return []
+        if cleaned.isdigit():
+            profile = await self.api.get_steam_profile(int(cleaned))
+            return [profile] if profile is not None else []
+        return await self.api.search_players(cleaned)
 
     async def resolve_player(self, raw_input: str) -> DeadlockPlayer | list[DeadlockPlayer]:
         resolved = await self.api.resolve_player_input(raw_input)
@@ -22,14 +28,10 @@ class PlayerService:
             steam_profile = await self.api.get_steam_profile(account_id)
             if steam_profile is not None:
                 return steam_profile
-            profiles = await self.api.search_players(cleaned)
-            for profile in profiles:
-                if profile.account_id == account_id:
-                    return profile
             return DeadlockPlayer(
                 account_id=account_id,
                 personaname=cleaned,
-                profileurl=f"https://steamcommunity.com/profiles/{cleaned}",
+                profileurl=f"https://steamcommunity.com/profiles/{account_id + 76561197960265728}",
                 avatarfull=None,
                 countrycode=None,
                 last_updated=None,

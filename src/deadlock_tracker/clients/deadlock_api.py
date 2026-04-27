@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from html.parser import HTMLParser
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import aiohttp
 
@@ -123,10 +123,18 @@ class DeadlockAPI:
         self._rank_info: list[DeadlockRankInfo] | None = None
 
     async def search_players(self, query: str) -> list[DeadlockPlayer]:
-        payload = await self._get_json(
-            f"{self.base_url}/v1/players/steam-search",
-            params={"search_query": query},
-        )
+        try:
+            payload = await self._get_json(
+                f"{self.base_url}/v1/players/steam-search",
+                params={"search_query": query},
+            )
+        except DeadlockError as primary_error:
+            fallback_players = await self._search_tracklock_profiles(query)
+            if not fallback_players:
+                fallback_players = await self._search_statlocker_profiles(query)
+            if fallback_players:
+                return fallback_players
+            raise primary_error
         return [
             DeadlockPlayer(
                 account_id=item["account_id"],
@@ -138,6 +146,38 @@ class DeadlockAPI:
             )
             for item in payload
         ]
+
+    async def _search_tracklock_profiles(self, query: str) -> list[DeadlockPlayer]:
+        url = f"https://tracklock.gg/api/search/suggestions?q={quote(query.strip())}"
+        timeout = aiohttp.ClientTimeout(total=10)
+        headers = {"Accept": "application/json", "User-Agent": "DeadlockStatsTracker/1.0"}
+        try:
+            async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+                async with session.get(url) as response:
+                    if response.status >= 400:
+                        return []
+                    payload = await response.json()
+        except (TimeoutError, aiohttp.ClientError, ValueError):
+            return []
+        return _parse_tracklock_profiles(payload)
+
+    async def _search_statlocker_profiles(self, query: str) -> list[DeadlockPlayer]:
+        url = f"https://statlocker.gg/api/profile/search-profiles/{quote(query.strip())}"
+        timeout = aiohttp.ClientTimeout(total=10)
+        headers = {
+            "Accept": "application/json, text/plain, */*",
+            "Referer": "https://statlocker.gg/",
+            "User-Agent": "Mozilla/5.0 DeadlockStatsTracker/1.0",
+        }
+        try:
+            async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+                async with session.get(url) as response:
+                    if response.status >= 400:
+                        return []
+                    payload = await response.json()
+        except (TimeoutError, aiohttp.ClientError, ValueError):
+            return []
+        return _parse_statlocker_profiles(payload)
 
     async def get_steam_profile(self, account_id: int) -> DeadlockPlayer | None:
         profiles = await self.get_steam_profiles([account_id])
@@ -788,9 +828,7 @@ class DeadlockAPI:
                         raise DeadlockError("Deadlock API rate limit hit. Try again shortly.")
                     if response.status >= 400:
                         message = await response.text()
-                        raise DeadlockError(
-                            f"Deadlock API request failed with HTTP {response.status}: {message[:200]}"
-                        )
+                        raise DeadlockError(_deadlock_http_error_message(response.status, message))
                     return await response.json()
         except TimeoutError:
             raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.") from None
@@ -843,6 +881,74 @@ def _parse_last_updated(raw: Any) -> int | None:
         except ValueError:
             return None
     return None
+
+
+def _parse_statlocker_profiles(payload: Any) -> list[DeadlockPlayer]:
+    if not isinstance(payload, list):
+        return []
+
+    players: list[DeadlockPlayer] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        account_id = item.get("accountId")
+        name = item.get("name")
+        if not isinstance(account_id, int) or not isinstance(name, str) or not name.strip():
+            continue
+        players.append(
+            DeadlockPlayer(
+                account_id=account_id,
+                personaname=name,
+                profileurl=f"https://steamcommunity.com/profiles/{account_id + 76561197960265728}",
+                avatarfull=item.get("avatarUrl") if isinstance(item.get("avatarUrl"), str) else None,
+                countrycode=None,
+                last_updated=_parse_last_updated(item.get("lastUpdated")),
+            )
+        )
+    return players
+
+
+def _parse_tracklock_profiles(payload: Any) -> list[DeadlockPlayer]:
+    if not isinstance(payload, dict):
+        return []
+    raw_players = payload.get("players")
+    if not isinstance(raw_players, list):
+        return []
+
+    players: list[DeadlockPlayer] = []
+    for item in raw_players:
+        if not isinstance(item, dict):
+            continue
+        try:
+            account_id = int(item.get("account_id"))
+        except (TypeError, ValueError):
+            continue
+        name = item.get("personaname")
+        if not isinstance(name, str) or not name.strip():
+            continue
+        players.append(
+            DeadlockPlayer(
+                account_id=account_id,
+                personaname=name,
+                profileurl=f"https://steamcommunity.com/profiles/{account_id + 76561197960265728}",
+                avatarfull=item.get("avatarfull") if isinstance(item.get("avatarfull"), str) else None,
+                countrycode=None,
+                last_updated=None,
+            )
+        )
+    return players
+
+
+def _deadlock_http_error_message(status: int, body: str) -> str:
+    if status >= 500:
+        return f"Deadlock API is temporarily unavailable for this request (HTTP {status}). Try again shortly."
+
+    cleaned = " ".join(body.split())
+    lowered = cleaned.casefold()
+    if not cleaned or cleaned.startswith("<!") or lowered.startswith("<html"):
+        return f"Deadlock API request failed with HTTP {status}. Try again shortly."
+
+    return f"Deadlock API request failed with HTTP {status}: {cleaned[:200]}"
 
 
 def _parse_build_hero(payload: dict[str, Any]) -> DeadlockHeroBuild:

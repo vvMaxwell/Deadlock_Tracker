@@ -4,6 +4,8 @@ from fastapi.testclient import TestClient
 
 from deadlock_tracker.clients.deadlock_api import DeadlockAPI
 from deadlock_tracker.clients.deadlock_api import DeadlockError
+from deadlock_tracker.clients.deadlock_api import _parse_statlocker_profiles
+from deadlock_tracker.clients.deadlock_api import _parse_tracklock_profiles
 from deadlock_tracker.models import (
     DeadlockBuild,
     DeadlockBuildCategory,
@@ -138,6 +140,33 @@ def test_home_json_ld_is_valid_json() -> None:
     assert parsed[0]["@type"] == "Organization"
     assert parsed[0]["logo"]["@type"] == "ImageObject"
     assert parsed[1]["@type"] == "WebSite"
+
+
+def test_home_search_hides_upstream_html_errors(monkeypatch) -> None:
+    class FakeApi:
+        async def get_player_rank_distribution(self) -> list:
+            return []
+
+        async def get_rank_info(self) -> list:
+            return []
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+        async def search_players(self, query: str) -> list:
+            raise DeadlockError(
+                "Deadlock API is temporarily unavailable for this request (HTTP 502). Try again shortly."
+            )
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/?query=Halal")
+
+    assert response.status_code == 200
+    assert "temporarily unavailable" in response.text
+    assert "no-js ie6 oldie" not in response.text
 
 
 def test_home_head_exposes_standard_favicon_links() -> None:
@@ -1433,6 +1462,46 @@ def test_deadlock_api_adds_api_key_header(monkeypatch) -> None:
     api = DeadlockAPI()
 
     assert api._request_headers()["X-API-KEY"] == "test-key"
+
+
+def test_statlocker_profile_search_payload_maps_to_deadlock_players() -> None:
+    players = _parse_statlocker_profiles(
+        [
+            {
+                "accountId": 128468878,
+                "name": "Halal Logic",
+                "avatarUrl": "https://example.com/avatar.jpg",
+                "lastUpdated": "2025-09-21T06:59:25.000+00:00",
+            }
+        ]
+    )
+
+    assert len(players) == 1
+    assert players[0].account_id == 128468878
+    assert players[0].personaname == "Halal Logic"
+    assert players[0].profileurl == "https://steamcommunity.com/profiles/76561198088734606"
+    assert players[0].avatarfull == "https://example.com/avatar.jpg"
+    assert players[0].last_updated == 1758437965
+
+
+def test_tracklock_profile_search_payload_maps_to_deadlock_players() -> None:
+    players = _parse_tracklock_profiles(
+        {
+            "players": [
+                {
+                    "account_id": "1738085256",
+                    "personaname": "halal",
+                    "avatarfull": "https://example.com/avatar.jpg",
+                }
+            ]
+        }
+    )
+
+    assert len(players) == 1
+    assert players[0].account_id == 1738085256
+    assert players[0].personaname == "halal"
+    assert players[0].profileurl == "https://steamcommunity.com/profiles/76561199698350984"
+    assert players[0].avatarfull == "https://example.com/avatar.jpg"
 
 
 def test_player_page_does_not_render_api_key(monkeypatch) -> None:

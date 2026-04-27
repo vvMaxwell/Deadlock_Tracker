@@ -158,33 +158,34 @@
 
             <section class="street-brawl-ability-guide">
                 <div class="section-heading">
-                    <h2>Most Common Level Path</h2>
+                    <h2>Skill Path</h2>
                     <p>Ordered as ability points from the Street Brawl sequence with the most tracked matches for this hero.</p>
                 </div>
-                <div class="street-brawl-point-path" aria-label="Most common ability point path">
-                    {% for point in guide.ability_path_text.split() %}
-                    <span>{{ point }}</span>
-                    {% endfor %}
-                </div>
-                <div class="street-brawl-steps">
-                    {% for step in guide.ability_steps %}
-                    <article class="street-brawl-step">
-                        <div class="street-brawl-step-number">{{ step.step_number }}</div>
-                        {% if step.ability_image_url %}
-                        <img class="street-brawl-step-icon" src="{{ step.ability_image_url }}" alt="{{ step.ability_name }}">
-                        {% endif %}
-                        <div class="street-brawl-step-copy">
-                            <strong>Ability {{ step.ability_point }}</strong>
-                            <span>{{ step.ability_name }}</span>
+                <div class="skill-path-board" aria-label="Most popular skill leveling order">
+                    {% for row in guide.skill_path_rows %}
+                    <div class="skill-path-row">
+                        <div class="skill-path-ability">
+                            {% if row.ability_image_url %}
+                            <img src="{{ row.ability_image_url }}" alt="{{ row.ability_name }}">
+                            {% endif %}
+                            <span>{{ row.ability_name }}</span>
                         </div>
-                    </article>
+                        <div class="skill-path-cells">
+                            {% for cell in row.cells %}
+                            <span
+                                class="skill-path-cell{% if cell.is_active %} skill-path-cell-active{% endif %}{% if cell.is_unlock %} skill-path-cell-unlock{% endif %}"
+                                title="{% if cell.is_active %}Step {{ cell.step_number }}: {{ row.ability_name }}{% else %}Step {{ cell.step_number }}{% endif %}"
+                            >{% if cell.is_active and not cell.is_unlock %}{{ cell.marker }}{% endif %}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
                     {% endfor %}
                 </div>
             </section>
             {% else %}
             <section class="street-brawl-ability-guide">
                 <div class="section-heading">
-                    <h2>Most Common Level Path</h2>
+                    <h2>Skill Path</h2>
                     <p>We do not have enough tracked Street Brawl ability-order data for {{ selected_hero_name }} yet, but the item board is still shown on the left.</p>
                 </div>
             </section>

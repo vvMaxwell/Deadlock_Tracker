@@ -107,12 +107,29 @@ class StreetBrawlAbilityStepView:
 
 
 @dataclass(slots=True)
+class SkillPathCellView:
+    step_number: int
+    marker: str
+    is_active: bool
+    is_unlock: bool
+
+
+@dataclass(slots=True)
+class SkillPathRowView:
+    ability_point: str
+    ability_name: str
+    ability_image_url: str | None
+    cells: list[SkillPathCellView]
+
+
+@dataclass(slots=True)
 class StreetBrawlGuideView:
     hero_name: str
     hero_icon_url: str | None
     hero_portrait_url: str | None
     hero_background_image_url: str | None
     ability_steps: list[StreetBrawlAbilityStepView]
+    skill_path_rows: list[SkillPathRowView]
     ability_path_text: str
     path_matches_text: str
     path_players_text: str
