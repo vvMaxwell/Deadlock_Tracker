@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from html.parser import HTMLParser
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 
@@ -35,6 +38,31 @@ from deadlock_tracker.models import (
     DeadlockRankInfo,
     DeadlockSteamProfile,
 )
+
+
+API_ERROR_LOGGER_NAME = "deadlock_tracker.api_errors"
+API_ERROR_LOG_PATH = Path("logs") / "deadlock_api_errors.log"
+
+
+def _api_error_logger() -> logging.Logger:
+    logger = logging.getLogger(API_ERROR_LOGGER_NAME)
+    if logger.handlers:
+        return logger
+
+    logger.setLevel(logging.WARNING)
+    logger.propagate = False
+    API_ERROR_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    handler = RotatingFileHandler(
+        API_ERROR_LOG_PATH,
+        maxBytes=1_000_000,
+        backupCount=5,
+        encoding="utf-8",
+    )
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    )
+    logger.addHandler(handler)
+    return logger
 
 
 RANK_NAME_BY_CODE = {
@@ -814,25 +842,62 @@ class DeadlockAPI:
             async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
                 async with session.get(url, params=params) as response:
                     if response.status == 404:
+                        _log_api_error(
+                            "deadlock_json",
+                            url=url,
+                            params=params,
+                            status=response.status,
+                            body=await response.text(),
+                        )
                         raise DeadlockError("No data found for that Deadlock player.")
                     if response.status in {401, 403}:
+                        _log_api_error(
+                            "deadlock_json",
+                            url=url,
+                            params=params,
+                            status=response.status,
+                            body=await response.text(),
+                        )
                         raise DeadlockError(
                             "Deadlock API rejected this request. Configure DEADLOCK_API_KEY for protected endpoints."
                         )
                     if response.status == 429:
                         if params and params.get("force_refetch") == "true":
+                            _log_api_error(
+                                "deadlock_json",
+                                url=url,
+                                params=params,
+                                status=response.status,
+                                body=await response.text(),
+                            )
                             raise DeadlockError(
                                 "Deadlock API force refresh is rate-limited. "
                                 "This Steam-backed refetch usually only works about once per hour per IP."
                             )
+                        _log_api_error(
+                            "deadlock_json",
+                            url=url,
+                            params=params,
+                            status=response.status,
+                            body=await response.text(),
+                        )
                         raise DeadlockError("Deadlock API rate limit hit. Try again shortly.")
                     if response.status >= 400:
                         message = await response.text()
+                        _log_api_error(
+                            "deadlock_json",
+                            url=url,
+                            params=params,
+                            status=response.status,
+                            body=message,
+                        )
                         raise DeadlockError(_deadlock_http_error_message(response.status, message))
                     return await response.json()
         except TimeoutError:
+            _log_api_error("deadlock_json_timeout", url=url, params=params)
             raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.") from None
         except aiohttp.ClientError as error:
+            _log_api_error("deadlock_json_client_error", url=url, params=params, error=error)
             raise DeadlockError(f"Deadlock API request failed: {error}") from error
 
     async def _get_text(self, url: str, params: dict[str, str] | None = None) -> str:
@@ -842,18 +907,41 @@ class DeadlockAPI:
             async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
                 async with session.get(url, params=params) as response:
                     if response.status == 404:
+                        _log_api_error(
+                            "official_patch_text",
+                            url=url,
+                            params=params,
+                            status=response.status,
+                            body=await response.text(),
+                        )
                         raise DeadlockError("That official patch post could not be found.")
                     if response.status == 429:
+                        _log_api_error(
+                            "official_patch_text",
+                            url=url,
+                            params=params,
+                            status=response.status,
+                            body=await response.text(),
+                        )
                         raise DeadlockError("Official patch post is rate-limited right now. Try again shortly.")
                     if response.status >= 400:
                         message = await response.text()
+                        _log_api_error(
+                            "official_patch_text",
+                            url=url,
+                            params=params,
+                            status=response.status,
+                            body=message,
+                        )
                         raise DeadlockError(
                             f"Official patch post request failed with HTTP {response.status}: {message[:200]}"
                         )
                     return await response.text()
         except TimeoutError:
+            _log_api_error("official_patch_text_timeout", url=url, params=params)
             raise DeadlockError("Official patch post took too long to respond. Try again in a moment.") from None
         except aiohttp.ClientError as error:
+            _log_api_error("official_patch_text_client_error", url=url, params=params, error=error)
             raise DeadlockError(f"Official patch post request failed: {error}") from error
 
     def _request_headers(self) -> dict[str, str]:
@@ -881,6 +969,49 @@ def _parse_last_updated(raw: Any) -> int | None:
         except ValueError:
             return None
     return None
+
+
+def _log_api_error(
+    source: str,
+    *,
+    url: str,
+    params: dict[str, str] | None = None,
+    status: int | None = None,
+    body: str | None = None,
+    error: BaseException | None = None,
+) -> None:
+    _api_error_logger().warning(
+        "%s url=%s status=%s params=%s error=%s body=%s",
+        source,
+        _sanitize_url(url),
+        status,
+        _sanitize_params(params),
+        repr(error) if error else None,
+        _sanitize_body(body),
+    )
+
+
+def _sanitize_params(params: dict[str, str] | None) -> dict[str, str] | None:
+    if not params:
+        return None
+    redacted_keys = {"api_key", "key", "token", "x-api-key", "authorization"}
+    return {
+        key: "[redacted]" if key.casefold() in redacted_keys else value
+        for key, value in params.items()
+    }
+
+
+def _sanitize_url(url: str) -> str:
+    parsed = urlparse(url)
+    if not parsed.query:
+        return url
+    return url.replace(parsed.query, "[query-redacted]")
+
+
+def _sanitize_body(body: str | None) -> str | None:
+    if body is None:
+        return None
+    return " ".join(body.split())[:500]
 
 
 def _parse_statlocker_profiles(payload: Any) -> list[DeadlockPlayer]:
