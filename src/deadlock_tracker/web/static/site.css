@@ -78,6 +78,8 @@ img {
 
 .site-header {
     display: flex;
+    position: relative;
+    z-index: 120;
     align-items: center;
     justify-content: space-between;
     gap: 14px;
@@ -87,6 +89,7 @@ img {
     border: 1px solid var(--line);
     border-radius: 18px;
     backdrop-filter: blur(12px);
+    overflow: visible;
 }
 
 .site-footer {
@@ -2963,6 +2966,7 @@ h2 {
 
 .header-search {
     position: relative;
+    z-index: 130;
     display: grid;
     grid-template-columns: minmax(260px, 520px) auto;
     gap: 10px;
