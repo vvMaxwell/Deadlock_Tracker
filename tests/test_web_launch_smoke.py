@@ -206,7 +206,10 @@ def test_home_menu_drawer_renders_outside_header() -> None:
     assert 'id="site-drawer-backdrop"' in response.text
     assert '<nav class="site-side-rail" aria-label="Primary navigation">' in response.text
     assert '<aside class="site-drawer" id="site-drawer">' in response.text
-    assert '<a class="menu-button side-rail-menu" href="#site-drawer" aria-label="Open menu">' in response.text
+    assert 'class="menu-button side-rail-menu" type="button" aria-label="Toggle menu"' in response.text
+    assert "data-site-menu-toggle" in response.text
+    assert "site-drawer-close" not in response.text
+    assert "setMenuOpen(!drawer.classList.contains" in response.text
     assert "Main Screen" in response.text
 
 
