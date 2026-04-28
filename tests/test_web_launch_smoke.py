@@ -210,6 +210,42 @@ def test_home_menu_drawer_renders_outside_header() -> None:
     assert "Main Screen" in response.text
 
 
+def test_header_player_search_renders_autocomplete_shell() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/")
+
+    assert 'class="header-search" method="get" action="/" data-player-search' in response.text
+    assert 'data-player-search-input' in response.text
+    assert 'data-player-search-results hidden' in response.text
+    assert "/api/player-search?q=" in response.text
+
+
+def test_player_search_suggestions_returns_players(monkeypatch) -> None:
+    class FakePlayerService:
+        async def search_players(self, query: str) -> list[DeadlockPlayer]:
+            assert query == "Halal"
+            return [
+                DeadlockPlayer(
+                    account_id=123,
+                    personaname="Halal Logic",
+                    profileurl="https://steamcommunity.com/profiles/76561197960265851",
+                    avatarfull="https://example.com/avatar.jpg",
+                    countrycode="CA",
+                    last_updated=None,
+                )
+            ]
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+
+    client = TestClient(web_app.app)
+    response = client.get("/api/player-search?q=Halal")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["results"][0]["personaname"] == "Halal Logic"
+    assert payload["results"][0]["detail_url"] == "http://testserver/players/123/halal-logic"
+
+
 def test_home_stylesheet_url_is_versioned() -> None:
     client = TestClient(web_app.app)
     response = client.get("/")

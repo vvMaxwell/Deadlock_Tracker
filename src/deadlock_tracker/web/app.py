@@ -9,7 +9,7 @@ from time import time
 from urllib.parse import urlencode, urlsplit
 
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.responses import Response as StarletteResponse
@@ -456,6 +456,45 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
             rank_distribution=rank_distribution,
         ),
     ))
+
+
+@app.get("/api/player-search")
+async def player_search_suggestions(request: Request, q: str | None = None) -> JSONResponse:
+    cleaned_query = (q or "").strip()
+    if not cleaned_query:
+        return JSONResponse({"results": []})
+
+    player_service = PlayerService()
+    try:
+        if _is_direct_player_lookup(cleaned_query):
+            resolved = await player_service.resolve_player(cleaned_query)
+            players = resolved if isinstance(resolved, list) else [resolved]
+        else:
+            players = await player_service.search_players(cleaned_query)
+    except DeadlockError as error:
+        return JSONResponse({"results": [], "error": str(error)}, status_code=200)
+
+    return JSONResponse(
+        {
+            "results": [
+                {
+                    "account_id": player.account_id,
+                    "personaname": player.personaname,
+                    "detail_url": str(
+                        request.url_for(
+                            "player_profile_canonical",
+                            account_id=str(player.account_id),
+                            player_slug=_slugify(player.personaname),
+                        )
+                    ),
+                    "profileurl": player.profileurl,
+                    "avatarfull": player.avatarfull,
+                    "countrycode": player.countrycode,
+                }
+                for player in players[:8]
+            ]
+        }
+    )
 
 
 @app.get("/faq", response_class=HTMLResponse)
