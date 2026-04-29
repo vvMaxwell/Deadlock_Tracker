@@ -210,7 +210,17 @@ def test_home_menu_drawer_renders_outside_header() -> None:
     assert "data-site-menu-toggle" in response.text
     assert "site-drawer-close" not in response.text
     assert "setMenuOpen(!drawer.classList.contains" in response.text
-    assert "Main Screen" in response.text
+    for label in (
+        "Home",
+        "Heroes",
+        "Builds",
+        "Items",
+        "Stats",
+        "Updates & Help",
+        "About",
+    ):
+        assert label in response.text
+    assert '<a href="/">Search</a>' in response.text
 
 
 def test_header_player_search_renders_autocomplete_shell() -> None:
