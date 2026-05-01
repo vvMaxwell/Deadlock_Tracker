@@ -247,6 +247,8 @@ async def sitemap_xml(request: Request) -> Response:
         _public_url(request, str(request.url_for("patch_notes"))),
         _public_url(request, str(request.url_for("faq"))),
         _public_url(request, str(request.url_for("discord_bot"))),
+        _public_url(request, str(request.url_for("about"))),
+        _public_url(request, str(request.url_for("privacy_policy"))),
         _public_url(request, str(request.url_for("credits"))),
         _public_url(request, str(request.url_for("disclaimers"))),
     ]
@@ -555,6 +557,72 @@ async def discord_bot(request: Request) -> HTMLResponse:
             request,
             page_title="Discord Bot | Deadlock Stats Tracker",
             meta_description="Follow the upcoming Deadlock Stats Tracker Discord bot for match lookups, stat snapshots, and future automation features.",
+        ),
+    ))
+
+
+@app.get("/about", response_class=HTMLResponse, name="about")
+async def about(request: Request) -> HTMLResponse:
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "about.html",
+        _base_context(
+            request,
+            page_title="About & Contact | Deadlock Stats Tracker",
+            meta_description=(
+                "Learn who Deadlock Stats Tracker is for, how the site uses public Deadlock data, "
+                "and how to contact the site owner about corrections or privacy questions."
+            ),
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "AboutPage",
+                    "name": "About Deadlock Stats Tracker",
+                    "url": _public_url(request, str(request.url_for("about"))),
+                    "description": (
+                        "Deadlock Stats Tracker is a fan-made site for player lookups, hero pages, item stats, "
+                        "match history, and Deadlock meta research."
+                    ),
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("About", str(request.url_for("about"))),
+                    ],
+                ),
+            ],
+        ),
+    ))
+
+
+@app.get("/privacy-policy", response_class=HTMLResponse, name="privacy_policy")
+async def privacy_policy(request: Request) -> HTMLResponse:
+    return _html_response(TEMPLATES.TemplateResponse(
+        request,
+        "privacy_policy.html",
+        _base_context(
+            request,
+            page_title="Privacy Policy | Deadlock Stats Tracker",
+            meta_description=(
+                "Read the Deadlock Stats Tracker privacy policy, including Google AdSense, cookies, analytics, "
+                "server logs, public Steam data, and contact information."
+            ),
+            structured_data=[
+                {
+                    "@context": "https://schema.org",
+                    "@type": "PrivacyPolicy",
+                    "name": "Privacy Policy",
+                    "url": _public_url(request, str(request.url_for("privacy_policy"))),
+                },
+                _breadcrumb_structured_data(
+                    request,
+                    [
+                        ("Home", str(request.url_for("home"))),
+                        ("Privacy Policy", str(request.url_for("privacy_policy"))),
+                    ],
+                ),
+            ],
         ),
     ))
 

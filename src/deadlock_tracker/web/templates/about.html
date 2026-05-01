@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}About & Contact | Deadlock Stats Tracker{% endblock %}
+
+{% block content %}
+<section class="guide-shell faq-shell">
+    <div class="hero-actions">
+        <a class="back-link" href="/">Back to search</a>
+    </div>
+    <p class="eyebrow">About & Contact</p>
+    <h1>About Deadlock Stats Tracker</h1>
+    <p class="lede">Deadlock Stats Tracker is a fan-made research tool for players who want fast player lookups, match context, hero trends, item performance, rank distribution, and public build data in one place.</p>
+    <div class="signature-strip" aria-hidden="true">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/lady-geist.svg') }}" alt="">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/paradox.svg') }}" alt="">
+        <img src="{{ url_for('static', path='/community-assets/hero-signatures/yamato.svg') }}" alt="">
+    </div>
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <p class="eyebrow">Purpose</p>
+            <h2>What the site provides</h2>
+            <p>The site turns public Deadlock player, match, hero, item, and rank data into searchable pages. Players can inspect recent matches, compare hero and item trends, browse leaderboards, and follow official patch-note summaries.</p>
+        </article>
+        <article class="platform-card faq-card">
+            <p class="eyebrow">Editorial Approach</p>
+            <h2>How pages are maintained</h2>
+            <p>Stat pages are generated from upstream Deadlock data, then organized with hand-written descriptions, navigation, filters, and explainers so visitors can understand what each page is useful for.</p>
+        </article>
+        <article class="platform-card faq-card">
+            <p class="eyebrow">Contact</p>
+            <h2>Corrections and privacy questions</h2>
+            <p>For data corrections, asset attribution, privacy questions, or site feedback, email <a class="text-link" href="mailto:contact@deadlockstattracker.com">contact@deadlockstattracker.com</a>.</p>
+        </article>
+        <article class="platform-card faq-card">
+            <p class="eyebrow">Independence</p>
+            <h2>Fan-made project</h2>
+            <p>Deadlock Stats Tracker is not affiliated with Valve. Game names, images, and related marks belong to their respective rights holders.</p>
+        </article>
+    </section>
+</section>
+{% endblock %}

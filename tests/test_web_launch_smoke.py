@@ -62,6 +62,8 @@ def test_sitemap_lists_core_pages() -> None:
     assert "<loc>http://testserver/best-items</loc>" in response.text
     assert "<loc>http://testserver/street-brawl-builds</loc>" in response.text
     assert "<loc>http://testserver/patch-notes</loc>" in response.text
+    assert "<loc>http://testserver/about</loc>" in response.text
+    assert "<loc>http://testserver/privacy-policy</loc>" in response.text
 
 
 def test_sitemap_lists_hero_item_and_patch_detail_pages(monkeypatch) -> None:
@@ -221,6 +223,27 @@ def test_home_menu_drawer_renders_outside_header() -> None:
     ):
         assert label in response.text
     assert '<a href="/">Search</a>' in response.text
+    assert '<a href="/about">About & Contact</a>' in response.text
+    assert '<a href="/privacy-policy">Privacy Policy</a>' in response.text
+
+
+def test_privacy_policy_page_renders_adsense_disclosures() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/privacy-policy")
+
+    assert response.status_code == 200
+    assert "Privacy Policy" in response.text
+    assert "Third-party vendors, including Google, use cookies" in response.text
+    assert "Google Ads Settings" in response.text
+
+
+def test_about_page_renders_contact_details() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/about")
+
+    assert response.status_code == 200
+    assert "About Deadlock Stats Tracker" in response.text
+    assert "contact@deadlockstattracker.com" in response.text
 
 
 def test_header_player_search_renders_autocomplete_shell() -> None:
