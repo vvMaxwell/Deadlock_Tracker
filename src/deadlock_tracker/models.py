@@ -290,6 +290,8 @@ class DeadlockMatchMetadata:
     match_mode: int | None
     winning_team: int | None
     players: list[DeadlockMatchPlayer]
+    average_badge_team0: int | None = None
+    average_badge_team1: int | None = None
 
 
 @dataclass(slots=True)

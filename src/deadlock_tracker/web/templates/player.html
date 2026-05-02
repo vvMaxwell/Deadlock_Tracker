@@ -48,14 +48,14 @@
         <p class="overview-stat">Most recent match returned by the player history API.</p>
     </article>
     <article class="overview-card">
-        <p class="eyebrow">Estimated Rank</p>
+        <p class="eyebrow">API Estimated Rank</p>
         <div class="rank-overview-row">
             {% if overview.rank_badge_image_url %}
             <img class="rank-badge-image" src="{{ overview.rank_badge_image_url }}" alt="{{ overview.rank_name }}">
             {% endif %}
             <div class="rank-overview-copy">
                 <h2>{{ overview.rank_name }}</h2>
-                <p class="overview-stat">Based on the latest available competitive rank data.</p>
+                <p class="overview-stat">Whatever the Deadlock API currently estimates this player's rank to be.</p>
             </div>
         </div>
     </article>

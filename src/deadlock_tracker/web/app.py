@@ -1137,7 +1137,7 @@ async def leaderboard_region(request: Request, region_slug: str) -> HTMLResponse
         _base_context(
             request,
             page_title=f"{region_name} Deadlock Leaderboard | Deadlock Stats Tracker",
-            meta_description=f"Browse the top tracked Deadlock players for {region_name}, with current badge estimates and top heroes.",
+            meta_description=f"Browse the top tracked Deadlock players for {region_name}, with Deadlock API estimated badges and top heroes.",
             structured_data=[
                 {
                     "@context": "https://schema.org",
@@ -1260,7 +1260,7 @@ async def leaderboard_region_hero(
         _base_context(
             request,
             page_title=f"Best {hero.name} Players in {region_name} | Deadlock Stats Tracker",
-            meta_description=f"Browse the top tracked {hero.name} players in {region_name} with current badge estimates and linked player pages.",
+            meta_description=f"Browse the top tracked {hero.name} players in {region_name} with Deadlock API estimated badges and linked player pages.",
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
                 request,
@@ -1350,14 +1350,14 @@ async def rank_distribution(request: Request) -> HTMLResponse:
         _base_context(
             request,
             page_title="Deadlock Rank Distribution | Deadlock Stats Tracker",
-            meta_description="See the estimated Deadlock rank distribution and open hero-specific rank-distribution pages.",
+            meta_description="See the Deadlock API estimated rank distribution and open hero-specific rank-distribution pages.",
             structured_data=[
                 {
                     "@context": "https://schema.org",
                     "@type": "CollectionPage",
                     "name": "Deadlock Rank Distribution",
                     "url": _public_url(request, str(request.url_for("rank_distribution"))),
-                    "description": "See the estimated Deadlock rank distribution and open hero-specific rank-distribution pages.",
+                    "description": "See the Deadlock API estimated rank distribution and open hero-specific rank-distribution pages.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -1439,7 +1439,7 @@ async def hero_rank_distribution(request: Request, hero_id: str, hero_slug: str)
         _base_context(
             request,
             page_title=f"{hero.name} Rank Distribution | Deadlock Stats Tracker",
-            meta_description=f"See the estimated rank distribution for tracked {hero.name} players in Deadlock.",
+            meta_description=f"See the Deadlock API estimated rank distribution for tracked {hero.name} players in Deadlock.",
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
                 request,
@@ -1451,7 +1451,7 @@ async def hero_rank_distribution(request: Request, hero_id: str, hero_slug: str)
                     "@type": "CollectionPage",
                     "name": f"{hero.name} Rank Distribution",
                     "url": canonical_url,
-                    "description": f"See the estimated rank distribution for tracked {hero.name} players in Deadlock.",
+                    "description": f"See the Deadlock API estimated rank distribution for tracked {hero.name} players in Deadlock.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -3019,6 +3019,7 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
             winning_team_label=_team_label(metadata.winning_team),
             viewed_player_result=viewed_player_result,
             viewed_player_name=resolved.personaname,
+            average_rank_text=_match_average_rank_text(metadata.average_badge_team0, metadata.average_badge_team1),
         )
         canonical_match_url = _public_url(request, str(
             request.url_for(
@@ -3697,6 +3698,20 @@ def _rank_badge_image_url(rank: int | None, rank_info: list) -> str | None:
             by_division = getattr(item, "image_small_by_division", {}) or {}
             return by_division.get(division) or getattr(item, "image_small", None)
     return None
+
+
+def _match_average_rank_text(team0_badge: int | None, team1_badge: int | None) -> str:
+    team0_name = friendly_rank_name(team0_badge) if team0_badge is not None else None
+    team1_name = friendly_rank_name(team1_badge) if team1_badge is not None else None
+    if team0_name and team1_name:
+        if team0_name == team1_name:
+            return team0_name
+        return f"Team 0 {team0_name} / Team 1 {team1_name}"
+    if team0_name:
+        return team0_name
+    if team1_name:
+        return team1_name
+    return "Unknown"
 
 
 def _build_lane_views(players: list[MatchDetailPlayerView]) -> list[MatchLaneView]:

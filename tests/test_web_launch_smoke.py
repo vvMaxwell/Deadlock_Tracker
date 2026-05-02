@@ -1477,6 +1477,8 @@ def test_canonical_match_url_does_not_redirect_forever_on_public_host(monkeypatc
                 match_mode=1,
                 winning_team=0,
                 players=[],
+                average_badge_team0=81,
+                average_badge_team1=91,
             )
 
         async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
@@ -1517,6 +1519,7 @@ def test_canonical_match_url_does_not_redirect_forever_on_public_host(monkeypatc
     )
 
     assert response.status_code == 200
+    assert "Avg Rank Team 0 Oracle 1 / Team 1 Phantom 1" in response.text
 
 
 def test_deadlock_api_adds_api_key_header(monkeypatch) -> None:

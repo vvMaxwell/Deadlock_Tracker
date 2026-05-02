@@ -228,6 +228,7 @@ class MatchDetailOverviewView:
     winning_team_label: str
     viewed_player_result: str
     viewed_player_name: str
+    average_rank_text: str
 
 
 @dataclass(slots=True)

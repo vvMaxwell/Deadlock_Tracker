@@ -16,6 +16,9 @@
         <div class="match-head-meta">
             <span>Match {{ overview.match_id }}</span>
             <span>Winner {{ overview.winning_team_label }}</span>
+            {% if overview.average_rank_text != "Unknown" %}
+            <span>Avg Rank {{ overview.average_rank_text }}</span>
+            {% endif %}
             <span>{{ overview.duration }}</span>
         </div>
     </div>

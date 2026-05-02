@@ -10,7 +10,7 @@
     </div>
     <p class="eyebrow">Rank Distribution</p>
     <h1>Deadlock Rank Distribution</h1>
-    <p class="lede">Tracked-player estimate of the current Deadlock badge ladder, with hero-specific distribution pages linked below.</p>
+    <p class="lede">Deadlock API rank estimates for tracked players, with hero-specific distribution pages linked below.</p>
 
     <section class="overview-grid">
         {% for card in summary_cards %}
@@ -24,8 +24,8 @@
 
     <section class="results-section">
         <div class="section-heading">
-            <h2>Estimated Badge Ladder</h2>
-            <p>This chart shows the tracked-player estimate, not the full global player base.</p>
+            <h2>API Estimated Badge Ladder</h2>
+            <p>This chart shows the Deadlock API estimate for tracked players, not the full global player base.</p>
         </div>
         <div class="rank-distribution-chart">
             {% for tier in rank_distribution %}

@@ -805,6 +805,8 @@ class DeadlockAPI:
             match_mode=match_info.get("match_mode"),
             winning_team=match_info.get("winning_team"),
             players=players,
+            average_badge_team0=match_info.get("average_badge_team0"),
+            average_badge_team1=match_info.get("average_badge_team1"),
         )
 
     async def get_patches(self, *, limit: int = 12) -> list[DeadlockPatch]:
