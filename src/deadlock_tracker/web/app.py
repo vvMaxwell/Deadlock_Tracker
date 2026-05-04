@@ -3499,7 +3499,11 @@ def _build_counter_views(
         )
 
     rows: list[HeroPeerStatView] = []
-    for stat in ranked[:limit]:
+    seen_enemy_hero_ids: set[int] = set()
+    for stat in ranked:
+        if stat.enemy_hero_id in seen_enemy_hero_ids:
+            continue
+        seen_enemy_hero_ids.add(stat.enemy_hero_id)
         enemy = hero_info[stat.enemy_hero_id]
         rows.append(
             HeroPeerStatView(
@@ -3515,6 +3519,8 @@ def _build_counter_views(
                 ),
             )
         )
+        if len(rows) >= limit:
+            break
     return rows
 
 

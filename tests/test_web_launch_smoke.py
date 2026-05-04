@@ -727,6 +727,107 @@ def test_hero_matchups_page_renders(monkeypatch) -> None:
     assert "Bebop" in response.text
 
 
+def test_counter_views_dedupe_repeated_enemy_heroes() -> None:
+    class FakeRequest:
+        def url_for(self, route_name: str, **params: str) -> str:
+            return f"/heroes/{params['hero_id']}/{params['hero_slug']}"
+
+    hero_info = {
+        2: DeadlockHeroInfo(
+            hero_id=2,
+            name="Bebop",
+            icon_small="https://example.com/bebop.png",
+            portrait_url=None,
+            background_image_url=None,
+        ),
+        3: DeadlockHeroInfo(
+            hero_id=3,
+            name="Viscous",
+            icon_small="https://example.com/viscous.png",
+            portrait_url=None,
+            background_image_url=None,
+        ),
+    }
+    stats = [
+        DeadlockHeroCounterStat(
+            hero_id=1,
+            enemy_hero_id=2,
+            wins=60,
+            matches_played=100,
+            kills=500,
+            enemy_kills=420,
+            deaths=300,
+            enemy_deaths=350,
+            assists=600,
+            enemy_assists=540,
+            denies=100,
+            enemy_denies=90,
+            last_hits=5000,
+            enemy_last_hits=4700,
+            networth=900000,
+            enemy_networth=850000,
+            obj_damage=110000,
+            enemy_obj_damage=100000,
+            creeps=2500,
+            enemy_creeps=2400,
+        ),
+        DeadlockHeroCounterStat(
+            hero_id=1,
+            enemy_hero_id=2,
+            wins=58,
+            matches_played=100,
+            kills=480,
+            enemy_kills=430,
+            deaths=320,
+            enemy_deaths=340,
+            assists=590,
+            enemy_assists=530,
+            denies=100,
+            enemy_denies=90,
+            last_hits=4900,
+            enemy_last_hits=4700,
+            networth=890000,
+            enemy_networth=850000,
+            obj_damage=108000,
+            enemy_obj_damage=100000,
+            creeps=2500,
+            enemy_creeps=2400,
+        ),
+        DeadlockHeroCounterStat(
+            hero_id=1,
+            enemy_hero_id=3,
+            wins=55,
+            matches_played=100,
+            kills=450,
+            enemy_kills=420,
+            deaths=310,
+            enemy_deaths=350,
+            assists=570,
+            enemy_assists=540,
+            denies=100,
+            enemy_denies=90,
+            last_hits=5000,
+            enemy_last_hits=4700,
+            networth=900000,
+            enemy_networth=850000,
+            obj_damage=110000,
+            enemy_obj_damage=100000,
+            creeps=2500,
+            enemy_creeps=2400,
+        ),
+    ]
+
+    rows = web_app._build_counter_views(
+        stats,
+        hero_info,
+        request=FakeRequest(),
+        view="favorable",
+        limit=3,
+    )
+
+    assert [row.hero_name for row in rows] == ["Bebop", "Viscous"]
+
+
 def test_item_detail_page_renders(monkeypatch) -> None:
     class FakeApi:
         async def get_item_info(self, item_id: int) -> DeadlockItemInfo:

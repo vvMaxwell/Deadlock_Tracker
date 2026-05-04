@@ -2,6 +2,7 @@ import asyncio
 
 import pytest
 
+from deadlock_tracker.clients.deadlock_api import _match_history_rate_limit_fallback
 from deadlock_tracker.models import DeadlockHeroInfo, DeadlockHeroStat, DeadlockMatch, DeadlockPlayer
 from deadlock_tracker.services.player_service import PlayerService
 
@@ -149,3 +150,23 @@ def test_resolve_numeric_player_does_not_fall_back_to_search() -> None:
     assert player.account_id == 123
     assert player.profileurl == "https://steamcommunity.com/profiles/76561197960265851"
     assert api.search_called is False
+
+
+def test_match_history_429_fallback_keeps_stored_history_payload() -> None:
+    payload = _match_history_rate_limit_fallback(
+        "https://api.deadlock-api.com/v1/players/123/match-history",
+        params=None,
+        body='[{"match_id": 1}]',
+    )
+
+    assert payload == [{"match_id": 1}]
+
+
+def test_match_history_429_fallback_ignores_force_refetch_errors() -> None:
+    payload = _match_history_rate_limit_fallback(
+        "https://api.deadlock-api.com/v1/players/123/match-history",
+        params={"force_refetch": "true"},
+        body='[{"match_id": 1}]',
+    )
+
+    assert payload is None

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime
 from html.parser import HTMLParser
@@ -864,13 +865,28 @@ class DeadlockAPI:
                             "Deadlock API rejected this request. Configure DEADLOCK_API_KEY for protected endpoints."
                         )
                     if response.status == 429:
+                        body = await response.text()
+                        fallback_payload = _match_history_rate_limit_fallback(
+                            url,
+                            params=params,
+                            body=body,
+                        )
+                        if fallback_payload is not None:
+                            _log_api_error(
+                                "deadlock_json_match_history_rate_limit_fallback",
+                                url=url,
+                                params=params,
+                                status=response.status,
+                                body=body,
+                            )
+                            return fallback_payload
                         if params and params.get("force_refetch") == "true":
                             _log_api_error(
                                 "deadlock_json",
                                 url=url,
                                 params=params,
                                 status=response.status,
-                                body=await response.text(),
+                                body=body,
                             )
                             raise DeadlockError(
                                 "Deadlock API force refresh is rate-limited. "
@@ -881,7 +897,7 @@ class DeadlockAPI:
                             url=url,
                             params=params,
                             status=response.status,
-                            body=await response.text(),
+                            body=body,
                         )
                         raise DeadlockError("Deadlock API rate limit hit. Try again shortly.")
                     if response.status >= 400:
@@ -1014,6 +1030,23 @@ def _sanitize_body(body: str | None) -> str | None:
     if body is None:
         return None
     return " ".join(body.split())[:500]
+
+
+def _match_history_rate_limit_fallback(
+    url: str,
+    *,
+    params: dict[str, str] | None,
+    body: str,
+) -> Any | None:
+    if "/match-history" not in url or (params or {}).get("force_refetch") == "true":
+        return None
+
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        return None
+
+    return payload if isinstance(payload, list) else None
 
 
 def _parse_statlocker_profiles(payload: Any) -> list[DeadlockPlayer]:
