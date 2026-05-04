@@ -1145,7 +1145,7 @@ async def leaderboards(request: Request) -> HTMLResponse:
             page_title="Deadlock Leaderboards | Deadlock Stats Tracker",
             meta_description=(
                 "Browse Deadlock leaderboards by region and hero, find top tracked players, "
-                "compare ranked profiles, and open hero-specific leaderboard pages."
+                "compare ranked profiles, and open hero-specific leaderboard pages for every region."
             ),
             structured_data=[
                 {
