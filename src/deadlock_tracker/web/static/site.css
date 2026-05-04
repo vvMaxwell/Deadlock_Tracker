@@ -3508,3 +3508,309 @@ body.menu-open {
         transform: translateX(calc(-100% - 24px));
     }
 }
+
+/* Phone layout polish */
+
+@media (max-width: 640px) {
+    body {
+        background:
+            radial-gradient(circle at top left, rgba(211, 181, 138, 0.13), transparent 34%),
+            linear-gradient(180deg, #050403 0%, #0b0907 48%, #080604 100%);
+    }
+
+    .site-side-rail {
+        gap: 8px;
+    }
+
+    .side-rail-menu.menu-button,
+    .side-rail-brand {
+        flex: 0 0 auto;
+    }
+
+    .side-rail-brand {
+        min-width: 0;
+        padding-right: 10px !important;
+        font-size: 0.86rem;
+    }
+
+    .page-shell {
+        width: 100%;
+        padding: 70px 10px 42px;
+    }
+
+    .site-header {
+        margin-bottom: 10px;
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .site-brand-row,
+    .site-header-copy {
+        display: none;
+    }
+
+    .site-header-top {
+        gap: 0;
+        width: 100%;
+    }
+
+    .header-search {
+        width: 100%;
+        flex: 0 0 auto;
+        gap: 8px;
+    }
+
+    .header-search input,
+    .header-search button {
+        height: 42px;
+        border-radius: 12px;
+        font-size: 0.95rem;
+    }
+
+    .header-search input {
+        padding: 0 13px;
+    }
+
+    .header-search-popover {
+        max-height: 58vh;
+        border-radius: 14px;
+    }
+
+    .guide-shell {
+        padding: 18px 14px;
+        border-radius: 20px;
+    }
+
+    .faq-shell {
+        gap: 18px;
+    }
+
+    .hero-actions {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 0;
+    }
+
+    .back-link,
+    .refresh-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 38px;
+        padding: 9px 12px;
+        border-radius: 12px;
+        text-align: center;
+        font-size: 0.9rem;
+    }
+
+    .eyebrow {
+        margin-bottom: 8px;
+        font-size: 0.68rem;
+        letter-spacing: 0.14em;
+    }
+
+    h1 {
+        font-size: clamp(2rem, 10.5vw, 2.6rem);
+        line-height: 1.03;
+    }
+
+    h2 {
+        font-size: clamp(1.35rem, 8vw, 1.8rem);
+        line-height: 1.08;
+    }
+
+    .lede {
+        margin-top: 12px;
+        font-size: 0.98rem;
+        line-height: 1.55;
+    }
+
+    .faq-grid,
+    .street-brawl-hero-grid,
+    .match-feed {
+        gap: 10px;
+    }
+
+    .platform-card,
+    .panel,
+    .result-card,
+    .card-preview {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .faq-card h2 {
+        font-size: 1.5rem;
+    }
+
+    .faq-card p {
+        margin-top: 10px;
+        line-height: 1.45;
+    }
+
+    .results-section,
+    .card-preview {
+        margin-top: 18px;
+    }
+
+    .section-heading {
+        gap: 8px;
+    }
+
+    .section-heading p {
+        margin: 0;
+        font-size: 0.94rem;
+        line-height: 1.5;
+    }
+
+    .player-hero {
+        min-height: 0;
+        gap: 16px;
+        padding: 18px 16px;
+        border-radius: 20px;
+    }
+
+    .player-hero .card-preview {
+        justify-self: start;
+        width: min(180px, 58vw);
+        margin-top: 0;
+        padding: 10px;
+    }
+
+    .player-hero .card-preview img {
+        border-radius: 14px;
+    }
+
+    .street-brawl-hero-tile {
+        min-height: 132px;
+        padding: 14px;
+        border-radius: 16px;
+    }
+
+    .street-brawl-hero-tile::before {
+        width: 130px;
+        height: 130px;
+        border-radius: 30px;
+    }
+
+    .street-brawl-hero-tile-copy {
+        max-width: calc(100% - 84px);
+        gap: 5px;
+    }
+
+    .street-brawl-hero-tile-copy strong {
+        font-size: 1.08rem;
+        line-height: 1.08;
+    }
+
+    .street-brawl-hero-tile-copy span {
+        font-size: 0.82rem;
+        line-height: 1.3;
+    }
+
+    .street-brawl-hero-tile-portrait {
+        width: 82px;
+        height: 82px;
+        flex: 0 0 auto;
+    }
+
+    .match-card {
+        padding: 14px;
+        border-radius: 16px;
+    }
+
+    .match-card-top {
+        gap: 12px;
+        align-items: stretch;
+    }
+
+    .match-card-title {
+        width: 100%;
+        gap: 10px;
+        align-items: flex-start;
+        min-width: 0;
+    }
+
+    .match-card-title > div {
+        min-width: 0;
+    }
+
+    .match-hero,
+    .match-card h3,
+    .match-played,
+    .match-summary span {
+        overflow-wrap: anywhere;
+    }
+
+    .match-card h3 {
+        font-size: 1.12rem;
+        line-height: 1.12;
+    }
+
+    .match-played {
+        display: inline-flex;
+        width: fit-content;
+        padding: 6px 9px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+    }
+
+    .match-summary {
+        margin-top: 12px;
+    }
+
+    .hero-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+    }
+
+    .hero-icon-match {
+        width: 44px;
+        height: 44px;
+    }
+
+    .match-top-right {
+        align-self: flex-start;
+    }
+
+    .site-cookie-notice {
+        margin-top: 18px;
+        padding: 12px;
+        border-radius: 14px;
+    }
+
+    .site-footer {
+        margin-top: 18px;
+    }
+
+    .site-footer-links {
+        justify-content: center;
+        gap: 10px 14px;
+        font-size: 0.88rem;
+    }
+}
+
+@media (max-width: 380px) {
+    .side-rail-brand {
+        max-width: calc(100vw - 72px);
+        font-size: 0.8rem;
+    }
+
+    .guide-shell {
+        padding-inline: 12px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    .street-brawl-hero-tile-copy {
+        max-width: calc(100% - 70px);
+    }
+
+    .street-brawl-hero-tile-portrait {
+        width: 70px;
+        height: 70px;
+    }
+}

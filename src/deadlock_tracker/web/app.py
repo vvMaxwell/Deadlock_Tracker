@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import UTC, datetime
+from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
 from time import time
@@ -54,6 +55,7 @@ from deadlock_tracker.web.view_models import (
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 STATIC_CSS_VERSION = int((BASE_DIR / "static" / "site.css").stat().st_mtime)
+SITEMAP_DATE = datetime.fromtimestamp(STATIC_CSS_VERSION, UTC).date().isoformat()
 
 app = FastAPI(title="Deadlock Stats Tracker", version="0.1.0")
 
@@ -89,6 +91,56 @@ def _html_response(response: HTMLResponse) -> HTMLResponse:
     return response
 
 
+def _noindex_response(response: Response) -> Response:
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
+
+
+def _website_structured_data(request: Request, site_name: str) -> dict[str, object]:
+    home_url = _public_url(request, str(request.url_for("home")))
+    return {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": site_name,
+        "url": home_url,
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": f"{home_url}?query={{search_term_string}}",
+            "query-input": "required name=search_term_string",
+        },
+    }
+
+
+def _site_navigation_structured_data(request: Request) -> dict[str, object]:
+    links = [
+        ("Stats Tracker", "home", {}),
+        ("Ranks", "rank_distribution", {}),
+        ("Leaderboards", "leaderboards", {}),
+        ("Heroes", "heroes_directory", {}),
+        ("Best Heroes", "best_heroes", {}),
+        ("Items", "items_directory", {}),
+        ("Best Items", "best_items", {}),
+        ("Builds", "builds_hub", {}),
+        ("Street Brawl Builds", "street_brawl_builds", {}),
+        ("Patch Notes", "patch_notes", {}),
+        ("FAQ", "faq", {}),
+    ]
+    return {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": "Deadlock Stats Tracker sections",
+        "itemListElement": [
+            {
+                "@type": "SiteNavigationElement",
+                "position": index,
+                "name": name,
+                "url": _public_url(request, str(request.url_for(route_name, **params))),
+            }
+            for index, (name, route_name, params) in enumerate(links, start=1)
+        ],
+    }
+
+
 def _base_context(request: Request, **context: object) -> dict[str, object]:
     site_name = "Deadlock Stats Tracker"
     path = request.url.path
@@ -122,20 +174,22 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
     )
     favicon_ico_url = _public_url(request, str(request.url_for("favicon_ico")))
     webmanifest_url = _public_url(request, str(request.url_for("site_webmanifest")))
+    sitemap_url = _public_url(request, str(request.url_for("sitemap_xml")))
     canonical_url = context.pop("canonical_url", _public_url(request, str(request.url.replace(query=""))))
     page_title = context.get("page_title") or site_name
     meta_description = context.get("meta_description") or (
         "Search Deadlock players, ranks, match history, hero performance, best heroes, best items, and Street Brawl builds."
     )
     og_image = context.get("og_image") or brand_logo_url
-    meta_robots = context.pop("meta_robots", None) or "index,follow"
+    meta_robots = context.pop("meta_robots", None) or "index,follow,max-image-preview:large"
     og_type = context.get("og_type") or "website"
     structured_data = context.pop("structured_data", None)
+    home_url = _public_url(request, str(request.url_for("home")))
     site_schema = {
         "@context": "https://schema.org",
         "@type": "Organization",
         "name": site_name,
-        "url": _public_url(request, str(request.url_for("home"))),
+        "url": home_url,
         "logo": {
             "@type": "ImageObject",
             "url": brand_symbol_url,
@@ -145,12 +199,17 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
         },
         "image": brand_logo_url,
     }
+    sitewide_structured_data = [
+        site_schema,
+        _website_structured_data(request, site_name),
+        _site_navigation_structured_data(request),
+    ]
     if structured_data is None:
-        structured_data = [site_schema]
+        structured_data = sitewide_structured_data
     elif isinstance(structured_data, list):
-        structured_data = [site_schema, *structured_data]
+        structured_data = [*sitewide_structured_data, *structured_data]
     else:
-        structured_data = [site_schema, structured_data]
+        structured_data = [*sitewide_structured_data, structured_data]
     if structured_data is not None:
         structured_data = json.dumps(structured_data, separators=(",", ":"))
 
@@ -172,6 +231,7 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
         "favicon_ico_url": favicon_ico_url,
         "apple_touch_icon_url": apple_touch_icon_url,
         "webmanifest_url": webmanifest_url,
+        "sitemap_url": sitemap_url,
         "static_css_version": STATIC_CSS_VERSION,
         "request_path": path,
         **context,
@@ -179,14 +239,29 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
 
 
 @app.get("/healthz")
-async def healthcheck() -> dict[str, str]:
-    return {"status": "ok"}
+async def healthcheck() -> Response:
+    return _noindex_response(JSONResponse({"status": "ok"}))
 
 
 @app.get("/robots.txt")
 async def robots_txt(request: Request) -> Response:
     sitemap_url = _public_url(request, str(request.url_for("sitemap_xml")))
-    content = f"User-agent: *\nAllow: /\n\nSitemap: {sitemap_url}\n"
+    content = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /api/\n"
+        "Disallow: /healthz\n"
+        "Disallow: /*?query=\n"
+        "Disallow: /*?refresh=\n"
+        "Disallow: /*?hero_id=\n"
+        "Disallow: /*?rank_floor=\n"
+        "Disallow: /*?mode=\n"
+        "Disallow: /*?window_days=\n"
+        "Disallow: /*?min_matches=\n"
+        "Disallow: /*?item_level=\n"
+        "\n"
+        f"Sitemap: {sitemap_url}\n"
+    )
     return Response(content=content, media_type="text/plain")
 
 
@@ -231,113 +306,160 @@ async def site_webmanifest(request: Request) -> Response:
     )
 
 
+def _sitemap_entry(
+    loc: str,
+    *,
+    lastmod: str = SITEMAP_DATE,
+    changefreq: str = "weekly",
+    priority: str = "0.7",
+) -> dict[str, str]:
+    return {
+        "loc": loc,
+        "lastmod": lastmod,
+        "changefreq": changefreq,
+        "priority": priority,
+    }
+
+
+def _render_sitemap(entries: list[dict[str, str]]) -> str:
+    unique_entries = list({entry["loc"]: entry for entry in entries}.values())
+    body = "".join(
+        "<url>"
+        f"<loc>{escape(entry['loc'], quote=True)}</loc>"
+        f"<lastmod>{escape(entry['lastmod'], quote=True)}</lastmod>"
+        f"<changefreq>{escape(entry['changefreq'], quote=True)}</changefreq>"
+        f"<priority>{escape(entry['priority'], quote=True)}</priority>"
+        "</url>"
+        for entry in unique_entries
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{body}"
+        "</urlset>"
+    )
+
+
 @app.get("/sitemap.xml", name="sitemap_xml")
 async def sitemap_xml(request: Request) -> Response:
     api = PlayerService().api
-    urls = [
-        _public_url(request, str(request.url_for("home"))),
-        _public_url(request, str(request.url_for("builds_hub"))),
-        _public_url(request, str(request.url_for("heroes_directory"))),
-        _public_url(request, str(request.url_for("items_directory"))),
-        _public_url(request, str(request.url_for("leaderboards"))),
-        _public_url(request, str(request.url_for("rank_distribution"))),
-        _public_url(request, str(request.url_for("best_heroes"))),
-        _public_url(request, str(request.url_for("best_items"))),
-        _public_url(request, str(request.url_for("street_brawl_builds"))),
-        _public_url(request, str(request.url_for("patch_notes"))),
-        _public_url(request, str(request.url_for("faq"))),
-        _public_url(request, str(request.url_for("discord_bot"))),
-        _public_url(request, str(request.url_for("about"))),
-        _public_url(request, str(request.url_for("privacy_policy"))),
-        _public_url(request, str(request.url_for("credits"))),
-        _public_url(request, str(request.url_for("disclaimers"))),
+    entries = [
+        _sitemap_entry(_public_url(request, str(request.url_for("home"))), changefreq="daily", priority="1.0"),
+        _sitemap_entry(_public_url(request, str(request.url_for("best_heroes"))), changefreq="daily", priority="0.95"),
+        _sitemap_entry(_public_url(request, str(request.url_for("best_items"))), changefreq="daily", priority="0.95"),
+        _sitemap_entry(_public_url(request, str(request.url_for("builds_hub"))), changefreq="daily", priority="0.9"),
+        _sitemap_entry(_public_url(request, str(request.url_for("heroes_directory"))), changefreq="weekly", priority="0.9"),
+        _sitemap_entry(_public_url(request, str(request.url_for("items_directory"))), changefreq="weekly", priority="0.9"),
+        _sitemap_entry(_public_url(request, str(request.url_for("leaderboards"))), changefreq="daily", priority="0.9"),
+        _sitemap_entry(_public_url(request, str(request.url_for("rank_distribution"))), changefreq="weekly", priority="0.85"),
+        _sitemap_entry(_public_url(request, str(request.url_for("street_brawl_builds"))), changefreq="daily", priority="0.85"),
+        _sitemap_entry(_public_url(request, str(request.url_for("patch_notes"))), changefreq="daily", priority="0.8"),
+        _sitemap_entry(_public_url(request, str(request.url_for("faq"))), changefreq="monthly", priority="0.65"),
+        _sitemap_entry(_public_url(request, str(request.url_for("discord_bot"))), changefreq="monthly", priority="0.55"),
+        _sitemap_entry(_public_url(request, str(request.url_for("about"))), changefreq="monthly", priority="0.5"),
+        _sitemap_entry(_public_url(request, str(request.url_for("privacy_policy"))), changefreq="yearly", priority="0.35"),
+        _sitemap_entry(_public_url(request, str(request.url_for("credits"))), changefreq="yearly", priority="0.3"),
+        _sitemap_entry(_public_url(request, str(request.url_for("disclaimers"))), changefreq="yearly", priority="0.3"),
     ]
-    urls.extend(
-        _public_url(request, str(request.url_for("leaderboard_region", region_slug=region_slug)))
+    entries.extend(
+        _sitemap_entry(
+            _public_url(request, str(request.url_for("leaderboard_region", region_slug=region_slug))),
+            changefreq="daily",
+            priority="0.82",
+        )
         for region_slug, _, _, _ in LEADERBOARD_REGIONS
     )
     try:
         hero_info = await api.get_hero_info()
-        urls.extend(
-            _public_url(
-                request,
-                str(
-                    request.url_for(
-                        "hero_detail",
-                        hero_id=str(hero.hero_id),
-                        hero_slug=_slugify(hero.name),
-                    )
-                ),
+        for hero in hero_info.values():
+            hero_slug = _slugify(hero.name)
+            entries.extend(
+                [
+                    _sitemap_entry(
+                        _public_url(
+                            request,
+                            str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=hero_slug)),
+                        ),
+                        changefreq="daily",
+                        priority="0.82",
+                    ),
+                    _sitemap_entry(
+                        _public_url(
+                            request,
+                            str(request.url_for("hero_builds", hero_id=str(hero.hero_id), hero_slug=hero_slug)),
+                        ),
+                        changefreq="daily",
+                        priority="0.8",
+                    ),
+                    _sitemap_entry(
+                        _public_url(
+                            request,
+                            str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=hero_slug)),
+                        ),
+                        changefreq="daily",
+                        priority="0.78",
+                    ),
+                    _sitemap_entry(
+                        _public_url(
+                            request,
+                            str(request.url_for("hero_matchups", hero_id=str(hero.hero_id), hero_slug=hero_slug)),
+                        ),
+                        changefreq="weekly",
+                        priority="0.76",
+                    ),
+                    _sitemap_entry(
+                        _public_url(
+                            request,
+                            str(
+                                request.url_for(
+                                    "hero_rank_distribution",
+                                    hero_id=str(hero.hero_id),
+                                    hero_slug=hero_slug,
+                                )
+                            ),
+                        ),
+                        changefreq="weekly",
+                        priority="0.72",
+                    ),
+                ]
             )
-            for hero in hero_info.values()
-        )
-        urls.extend(
-            _public_url(
-                request,
-                str(
-                    request.url_for(
-                        "hero_builds",
-                        hero_id=str(hero.hero_id),
-                        hero_slug=_slugify(hero.name),
-                    )
-                ),
+            entries.extend(
+                _sitemap_entry(
+                    _public_url(
+                        request,
+                        str(
+                            request.url_for(
+                                "leaderboard_region_hero",
+                                region_slug=region_slug,
+                                hero_id=str(hero.hero_id),
+                                hero_slug=hero_slug,
+                            )
+                        ),
+                    ),
+                    changefreq="daily",
+                    priority="0.76",
+                )
+                for region_slug, _, _, _ in LEADERBOARD_REGIONS
             )
-            for hero in hero_info.values()
-        )
-        urls.extend(
-            _public_url(
-                request,
-                str(
-                    request.url_for(
-                        "hero_items",
-                        hero_id=str(hero.hero_id),
-                        hero_slug=_slugify(hero.name),
-                    )
-                ),
-            )
-            for hero in hero_info.values()
-        )
-        urls.extend(
-            _public_url(
-                request,
-                str(
-                    request.url_for(
-                        "hero_matchups",
-                        hero_id=str(hero.hero_id),
-                        hero_slug=_slugify(hero.name),
-                    )
-                ),
-            )
-            for hero in hero_info.values()
-        )
-        urls.extend(
-            _public_url(
-                request,
-                str(
-                    request.url_for(
-                        "hero_rank_distribution",
-                        hero_id=str(hero.hero_id),
-                        hero_slug=_slugify(hero.name),
-                    )
-                ),
-            )
-            for hero in hero_info.values()
-        )
     except DeadlockError:
         pass
 
     try:
         items = await api.get_all_item_info()
-        urls.extend(
-            _public_url(
-                request,
-                str(
-                    request.url_for(
-                        "item_detail",
-                        item_id=str(item.item_id),
-                        item_slug=_slugify(item.name),
-                    )
+        entries.extend(
+            _sitemap_entry(
+                _public_url(
+                    request,
+                    str(
+                        request.url_for(
+                            "item_detail",
+                            item_id=str(item.item_id),
+                            item_slug=_slugify(item.name),
+                        )
+                    ),
                 ),
+                changefreq="weekly",
+                priority="0.7",
             )
             for item in items.values()
             if item.item_type == "upgrade"
@@ -347,31 +469,27 @@ async def sitemap_xml(request: Request) -> Response:
 
     try:
         patches = await api.get_patches(limit=50)
-        urls.extend(
-            _public_url(
-                request,
-                str(
-                    request.url_for(
-                        "patch_note_detail",
-                        patch_guid=patch.guid or _slugify(patch.title),
-                        patch_slug=_slugify(patch.title),
-                    )
+        entries.extend(
+            _sitemap_entry(
+                _public_url(
+                    request,
+                    str(
+                        request.url_for(
+                            "patch_note_detail",
+                            patch_guid=patch.guid or _slugify(patch.title),
+                            patch_slug=_slugify(patch.title),
+                        )
+                    ),
                 ),
+                changefreq="monthly",
+                priority="0.6",
             )
             for patch in patches
         )
     except DeadlockError:
         pass
 
-    urls = list(dict.fromkeys(urls))
-    body = "".join(f"<url><loc>{url}</loc></url>" for url in urls)
-    xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-        f"{body}"
-        "</urlset>"
-    )
-    return Response(content=xml, media_type="application/xml")
+    return Response(content=_render_sitemap(entries), media_type="application/xml")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -433,17 +551,6 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
             structured_data=[
                 {
                     "@context": "https://schema.org",
-                    "@type": "WebSite",
-                    "name": "Deadlock Stats Tracker",
-                    "url": _public_url(request, str(request.url_for("home"))),
-                    "potentialAction": {
-                        "@type": "SearchAction",
-                        "target": f"{_public_url(request, str(request.url_for('home')))}?query={{search_term_string}}",
-                        "query-input": "required name=search_term_string",
-                    },
-                },
-                {
-                    "@context": "https://schema.org",
                     "@type": "WebPage",
                     "name": "Deadlock Stats Tracker",
                     "url": _public_url(request, str(request.url_for("home"))),
@@ -464,7 +571,7 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
 async def player_search_suggestions(request: Request, q: str | None = None) -> JSONResponse:
     cleaned_query = (q or "").strip()
     if not cleaned_query:
-        return JSONResponse({"results": []})
+        return _noindex_response(JSONResponse({"results": []}))
 
     player_service = PlayerService()
     try:
@@ -474,9 +581,9 @@ async def player_search_suggestions(request: Request, q: str | None = None) -> J
         else:
             players = await player_service.search_players(cleaned_query)
     except DeadlockError as error:
-        return JSONResponse({"results": [], "error": str(error)}, status_code=200)
+        return _noindex_response(JSONResponse({"results": [], "error": str(error)}, status_code=200))
 
-    return JSONResponse(
+    return _noindex_response(JSONResponse(
         {
             "results": [
                 {
@@ -496,7 +603,7 @@ async def player_search_suggestions(request: Request, q: str | None = None) -> J
                 for player in players[:8]
             ]
         }
-    )
+    ))
 
 
 @app.get("/faq", response_class=HTMLResponse)
@@ -1472,7 +1579,7 @@ async def hero_rank_distribution(request: Request, hero_id: str, hero_slug: str)
             global_leaderboard_url=str(
                 request.url_for(
                     "leaderboard_region_hero",
-                    region_slug="row",
+                    region_slug="north-america",
                     hero_id=str(hero.hero_id),
                     hero_slug=_slugify(hero.name),
                 )
@@ -2884,6 +2991,7 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
                 f"View {summary.player.personaname}'s Deadlock rank, recent matches, hero stats, and profile summary."
             ),
             canonical_url=canonical_player_url,
+            meta_robots="noindex,follow" if refresh_requested else "index,follow,max-image-preview:large",
             og_type="profile",
             structured_data=[
                 {
