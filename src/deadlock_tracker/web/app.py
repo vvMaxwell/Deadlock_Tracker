@@ -1143,7 +1143,10 @@ async def leaderboards(request: Request) -> HTMLResponse:
         _base_context(
             request,
             page_title="Deadlock Leaderboards | Deadlock Stats Tracker",
-            meta_description="Browse Deadlock leaderboard pages by region and by hero to find top tracked players.",
+            meta_description=(
+                "Browse Deadlock leaderboards by region and hero, find top tracked players, "
+                "compare ranked profiles, and open hero-specific leaderboard pages."
+            ),
             structured_data=[
                 {
                     "@context": "https://schema.org",
