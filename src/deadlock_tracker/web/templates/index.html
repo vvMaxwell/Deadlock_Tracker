@@ -3,21 +3,11 @@
 {% block title %}{{ page_title or site_name }}{% endblock %}
 
 {% block content %}
-<section class="hero">
-    <div class="hero-copy">
-        <p class="eyebrow">Deadlock Stats Tracker</p>
+<section class="hero home-hero">
+    <div class="home-hero-copy">
         <h1>Deadlock Stats Tracker</h1>
-        <div class="search-intro">
-            <p class="search-intro-label">Search by:</p>
-            <ul class="search-intro-items">
-                <li>Steam Name</li>
-                <li>Steam Account URL</li>
-                <li>Account ID</li>
-            </ul>
-            <p class="search-intro-copy">To search up Rank Information, Match History, and Hero Performance.</p>
-        </div>
-        <a class="help-link" href="/faq#steam-account-url">How to get Steam account URL</a>
-        <form class="search-form" method="get" action="/">
+        <p class="home-hero-subtitle">Search rank information, match history, and hero performance.</p>
+        <form class="search-form home-search-form" method="get" action="/">
             <input type="text" name="query" value="{{ query }}" placeholder="Search player, profile URL, or account ID">
             <button type="submit">Search</button>
         </form>
@@ -25,30 +15,13 @@
         <p class="error-message">{{ error_message }}</p>
         {% endif %}
     </div>
-    <div class="hero-card">
-        <div class="stat-chip">
-            <span>Search</span>
-            <strong>Steam profiles and account IDs</strong>
-        </div>
-        <div class="stat-chip">
-            <span>Track</span>
-            <strong>Ranks, heroes, and match history</strong>
-        </div>
-        <div class="stat-chip">
-            <span>View</span>
-            <strong>Profiles, matchups, and recent games</strong>
-        </div>
-        <div class="hero-gallery">
-            <img class="hero-gallery-banner" src="{{ url_for('static', path='/community-assets/graphics/background-city.webp') }}" alt="Deadlock city background art" width="1390" height="743" loading="eager" decoding="async" fetchpriority="high">
-        </div>
-    </div>
 </section>
 
 {% if results %}
 <section class="results-section">
     <div class="section-heading">
         <h2>Search Results</h2>
-        <p>Choose a player to open the full stat page.</p>
+        <p>Choose a player to open their profile.</p>
     </div>
     <div class="results-grid">
         {% for result in results %}
@@ -77,9 +50,9 @@
 {% if rank_distribution %}
 <section class="guide-shell rank-distribution-shell">
     <div class="section-heading">
-        <p class="eyebrow">Meta Snapshot</p>
-        <h2>Estimated Player Rank Distribution</h2>
-        <p>Deadlock API rank estimates for tracked players, grouped by badge tier. This is not the full global playerbase.</p>
+        <p class="eyebrow">Rank Snapshot</p>
+        <h2>Visible Player Ranks</h2>
+        <p>A rough look at the ranks we can see from available player data. This is not the full Deadlock player base.</p>
     </div>
         <div class="rank-distribution-chart">
         {% for tier in rank_distribution %}
@@ -114,64 +87,64 @@
 
 <section class="guide-shell seo-copy-shell">
     <div class="section-heading">
-        <p class="eyebrow">What You Can Track</p>
-        <h2>Deadlock Stats, Meta Pages, and Player Lookups</h2>
-        <p>This site is built to help you search Deadlock players quickly, compare current meta trends, and open match history without bouncing between multiple tools.</p>
+        <p class="eyebrow">What You Can Check</p>
+        <h2>Player Search, Builds, Items, and Ranks</h2>
+        <p>Search a player, check their recent games, compare heroes and items, and browse builds from one place.</p>
     </div>
     <div class="faq-grid">
         <article class="platform-card faq-card">
             <h3>Player Search</h3>
-            <p>Look up Deadlock players by Steam name, Steam profile URL, or account ID to see rank, recent match history, and hero performance.</p>
+            <p>Look up players by Steam name, Steam profile URL, or account ID to see rank, recent games, and most-played heroes.</p>
         </article>
         <article class="platform-card faq-card">
-            <h3>Meta Tracking</h3>
-            <p>Use <a class="text-link" href="/best-heroes">Best Heroes</a> and <a class="text-link" href="/best-items">Best Items</a> to explore the current Deadlock meta by win rate, rank floor, and mode.</p>
+            <h3>Hero and Item Lists</h3>
+            <p>Use <a class="text-link" href="/best-heroes">Best Heroes</a> and <a class="text-link" href="/best-items">Best Items</a> to see what is winning by mode, rank range, and time window.</p>
         </article>
         <article class="platform-card faq-card">
             <h3>Build Pages</h3>
-            <p>Open <a class="text-link" href="/builds">Normal Builds</a> and <a class="text-link" href="/street-brawl-builds">Street Brawl Builds</a> to compare public build paths against live tracked item trends.</p>
+            <p>Open <a class="text-link" href="/builds">Normal Builds</a> and <a class="text-link" href="/street-brawl-builds">Street Brawl Builds</a> to compare public builds with item results from recent matches.</p>
         </article>
         <article class="platform-card faq-card">
             <h3>Leaderboards</h3>
-            <p>Open <a class="text-link" href="/leaderboards">Deadlock leaderboards</a> by region or hero to find top tracked players and jump into player pages faster.</p>
+            <p>Open <a class="text-link" href="/leaderboards">leaderboards</a> by region or hero to find strong players and view their profiles when a profile link is available.</p>
         </article>
         <article class="platform-card faq-card">
             <h3>Official Updates</h3>
-            <p>Check <a class="text-link" href="/patch-notes">Patch Notes</a> to keep up with recent official Deadlock balance and gameplay changes.</p>
+            <p>Check <a class="text-link" href="/patch-notes">Patch Notes</a> for recent official balance and gameplay changes.</p>
         </article>
     </div>
 </section>
 
 <section class="guide-shell seo-copy-shell">
     <div class="section-heading">
-        <p class="eyebrow">Explore More</p>
-        <h2>Hero Guides, Item Pages, and Update Archives</h2>
-        <p>These are the hub pages Google can crawl cleanly and players can actually use when they want more than a one-off search result.</p>
+        <p class="eyebrow">More Pages</p>
+        <h2>Heroes, Items, Builds, and Patch Notes</h2>
+        <p>Use these pages when you want to browse instead of searching for one player.</p>
     </div>
     <div class="faq-grid">
         <article class="platform-card faq-card">
             <h3><a class="text-link" href="/heroes">Hero Directory</a></h3>
-            <p>Browse every active hero, then jump into dedicated guide, matchup, and best-item pages for each one.</p>
+            <p>Browse every active hero, then open stats, matchups, items, and builds for that hero.</p>
         </article>
         <article class="platform-card faq-card">
             <h3><a class="text-link" href="/items">Item Directory</a></h3>
-            <p>Open focused item pages to compare normal and Street Brawl performance, tier, role, and buy timing.</p>
+            <p>Open item pages to compare results by mode, item tier, cost, and average buy time.</p>
         </article>
         <article class="platform-card faq-card">
             <h3><a class="text-link" href="/patch-notes">Patch Note Archive</a></h3>
-            <p>Track official Deadlock updates with archive pages and direct links into individual patch note summaries.</p>
+            <p>Read recent Deadlock updates, with short summaries and links to the official posts.</p>
         </article>
         <article class="platform-card faq-card">
-            <h3><a class="text-link" href="/builds">Build Database</a></h3>
-            <p>Open hero-specific build pages for public Normal mode builds, then compare them against live tracked item performance.</p>
+            <h3><a class="text-link" href="/builds">Builds</a></h3>
+            <p>Open hero build pages for Normal mode and compare public builds with recent item results.</p>
         </article>
         <article class="platform-card faq-card">
             <h3><a class="text-link" href="/rank-distribution">Rank Distribution</a></h3>
-            <p>See the Deadlock API estimated ladder by badge tier, then drill into hero-specific rank distribution pages.</p>
+            <p>See the visible badge spread, then open hero-specific rank pages.</p>
         </article>
         <article class="platform-card faq-card">
-            <h3><a class="text-link" href="/best-heroes">Meta Entry Points</a></h3>
-            <p>Start from the broad hero and item leaderboards, then drill into the detailed pages that matter for that hero or item.</p>
+            <h3><a class="text-link" href="/best-heroes">Start With Rankings</a></h3>
+            <p>Start with hero or item rankings, then open the detail page you care about.</p>
         </article>
     </div>
 </section>

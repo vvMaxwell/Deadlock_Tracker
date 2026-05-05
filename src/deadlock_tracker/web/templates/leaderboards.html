@@ -8,9 +8,9 @@
         <a class="back-link" href="/">Back to search</a>
         <a class="back-link" href="/rank-distribution">Rank distribution</a>
     </div>
-    <p class="eyebrow">Leaderboard Hub</p>
+    <p class="eyebrow">Leaderboards</p>
     <h1>Deadlock Leaderboards</h1>
-    <p class="lede">Browse top tracked Deadlock players by region, then drill into hero-specific leaderboard pages for stronger internal links and faster player discovery.</p>
+    <p class="lede">Browse top players by region, or open a hero leaderboard to see who is doing well on a specific hero.</p>
 
     <section class="faq-grid">
         {% for region in region_cards %}
@@ -24,15 +24,15 @@
 
     <section class="results-section">
         <div class="section-heading">
-            <h2>Hero Leaderboard Entry Points</h2>
-            <p>These pages open the global hero leaderboard first, which is a strong starting point for both users and search crawlers.</p>
+            <h2>Hero Leaderboards</h2>
+            <p>Pick a hero to open the global leaderboard for that hero.</p>
         </div>
         <div class="street-brawl-hero-grid">
             {% for hero in hero_cards %}
             <a class="street-brawl-hero-tile" href="{{ hero.build_url }}">
                 <div class="street-brawl-hero-tile-copy">
                     <strong>{{ hero.hero_name }}</strong>
-                    <span>Open global hero leaderboard</span>
+                    <span>Open global leaderboard</span>
                 </div>
                 {% if hero.hero_portrait_url %}
                 <img class="street-brawl-hero-tile-portrait" src="{{ hero.hero_portrait_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">

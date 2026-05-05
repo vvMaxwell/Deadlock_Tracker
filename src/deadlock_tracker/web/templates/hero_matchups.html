@@ -8,11 +8,11 @@
         <a class="back-link" href="{{ hero_detail_url }}">Back to {{ hero.name }}</a>
         <a class="back-link" href="{{ hero_items_url }}">Best items for {{ hero.name }}</a>
     </div>
-    <section class="player-hero"{% if hero.background_image_url %} style="background-image: linear-gradient(180deg, rgba(8, 6, 4, 0.3), rgba(8, 6, 4, 0.94)), url('{{ hero.background_image_url }}'); background-size: cover; background-position: center;"{% endif %}>
+    <section class="player-hero"{% if hero.background_image_url %} style="background-image: url('{{ hero.background_image_url }}'); background-size: cover; background-position: center;"{% endif %}>
         <div>
             <p class="eyebrow">Hero Matchups</p>
             <h1>{{ hero.name }} Matchups</h1>
-            <p class="lede">Tracked lane matchup and duo data for {{ hero.name }} in standard mode, so you can quickly see favorable enemies, tougher lanes, and strong pairings.</p>
+            <p class="lede">See which enemies {{ hero.name }} tends to beat, which lanes look harder, and which partners work well in Normal mode.</p>
         </div>
         <div class="card-preview">
             {% if hero.portrait_url %}
@@ -31,14 +31,14 @@
 
     <section class="faq-grid">
         <article class="platform-card faq-card">
-            <p class="eyebrow">Favored Lanes</p>
+            <p class="eyebrow">Good Matchups</p>
             <h2>Best matchups for {{ hero.name }}</h2>
             {% for row in favorable_matchups %}
             <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> | {{ row.win_rate_percent }} | {{ row.matches_text }} | {{ row.summary_text }}</p>
             {% endfor %}
         </article>
         <article class="platform-card faq-card">
-            <p class="eyebrow">Rougher Lanes</p>
+            <p class="eyebrow">Hard Matchups</p>
             <h2>Hardest matchups for {{ hero.name }}</h2>
             {% for row in difficult_matchups %}
             <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> | {{ row.win_rate_percent }} | {{ row.matches_text }} | {{ row.summary_text }}</p>
@@ -50,7 +50,7 @@
         <div class="section-heading">
             <p class="eyebrow">Synergy</p>
             <h2>Best Partners for {{ hero.name }}</h2>
-            <p>These rows reflect how often tracked duos involving {{ hero.name }} win together, plus a quick read on the partner's average contribution.</p>
+            <p>These rows show partners who win often with {{ hero.name }}, plus a quick read on their average contribution.</p>
         </div>
         <div class="faq-grid">
             {% for row in synergy_rows %}

@@ -9,7 +9,7 @@
     </div>
     <section class="player-hero">
         <div>
-            <p class="eyebrow">Item Guide</p>
+            <p class="eyebrow">Item Page</p>
             <h1>{{ item.name }}</h1>
             <div class="section-badge-group">
                 <span class="section-badge section-badge-soft">{{ item.item_slot_type or "utility" }}</span>
@@ -41,17 +41,17 @@
         {% endfor %}
         {% if not item_mode_stats %}
         <article class="platform-card faq-card">
-            <h2>No tracked stats yet</h2>
-            <p>We do not have enough tracked performance data for this item right now.</p>
+            <h2>Not enough results yet</h2>
+            <p>There are not enough results for this item right now.</p>
         </article>
         {% endif %}
         <article class="platform-card faq-card">
             <h2>How to use this item page</h2>
-            <p>Use this page to compare how an item is performing across modes, then return to <a class="text-link" href="/best-items">Best Items</a> for a wider leaderboard view.</p>
+            <p>Use this page to compare an item across modes, then go back to <a class="text-link" href="/best-items">Best Items</a> for the full list.</p>
         </article>
         <article class="platform-card faq-card">
             <h2>More Deadlock pages</h2>
-            <p>Browse the full <a class="text-link" href="/items">item directory</a>, compare hero-specific usage from the <a class="text-link" href="/heroes">hero directory</a>, and check <a class="text-link" href="/patch-notes">patch notes</a> for update-driven meta shifts.</p>
+            <p>Browse the <a class="text-link" href="/items">item directory</a>, check hero pages from the <a class="text-link" href="/heroes">hero directory</a>, and read <a class="text-link" href="/patch-notes">patch notes</a> after updates.</p>
         </article>
     </section>
 </section>

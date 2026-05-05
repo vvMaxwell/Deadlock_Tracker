@@ -5,13 +5,13 @@
 {% block content %}
 <section class="guide-shell meta-shell">
     <div class="section-heading">
-        <p class="eyebrow">Special Mode Guide</p>
+        <p class="eyebrow">Street Brawl</p>
         <h1>Street Brawl Builds</h1>
         <p class="lede">
             {% if selected_hero_name %}
-            Pick a hero and we’ll surface the highest win rate Street Brawl items on the left, then the most common ability upgrade path on the right.
+            Pick a hero to see high win rate Street Brawl items and the most common ability upgrade path.
             {% else %}
-            Start on the hero splash below, then jump straight into a Street Brawl build page for any champion in the active roster.
+            Choose a hero below to open their Street Brawl build page.
             {% endif %}
         </p>
     </div>
@@ -27,7 +27,7 @@
             </select>
         </label>
         <label>
-            <span>Sample Size</span>
+            <span>Minimum Matches</span>
             <select name="min_matches">
                 {% for option in sample_options %}
                 <option value="{{ option.value }}"{% if option.value == selected_min_matches %} selected{% endif %}>{{ option.label }}</option>
@@ -43,9 +43,9 @@
             </select>
         </label>
         <input type="hidden" name="item_level" value="{{ selected_item_level }}">
-        <button class="meta-filter-submit" type="submit">Show Build</button>
+        <button class="meta-filter-submit" type="submit">Show build</button>
     </form>
-    <p class="meta-filter-note">Default filtering hides anything under 100 matches. Builds with fewer than 50 matches, or any very low sample size, can be misleading.</p>
+    <p class="meta-filter-note">By default, items with fewer than 100 matches are hidden. Very small samples can be misleading.</p>
 
     {% if error_message %}
     <p class="error-message">{{ error_message }}</p>
@@ -54,8 +54,8 @@
     {% if not selected_hero_name %}
     <section class="street-brawl-splash">
         <div class="section-heading">
-            <h2>Choose A Hero</h2>
-            <p>Alphabetical roster. Click any hero to open their current Street Brawl item board and most common level path.</p>
+            <h2>Choose a Hero</h2>
+            <p>Pick any hero to open their Street Brawl items and skill path.</p>
         </div>
         <div class="street-brawl-hero-grid">
             {% for hero in hero_cards %}
@@ -77,8 +77,8 @@
     <section class="street-brawl-layout">
         <div class="street-brawl-item-panel">
             <div class="section-heading">
-                <h2>Best Items By Win Rate</h2>
-                <p>Compact list for the current Street Brawl meta, sorted by win rate and grounded with live match counts.</p>
+                <h2>Best Items by Win Rate</h2>
+                <p>A quick list of Street Brawl items, sorted by win rate with match counts shown.</p>
             </div>
             <div class="street-brawl-tier-filter" role="tablist" aria-label="Item tier filter">
                 {% for option in item_level_options if option.value %}
@@ -131,13 +131,13 @@
             </div>
 
             {% if not items and not error_message %}
-            <p class="empty-state">No Street Brawl item rows matched this filter yet. Try a different hero, item level, or a wider window.</p>
+            <p class="empty-state">No Street Brawl items match this filter yet. Try another hero, item tier, or time window.</p>
             {% endif %}
         </div>
 
         <aside class="street-brawl-guide-panel">
             {% if guide %}
-            <article class="street-brawl-hero-card"{% if guide.hero_background_image_url %} style="background-image: linear-gradient(180deg, rgba(8, 6, 4, 0.3), rgba(8, 6, 4, 0.96)), url('{{ guide.hero_background_image_url }}');"{% endif %}>
+            <article class="street-brawl-hero-card"{% if guide.hero_background_image_url %} style="background-image: url('{{ guide.hero_background_image_url }}');"{% endif %}>
                 <div class="street-brawl-hero-card-head">
                     <div>
                         <p class="eyebrow">Selected Hero</p>
@@ -159,7 +159,7 @@
             <section class="street-brawl-ability-guide">
                 <div class="section-heading">
                     <h2>Skill Path</h2>
-                    <p>Ordered as ability points from the Street Brawl sequence with the most tracked matches for this hero.</p>
+                    <p>The most common Street Brawl ability order we have for this hero.</p>
                 </div>
                 <div class="skill-path-board" aria-label="Most popular skill leveling order">
                     {% for row in guide.skill_path_rows %}
@@ -186,7 +186,7 @@
             <section class="street-brawl-ability-guide">
                 <div class="section-heading">
                     <h2>Skill Path</h2>
-                    <p>We do not have enough tracked Street Brawl ability-order data for {{ selected_hero_name }} yet, but the item board is still shown on the left.</p>
+                    <p>There is not enough Street Brawl skill-path data for {{ selected_hero_name }} yet, but the item list is still available.</p>
                 </div>
             </section>
             {% endif %}
@@ -197,11 +197,11 @@
     <section class="faq-grid">
         <article class="platform-card faq-card">
             <h2>What this page shows</h2>
-            <p>Street Brawl Builds combines tracked item performance with the most common ability-order data we have for each hero, giving you a fast read on the mode-specific meta.</p>
+            <p>Street Brawl Builds shows recent item results and common ability paths for each hero in this mode.</p>
         </article>
         <article class="platform-card faq-card">
             <h2>Related pages</h2>
-            <p>If you want the Normal mode meta too, compare this page with <a class="text-link" href="/builds">Normal Builds</a>, <a class="text-link" href="/best-heroes">Best Heroes</a>, <a class="text-link" href="/best-items">Best Items</a>, and the official <a class="text-link" href="/patch-notes">Patch Notes</a>.</p>
+            <p>For Normal mode, compare this with <a class="text-link" href="/builds">Normal Builds</a>, <a class="text-link" href="/best-heroes">Best Heroes</a>, <a class="text-link" href="/best-items">Best Items</a>, and <a class="text-link" href="/patch-notes">Patch Notes</a>.</p>
         </article>
     </section>
 </section>

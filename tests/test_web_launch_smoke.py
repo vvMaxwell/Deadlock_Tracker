@@ -1251,7 +1251,7 @@ def test_rank_distribution_page_renders(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert "Deadlock Rank Distribution" in response.text
-    assert "Tracked Players" in response.text
+    assert "Visible Players" in response.text
     assert "/heroes/1/abrams/rank-distribution" in response.text
 
 
@@ -1282,7 +1282,7 @@ def test_friendly_meta_error_message_rate_limit() -> None:
         topic="hero stats",
     )
 
-    assert message == "Deadlock API is rate-limiting hero stats right now. Try again shortly."
+    assert message == "Hero Stats is temporarily busy. Try again shortly."
 
 
 def test_friendly_meta_error_message_bad_filters() -> None:
@@ -1395,7 +1395,7 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert "Refresh is temporarily unavailable." in response.text
-    assert "Showing the latest history currently returned by the API." in response.text
+    assert "Showing the latest match history available right now." in response.text
     assert "oracle-1.png" in response.text
     assert '<link rel="canonical" href="http://testserver/players/123/tester">' in response.text
 
@@ -1459,9 +1459,9 @@ def test_street_brawl_selected_hero_stays_on_build_page_without_guide(monkeypatc
 
     assert response.status_code == 200
     assert "Choose A Hero" not in response.text
-    assert "Best Items By Win Rate" in response.text
+    assert "Best Items by Win Rate" in response.text
     assert "Mystic Shot" in response.text
-    assert "We do not have enough tracked Street Brawl ability-order data for Bebop yet" in response.text
+    assert "There is not enough Street Brawl skill-path data for Bebop yet" in response.text
 
 
 def test_legacy_player_url_redirects_to_canonical_slug(monkeypatch) -> None:

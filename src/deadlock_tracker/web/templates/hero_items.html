@@ -8,11 +8,11 @@
         <a class="back-link" href="{{ hero_detail_url }}">Back to {{ hero.name }}</a>
         <a class="back-link" href="{{ hero_matchups_url }}">{{ hero.name }} matchups</a>
     </div>
-    <section class="player-hero"{% if hero.background_image_url %} style="background-image: linear-gradient(180deg, rgba(8, 6, 4, 0.3), rgba(8, 6, 4, 0.94)), url('{{ hero.background_image_url }}'); background-size: cover; background-position: center;"{% endif %}>
+    <section class="player-hero"{% if hero.background_image_url %} style="background-image: url('{{ hero.background_image_url }}'); background-size: cover; background-position: center;"{% endif %}>
         <div>
-            <p class="eyebrow">Hero Build Trends</p>
+            <p class="eyebrow">Hero Items</p>
             <h1>Best Items for {{ hero.name }}</h1>
-            <p class="lede">Tracked standard-mode item performance for {{ hero.name }}, sorted to keep win rate and real sample size in view.</p>
+            <p class="lede">Items for {{ hero.name }} in Normal mode, sorted by win rate with match count shown.</p>
         </div>
         <div class="card-preview">
             {% if hero.portrait_url %}
@@ -31,8 +31,8 @@
 
     <section class="results-section">
         <div class="section-heading">
-            <h2>{{ hero.name }} Item Board</h2>
-            <p>Use this page when you want more than the short preview from the hero overview. It is built to rank item choices with enough sample size to stay practical.</p>
+            <h2>{{ hero.name }} Items</h2>
+            <p>Use this page when you want the full item list for this hero, not just the short preview.</p>
         </div>
         <div class="item-board">
             {% for item in hero_top_items %}
@@ -64,7 +64,7 @@
             {% endfor %}
         </div>
         {% if not hero_top_items %}
-        <p class="empty-state">We do not have enough tracked build data for {{ hero.name }} yet.</p>
+        <p class="empty-state">There are not enough item results for {{ hero.name }} yet.</p>
         {% endif %}
     </section>
 </section>

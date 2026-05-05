@@ -5,9 +5,9 @@
 {% block content %}
 <section class="guide-shell meta-shell">
     <div class="section-heading">
-        <p class="eyebrow">Meta Board</p>
+        <p class="eyebrow">Rankings</p>
         <h1>Best Items</h1>
-        <p class="lede">A first-pass item leaderboard built from Deadlock API analytics. Filter by hero, rank floor, mode, and time window to explore the current meta.</p>
+        <p class="lede">See which items are winning right now. Filter by hero, rank range, mode, time window, and minimum matches.</p>
     </div>
 
     <form class="meta-filter-form" method="get" action="/best-items" data-street-brawl-rank-lock>
@@ -20,7 +20,7 @@
             </select>
         </label>
         <label>
-            <span>Rank Floor</span>
+            <span>Rank Range</span>
             <select name="rank_floor" data-rank-floor-select>
                 {% for option in rank_options %}
                 <option value="{{ option.value }}"{% if option.value == selected_rank_floor %} selected{% endif %}>{{ option.label }}</option>
@@ -44,7 +44,7 @@
             </select>
         </label>
         <label>
-            <span>Min Matches</span>
+            <span>Minimum Matches</span>
             <input
                 class="meta-filter-input"
                 type="text"
@@ -57,11 +57,11 @@
                 aria-describedby="min-matches-help"
             >
         </label>
-        <button class="meta-filter-submit" type="submit">Apply Filters</button>
+        <button class="meta-filter-submit" type="submit">Apply filters</button>
     </form>
-    <p class="meta-filter-note" id="min-matches-help">Enter a value from 100 to 5000. Higher values give steadier results but can hide niche builds.</p>
+    <p class="meta-filter-note" id="min-matches-help">Enter 100 to 5000. Higher numbers are steadier, but they can hide less common builds.</p>
     <p class="meta-filter-note meta-filter-note-street-brawl{% if selected_mode != 'street_brawl' %} is-hidden{% endif %}" data-street-brawl-rank-note>
-        Street Brawl can only be filtered by <strong>All ranks</strong>, so rank filtering is locked for this mode.
+        Street Brawl only supports <strong>All ranks</strong>, so the rank filter is locked for this mode.
     </p>
 
     {% if error_message %}
@@ -71,7 +71,7 @@
     <section class="results-section">
         <div class="section-heading">
             <h2>Highest Win Rate Items</h2>
-            <p>Sorted by win rate with a minimum match threshold to keep the list grounded in real sample sizes.</p>
+            <p>Sorted by win rate, with a minimum match count to avoid tiny samples.</p>
         </div>
         <div class="item-board">
             {% for item in items %}
@@ -95,7 +95,7 @@
                         <strong>{{ item.win_rate_percent }}</strong>
                     </div>
                     <div>
-                        <span class="item-stat-label">Volume</span>
+                        <span class="item-stat-label">Matches</span>
                         <strong>{{ item.matches_text }}</strong>
                     </div>
                     <div>
@@ -115,18 +115,18 @@
             {% endfor %}
         </div>
         {% if not items and not error_message %}
-        <p class="empty-state">No item stats matched those filters yet. Try lowering the rank floor, widening the time window, or reducing the minimum matches.</p>
+        <p class="empty-state">No items match those filters yet. Try a lower rank range, a wider time window, or fewer minimum matches.</p>
         {% endif %}
     </section>
 
     <section class="faq-grid">
         <article class="platform-card faq-card">
             <h2>How to read item rankings</h2>
-            <p>Higher win rate is most useful when it comes with solid match volume. Use the minimum-match filter to avoid overreacting to tiny sample sizes or niche builds.</p>
+            <p>A high win rate matters more when it has enough matches behind it. Use the minimum-match filter if a result looks too thin.</p>
         </article>
         <article class="platform-card faq-card">
             <h2>Related pages</h2>
-            <p>Use <a class="text-link" href="/best-heroes">Best Heroes</a> to cross-check which heroes are currently rising, and review <a class="text-link" href="/patch-notes">Patch Notes</a> after major updates that can reshape the item meta.</p>
+            <p>Use <a class="text-link" href="/best-heroes">Best Heroes</a> to see which heroes are doing well, and check <a class="text-link" href="/patch-notes">Patch Notes</a> after major updates.</p>
         </article>
     </section>
 </section>

@@ -12,16 +12,16 @@
         <a class="back-link" href="{{ hero_global_leaderboard_url }}">Best {{ hero.name }} players</a>
         <a class="back-link" href="{{ hero_rank_distribution_url }}">{{ hero.name }} rank distribution</a>
     </div>
-    <section class="player-hero"{% if hero.background_image_url %} style="background-image: linear-gradient(180deg, rgba(8, 6, 4, 0.3), rgba(8, 6, 4, 0.94)), url('{{ hero.background_image_url }}'); background-size: cover; background-position: center;"{% endif %}>
+    <section class="player-hero"{% if hero.background_image_url %} style="background-image: url('{{ hero.background_image_url }}'); background-size: cover; background-position: center;"{% endif %}>
         <div>
-            <p class="eyebrow">Hero Guide</p>
+            <p class="eyebrow">Hero Page</p>
             <h1>{{ hero.name }}</h1>
-            <p class="lede">Current Deadlock hero overview with meta performance, strongest tracked item choices, and quick reads on synergies and matchup pressure in standard mode.</p>
+            <p class="lede">A quick look at how this hero is doing, which items are working, and which matchups or partners stand out in Normal mode.</p>
             {% if hero_stat %}
             <div class="section-badge-group">
                 <span class="section-badge section-badge-soft">{{ ((hero_stat.wins / hero_stat.matches) if hero_stat.matches else 0)|round(3) * 100 }}% win rate</span>
-                <span class="section-badge section-badge-soft">{{ hero_stat.matches }} tracked matches</span>
-                <span class="section-badge section-badge-soft">{{ hero_stat.players }} tracked players</span>
+                <span class="section-badge section-badge-soft">{{ hero_stat.matches }} matches</span>
+                <span class="section-badge section-badge-soft">{{ hero_stat.players }} players</span>
             </div>
             {% endif %}
         </div>
@@ -42,8 +42,8 @@
 
     <section class="results-section">
         <div class="section-heading">
-            <h2>Top Items For {{ hero.name }}</h2>
-            <p>These item rows are based on tracked standard-mode performance for this hero and sorted by win rate with sample size in view.</p>
+            <h2>Top Items for {{ hero.name }}</h2>
+            <p>These items are sorted by win rate for this hero, with match count shown so the list stays honest.</p>
         </div>
         <div class="item-board">
             {% for item in hero_top_items %}
@@ -75,7 +75,7 @@
             {% endfor %}
         </div>
         {% if not hero_top_items %}
-        <p class="empty-state">We do not have enough tracked item data for {{ hero.name }} yet.</p>
+        <p class="empty-state">There are not enough item results for {{ hero.name }} yet.</p>
         {% endif %}
     </section>
 
@@ -83,7 +83,7 @@
     <section class="results-section">
         <div class="section-heading">
             <h2>{{ hero.name }} Skill Path</h2>
-            <p>Most popular standard-mode ability leveling order from tracked matches.</p>
+            <p>The most common ability upgrade order from recent Normal mode matches.</p>
         </div>
         <div class="street-brawl-ability-guide hero-skill-path-panel">
             <div class="street-brawl-inline-meta">
@@ -118,23 +118,23 @@
     <section class="faq-grid">
         <article class="platform-card faq-card">
             <p class="eyebrow">Strong Matchups</p>
-            <h2>Who {{ hero.name }} pressures</h2>
+            <h2>Heroes {{ hero.name }} does well into</h2>
             {% for row in hero_matchup_preview %}
             <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> | {{ row.win_rate_percent }} | {{ row.matches_text }}</p>
             {% endfor %}
             {% if not hero_matchup_preview %}
-            <p>Matchup data is still filling in for {{ hero.name }}.</p>
+            <p>There is not enough matchup data for {{ hero.name }} yet.</p>
             {% endif %}
             <p><a class="text-link" href="{{ hero_matchups_url }}">Open the full matchup page</a></p>
         </article>
         <article class="platform-card faq-card">
             <p class="eyebrow">Best Synergies</p>
-            <h2>Who pairs well with {{ hero.name }}</h2>
+            <h2>Heroes who work well with {{ hero.name }}</h2>
             {% for row in hero_synergy_preview %}
             <p><a class="text-link" href="{{ row.hero_url }}">{{ row.hero_name }}</a> | {{ row.win_rate_percent }} | {{ row.matches_text }}</p>
             {% endfor %}
             {% if not hero_synergy_preview %}
-            <p>Synergy data is still filling in for {{ hero.name }}.</p>
+            <p>There is not enough partner data for {{ hero.name }} yet.</p>
             {% endif %}
             <p><a class="text-link" href="{{ hero_matchups_url }}">See all synergy and counter rows</a></p>
         </article>
@@ -143,11 +143,11 @@
     <section class="faq-grid">
         <article class="platform-card faq-card">
             <h2>How to use this hero page</h2>
-            <p>Use this page as a quick hero reference, then compare it against the wider <a class="text-link" href="/best-heroes">Best Heroes</a> board to see where {{ hero.name }} sits in the broader meta.</p>
+            <p>Use this as a quick hero page, then compare it with <a class="text-link" href="/best-heroes">Best Heroes</a> to see where {{ hero.name }} sits overall.</p>
         </article>
         <article class="platform-card faq-card">
             <h2>More Deadlock pages</h2>
-            <p>Browse the full <a class="text-link" href="/heroes">hero directory</a>, compare items in the <a class="text-link" href="/items">item directory</a>, open the <a class="text-link" href="{{ hero_global_leaderboard_url }}">best {{ hero.name }} players</a> page, study the <a class="text-link" href="{{ hero_rank_distribution_url }}">{{ hero.name }} rank distribution</a>, or review <a class="text-link" href="/patch-notes">patch notes</a> after major balance changes.</p>
+            <p>Browse the <a class="text-link" href="/heroes">hero directory</a>, compare items in the <a class="text-link" href="/items">item directory</a>, open the <a class="text-link" href="{{ hero_global_leaderboard_url }}">best {{ hero.name }} players</a> page, check <a class="text-link" href="{{ hero_rank_distribution_url }}">{{ hero.name }} ranks</a>, or read <a class="text-link" href="/patch-notes">patch notes</a>.</p>
         </article>
     </section>
 </section>

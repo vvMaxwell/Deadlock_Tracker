@@ -10,7 +10,7 @@
     </div>
     <p class="eyebrow">Regional Leaderboard</p>
     <h1>{{ region_name }} Deadlock Leaderboard</h1>
-    <p class="lede">Top tracked players for {{ region_name }}, with Deadlock API estimated badges and fast links into player profiles when account resolution is available.</p>
+    <p class="lede">Top players for {{ region_name }}, with badge estimates and profile links when available.</p>
 
     <section class="panel panel-matches">
         <div class="section-heading">
@@ -18,7 +18,7 @@
                 <h2>Top Players</h2>
                 <span class="section-badge">Top 50</span>
             </div>
-            <p>The API can attach possible account IDs to leaderboard entries. When that data is available, player names link directly into profile pages on this site.</p>
+            <p>Some leaderboard names can be matched to a player profile. When that happens, the name is clickable.</p>
         </div>
         <div class="match-feed">
             {% for row in rows %}
@@ -57,7 +57,7 @@
     <section class="results-section">
         <div class="section-heading">
             <h2>{{ region_name }} Hero Leaderboards</h2>
-            <p>Open a hero-specific leaderboard to see the strongest tracked players for that hero in this region.</p>
+            <p>Open a hero leaderboard to see the strongest players for that hero in this region.</p>
         </div>
         <div class="street-brawl-hero-grid">
             {% for hero in hero_cards %}

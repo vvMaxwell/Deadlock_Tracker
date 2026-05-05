@@ -60,11 +60,11 @@ SITEMAP_DATE = datetime.fromtimestamp(STATIC_CSS_VERSION, UTC).date().isoformat(
 app = FastAPI(title="Deadlock Stats Tracker", version="0.1.0")
 
 LEADERBOARD_REGIONS: list[tuple[str, str, str, str]] = [
-    ("north-america", "North America", "Top tracked Deadlock players competing in North America.", "NAmerica"),
-    ("europe", "Europe", "Top tracked Deadlock players competing in Europe.", "Europe"),
-    ("asia", "Asia", "Tracked leaderboard players across Asia.", "Asia"),
-    ("south-america", "South America", "Tracked leaderboard players across South America.", "SAmerica"),
-    ("oceania", "Oceania", "Tracked leaderboard players across Oceania.", "Oceania"),
+    ("north-america", "North America", "Top Deadlock players in North America.", "NAmerica"),
+    ("europe", "Europe", "Top Deadlock players in Europe.", "Europe"),
+    ("asia", "Asia", "Leaderboard players across Asia.", "Asia"),
+    ("south-america", "South America", "Leaderboard players across South America.", "SAmerica"),
+    ("oceania", "Oceania", "Leaderboard players across Oceania.", "Oceania"),
 ]
 
 LEADERBOARD_REGION_REDIRECTS: dict[str, str] = {
@@ -296,8 +296,8 @@ async def site_webmanifest(request: Request) -> Response:
                 "type": "image/png",
             },
         ],
-        "theme_color": "#13100d",
-        "background_color": "#13100d",
+        "theme_color": "#000000",
+        "background_color": "#000000",
         "display": "standalone",
     }
     return Response(
@@ -545,7 +545,7 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
             page_title="Deadlock Stats Tracker",
             meta_description=(
                 "Deadlock Stats Tracker lets you search players by Steam name, profile URL, or account ID "
-                "to view ranks, match history, hero stats, best heroes, best items, and Street Brawl builds."
+                "to see ranks, recent matches, hero stats, best heroes, best items, and Street Brawl builds."
             ),
             meta_robots="noindex,follow" if query else "index,follow",
             structured_data=[
@@ -555,7 +555,7 @@ async def home(request: Request, query: str | None = None) -> HTMLResponse:
                     "name": "Deadlock Stats Tracker",
                     "url": _public_url(request, str(request.url_for("home"))),
                     "description": (
-                        "Search Deadlock players and explore ranks, match history, best heroes, best items, and Street Brawl builds."
+                        "Search Deadlock players, check ranks and recent matches, and browse heroes, items, and builds."
                     ),
                 },
             ],
@@ -617,7 +617,7 @@ async def faq(request: Request) -> HTMLResponse:
             request,
             page_title="FAQ | Deadlock Stats Tracker",
             meta_description=(
-                "Learn how to search Deadlock players by Steam name, profile URL, or account ID, and how to use Deadlock Stats Tracker."
+                "Learn how to search Deadlock players by Steam name, profile URL, or account ID."
             ),
             structured_data=[
                 {
@@ -663,7 +663,7 @@ async def discord_bot(request: Request) -> HTMLResponse:
         _base_context(
             request,
             page_title="Discord Bot | Deadlock Stats Tracker",
-            meta_description="Follow the upcoming Deadlock Stats Tracker Discord bot for match lookups, stat snapshots, and future automation features.",
+            meta_description="Check the status of the upcoming Deadlock Stats Tracker Discord bot.",
         ),
     ))
 
@@ -687,8 +687,8 @@ async def about(request: Request) -> HTMLResponse:
                     "name": "About Deadlock Stats Tracker",
                     "url": _public_url(request, str(request.url_for("about"))),
                     "description": (
-                        "Deadlock Stats Tracker is a fan-made site for player lookups, hero pages, item stats, "
-                        "match history, and Deadlock meta research."
+                        "Deadlock Stats Tracker is a fan-made site for player search, hero pages, item pages, "
+                        "match history, and build browsing."
                     ),
                 },
                 _breadcrumb_structured_data(
@@ -712,7 +712,7 @@ async def privacy_policy(request: Request) -> HTMLResponse:
             request,
             page_title="Privacy Policy | Deadlock Stats Tracker",
             meta_description=(
-                "Read the Deadlock Stats Tracker privacy policy, including Google AdSense, cookies, analytics, "
+                "Read the Deadlock Stats Tracker privacy policy, including Google AdSense, cookies, measurement, "
                 "server logs, public Steam data, and contact information."
             ),
             structured_data=[
@@ -742,7 +742,7 @@ async def credits(request: Request) -> HTMLResponse:
         _base_context(
             request,
             page_title="Credits | Deadlock Stats Tracker",
-            meta_description="Credits and acknowledgements for the data, assets, and tools behind Deadlock Stats Tracker.",
+            meta_description="Credits for the services, assets, and community resources used by Deadlock Stats Tracker.",
         ),
     ))
 
@@ -755,7 +755,7 @@ async def disclaimers(request: Request) -> HTMLResponse:
         _base_context(
             request,
             page_title="Disclaimers | Deadlock Stats Tracker",
-            meta_description="Read the disclaimers and usage notes for Deadlock Stats Tracker, including data availability and third-party attribution.",
+            meta_description="Read plain notes about Deadlock Stats Tracker, data availability, ads, and third-party credit.",
         ),
     ))
 
@@ -825,7 +825,7 @@ async def patch_notes(request: Request, page: int = 1) -> HTMLResponse:
             request,
             page_title="Deadlock Patch Notes | Deadlock Stats Tracker",
             meta_description=(
-                "Read recent Deadlock patch notes sourced from the official Deadlock changelog posts."
+                "Read recent Deadlock patch notes summarized from the official forum posts."
             ),
             canonical_url=canonical_url,
             structured_data=[
@@ -909,7 +909,7 @@ async def patch_note_detail(request: Request, patch_guid: str, patch_slug: str) 
         _base_context(
             request,
             page_title=f"{patch.title} | Deadlock Patch Notes",
-            meta_description=f"Read the official Deadlock patch note summary for {patch.title}.",
+            meta_description=f"Read a short summary of the Deadlock patch note for {patch.title}.",
             canonical_url=canonical_url,
             structured_data=[
                 {
@@ -979,7 +979,7 @@ async def heroes_directory(request: Request) -> HTMLResponse:
             _base_context(
                 request,
                 page_title="Heroes | Deadlock Stats Tracker",
-                meta_description="Deadlock hero directory page.",
+                meta_description="Deadlock hero directory.",
                 meta_robots="noindex,follow",
                 message=str(error),
             ),
@@ -1005,14 +1005,14 @@ async def heroes_directory(request: Request) -> HTMLResponse:
         _base_context(
             request,
             page_title="Deadlock Heroes | Deadlock Stats Tracker",
-            meta_description="Browse the full Deadlock hero directory and open dedicated hero guide pages.",
+            meta_description="Browse Deadlock heroes and open hero pages, builds, items, and matchups.",
             structured_data=[
                 {
                     "@context": "https://schema.org",
                     "@type": "CollectionPage",
                     "name": "Deadlock Heroes",
                     "url": _public_url(request, str(request.url_for("heroes_directory"))),
-                    "description": "Browse the full Deadlock hero directory and open dedicated hero guide pages.",
+                    "description": "Browse Deadlock heroes and open hero pages, builds, items, and matchups.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -1039,7 +1039,7 @@ async def items_directory(request: Request) -> HTMLResponse:
             _base_context(
                 request,
                 page_title="Items | Deadlock Stats Tracker",
-                meta_description="Deadlock item directory page.",
+                meta_description="Deadlock item directory.",
                 meta_robots="noindex,follow",
                 message=str(error),
             ),
@@ -1068,14 +1068,14 @@ async def items_directory(request: Request) -> HTMLResponse:
         _base_context(
             request,
             page_title="Deadlock Items | Deadlock Stats Tracker",
-            meta_description="Browse the full Deadlock item directory and open dedicated item guide pages.",
+            meta_description="Browse Deadlock items and open item pages with recent results when available.",
             structured_data=[
                 {
                     "@context": "https://schema.org",
                     "@type": "CollectionPage",
                     "name": "Deadlock Items",
                     "url": _public_url(request, str(request.url_for("items_directory"))),
-                    "description": "Browse the full Deadlock item directory and open dedicated item guide pages.",
+                    "description": "Browse Deadlock items and open item pages with recent results when available.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -1102,7 +1102,7 @@ async def leaderboards(request: Request) -> HTMLResponse:
             _base_context(
                 request,
                 page_title="Deadlock Leaderboards | Deadlock Stats Tracker",
-                meta_description="Deadlock leaderboard hub page.",
+                meta_description="Deadlock leaderboards.",
                 meta_robots="noindex,follow",
                 message=str(error),
             ),
@@ -1144,8 +1144,8 @@ async def leaderboards(request: Request) -> HTMLResponse:
             request,
             page_title="Deadlock Leaderboards | Deadlock Stats Tracker",
             meta_description=(
-                "Browse Deadlock leaderboards by region and hero, find top tracked players, "
-                "compare ranked profiles, and open hero-specific leaderboard pages for every region."
+                "Browse Deadlock leaderboards by region and hero, find top players, "
+                "and open hero-specific leaderboard pages."
             ),
             structured_data=[
                 {
@@ -1153,7 +1153,7 @@ async def leaderboards(request: Request) -> HTMLResponse:
                     "@type": "CollectionPage",
                     "name": "Deadlock Leaderboards",
                     "url": _public_url(request, str(request.url_for("leaderboards"))),
-                    "description": "Browse Deadlock leaderboard pages by region and hero.",
+                    "description": "Browse Deadlock leaderboards by region and hero.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -1247,14 +1247,14 @@ async def leaderboard_region(request: Request, region_slug: str) -> HTMLResponse
         _base_context(
             request,
             page_title=f"{region_name} Deadlock Leaderboard | Deadlock Stats Tracker",
-            meta_description=f"Browse the top tracked Deadlock players for {region_name}, with Deadlock API estimated badges and top heroes.",
+            meta_description=f"Browse top Deadlock players for {region_name}, with badge estimates and top heroes.",
             structured_data=[
                 {
                     "@context": "https://schema.org",
                     "@type": "CollectionPage",
                     "name": f"{region_name} Deadlock Leaderboard",
                     "url": _public_url(request, str(request.url_for("leaderboard_region", region_slug=region_slug))),
-                    "description": f"Browse the top tracked Deadlock players for {region_name}.",
+                    "description": f"Browse top Deadlock players for {region_name}.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -1370,7 +1370,7 @@ async def leaderboard_region_hero(
         _base_context(
             request,
             page_title=f"Best {hero.name} Players in {region_name} | Deadlock Stats Tracker",
-            meta_description=f"Browse the top tracked {hero.name} players in {region_name} with Deadlock API estimated badges and linked player pages.",
+            meta_description=f"Browse top {hero.name} players in {region_name}, with badge estimates and profile links when available.",
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
                 request,
@@ -1382,7 +1382,7 @@ async def leaderboard_region_hero(
                     "@type": "CollectionPage",
                     "name": f"Best {hero.name} Players in {region_name}",
                     "url": canonical_url,
-                    "description": f"Browse the top tracked {hero.name} players in {region_name}.",
+                    "description": f"Browse top {hero.name} players in {region_name}.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -1427,7 +1427,7 @@ async def rank_distribution(request: Request) -> HTMLResponse:
             _base_context(
                 request,
                 page_title="Deadlock Rank Distribution | Deadlock Stats Tracker",
-                meta_description="Deadlock rank distribution page.",
+                meta_description="Deadlock rank distribution.",
                 meta_robots="noindex,follow",
                 message=str(error),
             ),
@@ -1460,14 +1460,14 @@ async def rank_distribution(request: Request) -> HTMLResponse:
         _base_context(
             request,
             page_title="Deadlock Rank Distribution | Deadlock Stats Tracker",
-            meta_description="See the Deadlock API estimated rank distribution and open hero-specific rank-distribution pages.",
+            meta_description="See a rough Deadlock rank distribution and open hero-specific rank pages.",
             structured_data=[
                 {
                     "@context": "https://schema.org",
                     "@type": "CollectionPage",
                     "name": "Deadlock Rank Distribution",
                     "url": _public_url(request, str(request.url_for("rank_distribution"))),
-                    "description": "See the Deadlock API estimated rank distribution and open hero-specific rank-distribution pages.",
+                    "description": "See a rough Deadlock rank distribution and open hero-specific rank pages.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -1549,7 +1549,7 @@ async def hero_rank_distribution(request: Request, hero_id: str, hero_slug: str)
         _base_context(
             request,
             page_title=f"{hero.name} Rank Distribution | Deadlock Stats Tracker",
-            meta_description=f"See the Deadlock API estimated rank distribution for tracked {hero.name} players in Deadlock.",
+            meta_description=f"See a rough rank distribution for visible {hero.name} players in Deadlock.",
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
                 request,
@@ -1561,7 +1561,7 @@ async def hero_rank_distribution(request: Request, hero_id: str, hero_slug: str)
                     "@type": "CollectionPage",
                     "name": f"{hero.name} Rank Distribution",
                     "url": canonical_url,
-                    "description": f"See the Deadlock API estimated rank distribution for tracked {hero.name} players in Deadlock.",
+                    "description": f"See a rough rank distribution for visible {hero.name} players in Deadlock.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -1629,7 +1629,7 @@ async def builds_hub(request: Request, hero_id: str | None = None) -> HTMLRespon
         _base_context(
             request,
             page_title="Deadlock Builds | Deadlock Stats Tracker",
-            meta_description="Browse Normal mode Deadlock builds by hero, then compare them with Street Brawl builds and live item trends.",
+            meta_description="Browse Normal mode Deadlock builds by hero, then compare them with Street Brawl builds and recent item results.",
             structured_data=[
                 {
                     "@context": "https://schema.org",
@@ -1658,7 +1658,7 @@ async def builds_hub(request: Request, hero_id: str | None = None) -> HTMLRespon
             guide=None,
             error_message=None,
             current_mode_name="Normal",
-            current_mode_description="Browse Normal mode builds from the public build database and compare them against live tracked item performance.",
+            current_mode_description="Browse Normal mode builds and compare them with recent item results.",
         ),
     ))
 
@@ -1831,7 +1831,7 @@ async def hero_builds(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
         _base_context(
             request,
             page_title=f"{hero.name} Normal Build | Deadlock Stats Tracker",
-            meta_description=f"See the latest {hero.name} Normal mode builds in Deadlock, plus tracked item performance and common opening paths.",
+            meta_description=f"See recent {hero.name} Normal mode builds in Deadlock, plus item results and common opening paths.",
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
                 request, str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
@@ -1865,7 +1865,7 @@ async def hero_builds(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             guide=guide,
             error_message=error_message,
             current_mode_name="Normal",
-            current_mode_description="Public build database entries sorted with live build performance, then paired with tracked Normal mode item and ability-order data.",
+            current_mode_description="Public builds paired with recent Normal mode item results and ability-order data.",
         ),
     ))
 
@@ -1961,7 +1961,7 @@ async def best_items(
             request,
             page_title="Best Deadlock Items | Deadlock Stats Tracker",
             meta_description=(
-                "Browse the best Deadlock items by win rate, hero, rank floor, mode, and time window using live meta analytics."
+                "Browse Deadlock items by win rate, hero, rank range, mode, and time window."
             ),
             meta_robots="index,follow" if is_default_view else "noindex,follow",
             structured_data=[
@@ -1970,7 +1970,7 @@ async def best_items(
                     "@type": "CollectionPage",
                     "name": "Best Deadlock Items",
                     "url": _public_url(request, str(request.url_for("best_items"))),
-                    "description": "Browse the best Deadlock items by win rate, hero, rank floor, and mode.",
+                    "description": "Browse Deadlock items by win rate, hero, rank range, and mode.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -2081,7 +2081,7 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
         _base_context(
             request,
             page_title=f"{item.name} Item Guide | Deadlock Stats Tracker",
-            meta_description=f"See Deadlock item stats and current mode-by-mode performance for {item.name}.",
+            meta_description=f"See recent Deadlock item results by mode for {item.name}.",
             canonical_url=canonical_url,
             structured_data=[
                 {
@@ -2089,7 +2089,7 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
                     "@type": "WebPage",
                     "name": f"{item.name} Item Guide",
                     "url": canonical_url,
-                    "description": f"See Deadlock item stats and current mode-by-mode performance for {item.name}.",
+                    "description": f"See recent Deadlock item results by mode for {item.name}.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -2196,7 +2196,7 @@ async def best_heroes(
             request,
             page_title="Best Deadlock Heroes | Deadlock Stats Tracker",
             meta_description=(
-                "Track the best Deadlock heroes by win rate, pick rate, rank floor, mode, and time window with live meta data."
+                "Browse Deadlock heroes by win rate, pick rate, rank range, mode, and time window."
             ),
             meta_robots="index,follow" if is_default_view else "noindex,follow",
             structured_data=[
@@ -2205,7 +2205,7 @@ async def best_heroes(
                     "@type": "CollectionPage",
                     "name": "Best Deadlock Heroes",
                     "url": _public_url(request, str(request.url_for("best_heroes"))),
-                    "description": "Track the best Deadlock heroes by win rate, pick rate, rank floor, and mode.",
+                    "description": "Browse Deadlock heroes by win rate, pick rate, rank range, and mode.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -2339,7 +2339,7 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
         _base_context(
             request,
             page_title=f"{hero.name} Guide | Deadlock Stats Tracker",
-            meta_description=f"See current Deadlock stats, win rate, and top items for {hero.name}.",
+            meta_description=f"See win rate, top items, matchups, and builds for {hero.name}.",
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
                 request, str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
@@ -2350,7 +2350,7 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
                     "@type": "WebPage",
                     "name": f"{hero.name} Guide",
                     "url": canonical_url,
-                    "description": f"See current Deadlock stats, win rate, and top items for {hero.name}.",
+                    "description": f"See win rate, top items, matchups, and builds for {hero.name}.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -2474,7 +2474,7 @@ async def hero_items(request: Request, hero_id: str, hero_slug: str) -> HTMLResp
         _base_context(
             request,
             page_title=f"Best Items for {hero.name} | Deadlock Stats Tracker",
-            meta_description=f"See the strongest tracked items and current build trends for {hero.name} in Deadlock.",
+            meta_description=f"See high win rate items and build ideas for {hero.name} in Deadlock.",
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
                 request, str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
@@ -2485,7 +2485,7 @@ async def hero_items(request: Request, hero_id: str, hero_slug: str) -> HTMLResp
                     "@type": "CollectionPage",
                     "name": f"Best Items for {hero.name}",
                     "url": canonical_url,
-                    "description": f"See the strongest tracked items and current build trends for {hero.name} in Deadlock.",
+                    "description": f"See high win rate items and build ideas for {hero.name} in Deadlock.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -2672,7 +2672,7 @@ async def street_brawl_builds(
                     request,
                     page_title="Street Brawl Builds | Deadlock Stats Tracker",
                     meta_description=(
-                        "Find the best Street Brawl builds in Deadlock, including high-win-rate items and common ability paths by hero."
+                        "Find Street Brawl items and common ability paths by hero."
                     ),
                     structured_data=[
                         {
@@ -2681,7 +2681,7 @@ async def street_brawl_builds(
                             "name": "Street Brawl Builds",
                             "url": _public_url(request, str(request.url_for("street_brawl_builds"))),
                             "description": (
-                                "Find the best Street Brawl builds in Deadlock, including high-win-rate items and common ability paths by hero."
+                                "Find Street Brawl items and common ability paths by hero."
                             ),
                         },
                         _breadcrumb_structured_data(
@@ -2805,9 +2805,9 @@ async def street_brawl_builds(
                 else "Street Brawl Builds | Deadlock Stats Tracker"
             ),
             meta_description=(
-                f"See the latest {selected_hero.name} Street Brawl build in Deadlock, including high-win-rate items and tracked ability path data."
+                f"See {selected_hero.name} Street Brawl items and a common ability path in Deadlock."
                 if selected_hero is not None
-                else "Find the best Street Brawl builds in Deadlock, including high-win-rate items and common ability paths by hero."
+                else "Find Street Brawl items and common ability paths by hero."
             ),
             meta_robots="index,follow" if is_default_view else "noindex,follow",
             structured_data=[
@@ -2816,7 +2816,7 @@ async def street_brawl_builds(
                     "@type": "CollectionPage",
                     "name": "Street Brawl Builds",
                     "url": _public_url(request, str(request.url_for("street_brawl_builds"))),
-                    "description": "Deadlock Street Brawl builds, item boards, and ability upgrade paths.",
+                    "description": "Deadlock Street Brawl builds, item lists, and ability upgrade paths.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -2887,7 +2887,7 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
                 _base_context(
                     request,
                     page_title="Player Search Ambiguous | Deadlock Stats Tracker",
-                    meta_description="That player search matched multiple Deadlock profiles. Refine the search to find the right player.",
+                    meta_description="That search matched more than one player. Refine the search to find the right profile.",
                     meta_robots="noindex,follow",
                     message="That search matched multiple players. Use the search page to choose the right one.",
                 ),
@@ -2991,7 +2991,7 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             request,
             page_title=f"{summary.player.personaname} Stats | Deadlock Stats Tracker",
             meta_description=(
-                f"View {summary.player.personaname}'s Deadlock rank, recent matches, hero stats, and profile summary."
+                f"View {summary.player.personaname}'s Deadlock rank, recent matches, and most-played heroes."
             ),
             canonical_url=canonical_player_url,
             meta_robots="noindex,follow" if refresh_requested else "index,follow,max-image-preview:large",
@@ -3059,7 +3059,7 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
                 _base_context(
                     request,
                     page_title="Player Search Ambiguous | Deadlock Stats Tracker",
-                    meta_description="That player lookup matched multiple Deadlock profiles. Refine the search to find the right player.",
+                    meta_description="That lookup matched more than one player. Refine the search to find the right profile.",
                     meta_robots="noindex,follow",
                     message="That player lookup matched multiple profiles.",
                 ),
@@ -3170,7 +3170,7 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
             request,
             page_title=f"Match {metadata.match_id} | Deadlock Stats Tracker",
             meta_description=(
-                f"View Deadlock match {metadata.match_id} for {resolved.personaname}, including matchup lines, players, items, and outcome."
+                f"View Deadlock match {metadata.match_id} for {resolved.personaname}, including lanes, players, items, and result."
             ),
             canonical_url=canonical_match_url,
             player=resolved,
@@ -3555,7 +3555,7 @@ def _build_synergy_views(
                 hero_url=str(request.url_for("hero_detail", hero_id=str(teammate.hero_id), hero_slug=_slugify(teammate.name))),
                 hero_icon_url=teammate.icon_small,
                 win_rate_percent=f"{(stat.wins / stat.matches_played):.1%}",
-                matches_text=f"{stat.matches_played:,} tracked duos",
+                matches_text=f"{stat.matches_played:,} duos",
                 summary_text=(
                     f"{_per_match(stat.kills2, stat.matches_played):.1f} kills and "
                     f"{_per_match(stat.assists2, stat.matches_played):.1f} assists avg"
@@ -3587,13 +3587,13 @@ def _friendly_meta_error_message(error: DeadlockError, *, topic: str) -> str:
     message = str(error)
     lowered = message.casefold()
     if "rate limit" in lowered:
-        return f"Deadlock API is rate-limiting {topic} right now. Try again shortly."
+        return f"{topic.title()} is temporarily busy. Try again shortly."
     if "took too long" in lowered or "timed out" in lowered:
-        return f"Deadlock API is taking longer than usual for {topic}. Try again in a moment."
+        return f"{topic.title()} is taking longer than usual. Try again in a moment."
     if "http 400" in lowered:
         return f"Those filters are not available for {topic} right now. Try broader filters or switch modes."
     if "http 500" in lowered or "request failed" in lowered:
-        return f"Deadlock API is having trouble loading {topic} right now. Try again shortly."
+        return f"We are having trouble loading {topic} right now. Try again shortly."
     return f"We couldn't load {topic} right now. Try again shortly."
 
 
@@ -3728,8 +3728,8 @@ def _build_player_rank_distribution_views(
                 badge_level=entry.rank,
                 tier_name=rank.name,
                 division_label=str(division),
-                matches_text=f"{entry.players:,} tracked players",
-                share_text=f"{((entry.players / total_players) * 100):.2f}% of tracked players" if total_players else "0.00% of tracked players",
+                matches_text=f"{entry.players:,} visible players",
+                share_text=f"{((entry.players / total_players) * 100):.2f}% of visible players" if total_players else "0.00% of visible players",
                 height_percent=max(8.0, (entry.players / max_players) * 100),
                 color=rank.color or "#d3b58a",
             )
@@ -3771,19 +3771,19 @@ def _build_rank_distribution_summary_views(
     )
     return [
         RankDistributionSummaryView(
-            label="Tracked Players",
+            label="Visible Players",
             value=f"{total_players:,}",
-            detail="Estimated from the current tracked leaderboard and badge data.",
+            detail="Based on the player ranks currently visible to the site.",
         ),
         RankDistributionSummaryView(
             label="Most Common Badge",
             value=most_common_name,
-            detail=f"{most_common_share} of tracked players sit in this exact sub-rank." if total_players else "No tracked players yet.",
+            detail=f"{most_common_share} of visible players sit in this exact sub-rank." if total_players else "No visible players yet.",
         ),
         RankDistributionSummaryView(
             label="Highest Badge Seen",
             value=highest_tier_name,
-            detail="Highest populated tracked sub-rank in the current distribution snapshot.",
+            detail="Highest populated sub-rank currently visible to the site.",
         ),
     ]
 

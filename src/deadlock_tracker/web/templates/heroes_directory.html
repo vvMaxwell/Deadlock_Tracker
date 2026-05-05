@@ -9,16 +9,16 @@
     </div>
     <p class="eyebrow">Hero Directory</p>
     <h1>All Deadlock Heroes</h1>
-    <p class="lede">Browse the current Deadlock hero roster and jump straight into hero stats, Normal builds, or Street Brawl level paths.</p>
+    <p class="lede">Browse the current hero roster and open stats, Normal builds, or Street Brawl paths for any hero.</p>
 
     <div class="street-brawl-hero-grid">
         {% for hero in hero_cards %}
         <article class="street-brawl-hero-tile hero-directory-tile">
-            <a class="hero-directory-primary-link" href="{{ hero.detail_url }}" aria-label="Open {{ hero.hero_name }} hero guide"></a>
+            <a class="hero-directory-primary-link" href="{{ hero.detail_url }}" aria-label="Open {{ hero.hero_name }} page"></a>
             <div class="street-brawl-hero-tile-copy hero-directory-tile-copy">
                 <strong>{{ hero.hero_name }}</strong>
                 <div class="hero-directory-actions" aria-label="{{ hero.hero_name }} pages">
-                    <a href="{{ hero.detail_url }}">Guide</a>
+                    <a href="{{ hero.detail_url }}">Stats</a>
                     <a href="{{ hero.build_url }}">Builds</a>
                     <a href="{{ hero.street_brawl_build_url }}">Street Brawl</a>
                 </div>

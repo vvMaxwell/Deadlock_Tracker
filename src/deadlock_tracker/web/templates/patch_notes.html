@@ -7,9 +7,9 @@
     <div class="hero-actions">
         <a class="back-link" href="/">Back to search</a>
     </div>
-    <p class="eyebrow">Official Changelog</p>
+    <p class="eyebrow">Patch Notes</p>
     <h1>Deadlock Patch Notes</h1>
-    <p class="lede">Recent Deadlock updates sourced from the official changelog posts published on the Deadlock forums.</p>
+    <p class="lede">Recent Deadlock updates, summarized from the official forum posts.</p>
     {% if current_page > 1 %}
     <div class="section-badge-group">
         <span class="section-badge section-badge-soft">Archive page {{ current_page }}</span>
@@ -45,7 +45,7 @@
             {% if has_more %}
             <details class="patch-card-details">
                 <summary class="patch-card-summary-toggle">
-                    <span>Show full patch summary</span>
+                    <span>Show full summary</span>
                     <span class="patch-card-summary-icon" aria-hidden="true">&darr;</span>
                 </summary>
                 <div class="patch-card-body patch-card-body-expanded">
@@ -57,7 +57,7 @@
             {% elif patch.summary_truncated %}
             <div class="patch-card-actions">
                 <a class="patch-card-summary-link" href="{{ patch.detail_url }}">
-                    <span>Read full summary page</span>
+                    <span>Read the full summary</span>
                     <span aria-hidden="true">&darr;</span>
                 </a>
             </div>

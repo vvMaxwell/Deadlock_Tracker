@@ -9,7 +9,7 @@
     </div>
     <p class="eyebrow">FAQ</p>
     <h1>Frequently Asked Questions</h1>
-    <p class="lede">Quick answers for how to search players and what links work best in Deadlock Stats Tracker.</p>
+    <p class="lede">Quick answers for searching players and opening the right profile.</p>
     <div class="signature-strip" aria-hidden="true">
         <img src="{{ url_for('static', path='/community-assets/hero-signatures/lady-geist.svg') }}" alt="">
         <img src="{{ url_for('static', path='/community-assets/hero-signatures/lash.svg') }}" alt="">
@@ -43,8 +43,8 @@
             <img src="{{ screenshot_url }}" alt="Steam profile page showing where to copy the account URL">
             {% else %}
             <div class="guide-visual-placeholder">
-                <strong>Steam profile screenshot goes here</strong>
-                <p>Add your screenshot to <code>src/deadlock_tracker/web/static/help/steam-account-url-guide.png</code> and it will appear on this page automatically.</p>
+                <strong>Screenshot unavailable</strong>
+                <p>Open your Steam profile, copy the URL from the address bar, and paste it into search.</p>
             </div>
             {% endif %}
         </div>
@@ -61,7 +61,7 @@
         </article>
         <article class="platform-card faq-card">
             <p class="eyebrow">What does the site show?</p>
-            <p>Rank information, recent match history, and hero performance for the player you search.</p>
+            <p>Rank, recent matches, and most-played heroes for the player you search.</p>
         </article>
     </section>
 </section>
