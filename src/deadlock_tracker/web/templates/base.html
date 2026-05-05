@@ -34,11 +34,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Sans:wght@400;500;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
         media="print"
         onload="this.media='all'">
     <noscript>
-        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     </noscript>
     <link rel="stylesheet" href="{{ url_for('static', path='/site.css') }}?v={{ static_css_version }}">
     <style>[hidden] { display: none !important; }</style>
@@ -47,7 +47,6 @@
     {% endif %}
 </head>
 <body>
-    <div class="site-backdrop"></div>
     <nav class="site-side-rail" aria-label="Primary navigation">
         <button class="menu-button side-rail-menu" type="button" aria-label="Toggle menu" aria-controls="site-drawer" aria-expanded="false" data-site-menu-toggle>
             <span class="menu-button-icon" aria-hidden="true">
@@ -60,6 +59,22 @@
             <img src="{{ brand_symbol_url }}" alt="Deadlock Stats Tracker logo" loading="eager" decoding="async">
             <span>Deadlock Stats Tracker</span>
         </a>
+        <form class="header-search" method="get" action="/" data-player-search>
+            <div class="header-search-field">
+                <label class="sr-only" for="header-player-search">Search player, profile URL, or account ID</label>
+                <input
+                    id="header-player-search"
+                    type="search"
+                    name="query"
+                    value="{{ query or '' }}"
+                    placeholder="Search player, profile URL, or account ID"
+                    autocomplete="off"
+                    data-player-search-input
+                >
+                <div class="header-search-popover" data-player-search-results hidden></div>
+            </div>
+            <button type="submit">Search</button>
+        </form>
     </nav>
     <aside class="site-drawer" id="site-drawer">
         <div class="site-drawer-head">
@@ -122,35 +137,6 @@
     </aside>
     <button class="site-drawer-backdrop" id="site-drawer-backdrop" type="button" aria-label="Close menu" data-site-menu-backdrop></button>
     <div class="page-shell">
-        <header class="site-header site-header-stacked">
-            <div class="site-header-top">
-                <div class="site-brand-row">
-                    <a class="brand-mark" href="/">
-                        <img class="brand-mark-symbol" src="{{ brand_symbol_url }}" alt="Deadlock Stats Tracker logo" loading="eager" decoding="async">
-                        <span class="brand-mark-copy">
-                            <span class="brand-kicker">Deadlock</span>
-                            <strong>Stats Tracker</strong>
-                        </span>
-                    </a>
-                </div>
-                <form class="header-search" method="get" action="/" data-player-search>
-                    <div class="header-search-field">
-                        <label class="sr-only" for="header-player-search">Search player, profile URL, or account ID</label>
-                        <input
-                            id="header-player-search"
-                            type="search"
-                            name="query"
-                            value="{{ query or '' }}"
-                            placeholder="Search player, profile URL, or account ID"
-                            autocomplete="off"
-                            data-player-search-input
-                        >
-                        <div class="header-search-popover" data-player-search-results hidden></div>
-                    </div>
-                    <button type="submit">Search</button>
-                </form>
-            </div>
-        </header>
         {% block content %}{% endblock %}
         <section class="site-cookie-notice" aria-label="Cookie notice">
             <p>
@@ -160,20 +146,8 @@
         </section>
         <footer class="site-footer">
             <div class="site-footer-links">
-                <a href="/heroes">Heroes</a>
-                <a href="/best-heroes">Best Heroes</a>
-                <a href="/builds">Builds</a>
-                <a href="/street-brawl-builds">Street Brawl Builds</a>
-                <a href="/items">Items</a>
-                <a href="/best-items">Best Items</a>
-                <a href="/leaderboards">Leaderboards</a>
-                <a href="/rank-distribution">Rank Distribution</a>
-                <a href="/patch-notes">Patch Notes</a>
-                <a href="/faq">FAQ</a>
-                <a href="/discord-bot">Discord Bot</a>
                 <a href="/about">About & Contact</a>
                 <a href="/privacy-policy">Privacy Policy</a>
-                <a href="/credits">Credits</a>
                 <a href="/disclaimers">Disclaimers</a>
             </div>
         </footer>

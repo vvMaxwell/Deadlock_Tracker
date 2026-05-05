@@ -7,10 +7,6 @@
     <div class="home-hero-copy">
         <h1>Deadlock Stats Tracker</h1>
         <p class="home-hero-subtitle">Search rank information, match history, and hero performance.</p>
-        <form class="search-form home-search-form" method="get" action="/">
-            <input type="text" name="query" value="{{ query }}" placeholder="Search player, profile URL, or account ID">
-            <button type="submit">Search</button>
-        </form>
         {% if error_message %}
         <p class="error-message">{{ error_message }}</p>
         {% endif %}
