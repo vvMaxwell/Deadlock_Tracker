@@ -8,9 +8,7 @@
         <a class="back-link" href="/">Back to search</a>
         <a class="back-link" href="/leaderboards">Leaderboards</a>
     </div>
-    <p class="eyebrow">Rank Distribution</p>
-    <h1>Deadlock Rank Distribution</h1>
-    <p class="lede">A rough look at visible player ranks, with hero-specific rank pages linked below.</p>
+    <h1>Player Rank Graph</h1>
 
     <section class="overview-grid">
         {% for card in summary_cards %}
@@ -24,8 +22,7 @@
 
     <section class="results-section">
         <div class="section-heading">
-            <h2>Visible Badge Ladder</h2>
-            <p>This chart shows the players we can see, not the full Deadlock player base.</p>
+            <h2>Ranks</h2>
         </div>
         <div class="rank-distribution-chart">
             {% for tier in rank_distribution %}

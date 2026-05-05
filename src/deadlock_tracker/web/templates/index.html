@@ -5,8 +5,13 @@
 {% block content %}
 <section class="hero home-hero">
     <div class="home-hero-copy">
+        <img class="home-hero-logo" src="{{ brand_symbol_url }}" alt="Deadlock Stats Tracker logo" loading="eager" decoding="async">
         <h1>Deadlock Stats Tracker</h1>
         <p class="home-hero-subtitle">Search rank information, match history, and hero performance.</p>
+        <form class="search-form home-search-form" method="get" action="/">
+            <input type="text" name="query" value="{{ query }}" placeholder="Search player, profile URL, or account ID">
+            <button type="submit">Search</button>
+        </form>
         {% if error_message %}
         <p class="error-message">{{ error_message }}</p>
         {% endif %}
@@ -46,9 +51,7 @@
 {% if rank_distribution %}
 <section class="guide-shell rank-distribution-shell">
     <div class="section-heading">
-        <p class="eyebrow">Rank Snapshot</p>
-        <h2>Visible Player Ranks</h2>
-        <p>A rough look at the ranks we can see from available player data. This is not the full Deadlock player base.</p>
+        <h2>Player Rank Graph</h2>
     </div>
         <div class="rank-distribution-chart">
         {% for tier in rank_distribution %}
