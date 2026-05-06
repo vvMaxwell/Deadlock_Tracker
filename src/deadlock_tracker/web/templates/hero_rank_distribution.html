@@ -13,7 +13,7 @@
         <div>
             <p class="eyebrow">Hero Rank Distribution</p>
             <h1>{{ hero.name }} Rank Distribution</h1>
-            <p class="lede">A rough look at where visible {{ hero.name }} players sit on the badge ladder.</p>
+            <p class="lede">{{ hero.name }} rank spread.</p>
         </div>
         <div class="card-preview">
             {% if hero.portrait_url %}
@@ -36,8 +36,7 @@
 
     <section class="results-section">
         <div class="section-heading">
-            <h2>{{ hero.name }} Badge Ladder</h2>
-            <p>Use this with the hero page and leaderboard to see where {{ hero.name }} shows up most often.</p>
+            <h2>{{ hero.name }} Ranks</h2>
         </div>
         <div class="rank-distribution-chart">
             {% for tier in rank_distribution %}

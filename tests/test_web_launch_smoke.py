@@ -251,9 +251,11 @@ def test_header_player_search_renders_autocomplete_shell() -> None:
     response = client.get("/")
 
     assert 'class="header-search" method="get" action="/" data-player-search' in response.text
+    assert 'class="search-form home-search-form" method="get" action="/" data-player-search' in response.text
+    assert response.text.count("data-player-search-results hidden") == 2
     assert 'data-player-search-input' in response.text
-    assert 'data-player-search-results hidden' in response.text
     assert "/api/player-search?q=" in response.text
+    assert 'document.querySelectorAll("[data-player-search]").forEach(setupPlayerSearch)' in response.text
 
 
 def test_player_search_suggestions_returns_players(monkeypatch) -> None:
@@ -1395,7 +1397,7 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert "Refresh is temporarily unavailable." in response.text
-    assert "Showing the latest match history available right now." in response.text
+    assert "Showing saved match history." in response.text
     assert "oracle-1.png" in response.text
     assert '<link rel="canonical" href="http://testserver/players/123/tester">' in response.text
 

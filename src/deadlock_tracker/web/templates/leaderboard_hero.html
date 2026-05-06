@@ -13,7 +13,7 @@
         <div>
             <p class="eyebrow">Hero Leaderboard</p>
             <h1>Best {{ hero.name }} Players in {{ region_name }}</h1>
-            <p class="lede">Top {{ hero.name }} players for {{ region_name }}. When a player profile is available, the name links to it.</p>
+            <p class="lede">Top {{ hero.name }} players for {{ region_name }}.</p>
         </div>
         <div class="card-preview">
             {% if hero.portrait_url %}
@@ -30,7 +30,7 @@
                 <h2>Top {{ hero.name }} Players</h2>
                 <span class="section-badge">Top 50</span>
             </div>
-            <p>These rows follow the leaderboard order for this hero and region.</p>
+            <p>Leaderboard order for this hero and region.</p>
         </div>
         <div class="match-feed">
             {% for row in rows %}

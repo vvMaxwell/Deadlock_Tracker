@@ -11,7 +11,7 @@
         </div>
         <p class="eyebrow">Player Profile</p>
         <h1>{{ overview.personaname }}</h1>
-        <p class="lede">Recent matches are shown newest first.</p>
+        <p class="lede">Recent matches, rank, and top heroes.</p>
         <div class="meta-row">
             <span>Account {{ overview.account_id }}</span>
             <span>{{ overview.countrycode or "Unknown Country" }}</span>
@@ -19,7 +19,6 @@
         </div>
         <div class="hero-notes">
             <span>Latest match {{ overview.latest_match_text }}</span>
-            <span>Showing the latest match history available right now.</span>
         </div>
     </div>
     {% if overview.avatarfull %}
@@ -30,14 +29,14 @@
 {% if refresh_status == "success" %}
 <section class="status-banner">
     <strong>Match history refreshed.</strong>
-    <span>Showing the latest match history available right now.</span>
+    <span>Updated match history is loaded.</span>
 </section>
 {% endif %}
 
 {% if refresh_status == "fallback" %}
 <section class="status-banner">
     <strong>Refresh is temporarily unavailable.</strong>
-    <span>Showing the latest match history available right now.</span>
+    <span>Showing saved match history.</span>
 </section>
 {% endif %}
 
@@ -45,7 +44,7 @@
     <article class="overview-card overview-card-highlight">
         <p class="eyebrow">Latest Match Seen</p>
         <h2>{{ overview.latest_match_text }}</h2>
-        <p class="overview-stat">Most recent match available for this player.</p>
+        <p class="overview-stat">Most recent match found.</p>
     </article>
     <article class="overview-card">
         <p class="eyebrow">Current Rank</p>
@@ -55,7 +54,7 @@
             {% endif %}
             <div class="rank-overview-copy">
                 <h2>{{ overview.rank_name }}</h2>
-                <p class="overview-stat">The current rank estimate available for this player.</p>
+                <p class="overview-stat">Current rank.</p>
             </div>
         </div>
     </article>
@@ -68,7 +67,7 @@
                 <h2>Top Heroes</h2>
                 <span class="section-badge">Recent Matches</span>
             </div>
-            <p>The heroes this player has used most in the loaded match history.</p>
+            <p>Most-played heroes.</p>
         </div>
         <div class="hero-stack">
             {% for hero in top_heroes %}
@@ -100,7 +99,7 @@
             <div class="section-heading-top">
                 <h2>Recent Matches</h2>
             </div>
-            <p>Newest matches first, with the hero, result, KDA, and match length.</p>
+            <p>Hero, result, KDA, and match length.</p>
         </div>
         <div class="match-feed">
             {% for match in recent_matches %}

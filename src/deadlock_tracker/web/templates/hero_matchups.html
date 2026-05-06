@@ -12,7 +12,7 @@
         <div>
             <p class="eyebrow">Hero Matchups</p>
             <h1>{{ hero.name }} Matchups</h1>
-            <p class="lede">See which enemies {{ hero.name }} tends to beat, which lanes look harder, and which partners work well in Normal mode.</p>
+            <p class="lede">{{ hero.name }} matchups and partners in Normal mode.</p>
         </div>
         <div class="card-preview">
             {% if hero.portrait_url %}
@@ -50,7 +50,7 @@
         <div class="section-heading">
             <p class="eyebrow">Synergy</p>
             <h2>Best Partners for {{ hero.name }}</h2>
-            <p>These rows show partners who win often with {{ hero.name }}, plus a quick read on their average contribution.</p>
+            <p>Partners with strong results alongside {{ hero.name }}.</p>
         </div>
         <div class="faq-grid">
             {% for row in synergy_rows %}

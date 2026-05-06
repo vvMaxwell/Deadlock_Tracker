@@ -8,8 +8,20 @@
         <img class="home-hero-logo" src="{{ brand_symbol_url }}" alt="Deadlock Stats Tracker logo" loading="eager" decoding="async">
         <h1>Deadlock Stats Tracker</h1>
         <p class="home-hero-subtitle">Search rank information, match history, and hero performance.</p>
-        <form class="search-form home-search-form" method="get" action="/">
-            <input type="text" name="query" value="{{ query }}" placeholder="Search player, profile URL, or account ID">
+        <form class="search-form home-search-form" method="get" action="/" data-player-search>
+            <div class="header-search-field">
+                <label class="sr-only" for="home-player-search">Search player, profile URL, or account ID</label>
+                <input
+                    id="home-player-search"
+                    type="search"
+                    name="query"
+                    value="{{ query }}"
+                    placeholder="Search player, profile URL, or account ID"
+                    autocomplete="off"
+                    data-player-search-input
+                >
+                <div class="header-search-popover" data-player-search-results hidden></div>
+            </div>
             <button type="submit">Search</button>
         </form>
         {% if error_message %}
@@ -118,7 +130,7 @@
     <div class="section-heading">
         <p class="eyebrow">More Pages</p>
         <h2>Heroes, Items, Builds, and Patch Notes</h2>
-        <p>Use these pages when you want to browse instead of searching for one player.</p>
+        <p>Browse heroes, items, builds, ranks, and updates.</p>
     </div>
     <div class="faq-grid">
         <article class="platform-card faq-card">

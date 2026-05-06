@@ -16,7 +16,7 @@
         <div>
             <p class="eyebrow">Hero Page</p>
             <h1>{{ hero.name }}</h1>
-            <p class="lede">A quick look at how this hero is doing, which items are working, and which matchups or partners stand out in Normal mode.</p>
+            <p class="lede">Hero stats, items, matchups, partners, and builds.</p>
             {% if hero_stat %}
             <div class="section-badge-group">
                 <span class="section-badge section-badge-soft">{{ ((hero_stat.wins / hero_stat.matches) if hero_stat.matches else 0)|round(3) * 100 }}% win rate</span>
@@ -43,7 +43,7 @@
     <section class="results-section">
         <div class="section-heading">
             <h2>Top Items for {{ hero.name }}</h2>
-            <p>These items are sorted by win rate for this hero, with match count shown so the list stays honest.</p>
+            <p>Sorted by win rate, with match count included.</p>
         </div>
         <div class="item-board">
             {% for item in hero_top_items %}
@@ -142,8 +142,8 @@
 
     <section class="faq-grid">
         <article class="platform-card faq-card">
-            <h2>How to use this hero page</h2>
-            <p>Use this as a quick hero page, then compare it with <a class="text-link" href="/best-heroes">Best Heroes</a> to see where {{ hero.name }} sits overall.</p>
+            <h2>{{ hero.name }} overview</h2>
+            <p>Compare {{ hero.name }} with <a class="text-link" href="/best-heroes">Best Heroes</a>.</p>
         </article>
         <article class="platform-card faq-card">
             <h2>More Deadlock pages</h2>

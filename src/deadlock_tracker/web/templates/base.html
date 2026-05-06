@@ -177,19 +177,6 @@
     })();
 
     (() => {
-        const form = document.querySelector("[data-player-search]");
-        if (!form) return;
-
-        const input = form.querySelector("[data-player-search-input]");
-        const results = form.querySelector("[data-player-search-results]");
-        let debounceTimer = null;
-        let activeController = null;
-
-        const hideResults = () => {
-            results.hidden = true;
-            results.innerHTML = "";
-        };
-
         const escapeHtml = (value) => String(value || "").replace(/[&<>"']/g, (char) => ({
             "&": "&amp;",
             "<": "&lt;",
@@ -198,72 +185,88 @@
             "'": "&#39;",
         }[char]));
 
-        const renderResults = (payload) => {
-            const players = Array.isArray(payload.results) ? payload.results : [];
-            if (!players.length) {
-                results.innerHTML = `<div class="header-search-empty">${escapeHtml(payload.error || "No players found")}</div>`;
+        const setupPlayerSearch = (form) => {
+            const input = form.querySelector("[data-player-search-input]");
+            const results = form.querySelector("[data-player-search-results]");
+            if (!input || !results) return;
+
+            let debounceTimer = null;
+            let activeController = null;
+
+            const hideResults = () => {
+                results.hidden = true;
+                results.innerHTML = "";
+            };
+
+            const renderResults = (payload) => {
+                const players = Array.isArray(payload.results) ? payload.results : [];
+                if (!players.length) {
+                    results.innerHTML = `<div class="header-search-empty">${escapeHtml(payload.error || "No players found")}</div>`;
+                    results.hidden = false;
+                    return;
+                }
+
+                results.innerHTML = players.map((player) => {
+                    const name = escapeHtml(player.personaname);
+                    const accountId = escapeHtml(player.account_id);
+                    const country = escapeHtml(player.countrycode || "Unknown");
+                    const avatar = player.avatarfull
+                        ? `<img src="${escapeHtml(player.avatarfull)}" alt="" loading="lazy" decoding="async">`
+                        : `<span class="header-search-avatar-fallback">${escapeHtml(name.slice(0, 2))}</span>`;
+                    return `
+                        <a class="header-search-result" href="${escapeHtml(player.detail_url)}">
+                            ${avatar}
+                            <span>
+                                <strong>${name}</strong>
+                                <small>ID ${accountId} - ${country}</small>
+                            </span>
+                        </a>
+                    `;
+                }).join("");
                 results.hidden = false;
-                return;
-            }
+            };
 
-            results.innerHTML = players.map((player) => {
-                const name = escapeHtml(player.personaname);
-                const accountId = escapeHtml(player.account_id);
-                const country = escapeHtml(player.countrycode || "Unknown");
-                const avatar = player.avatarfull
-                    ? `<img src="${escapeHtml(player.avatarfull)}" alt="" loading="lazy" decoding="async">`
-                    : `<span class="header-search-avatar-fallback">${escapeHtml(name.slice(0, 2))}</span>`;
-                return `
-                    <a class="header-search-result" href="${escapeHtml(player.detail_url)}">
-                        ${avatar}
-                        <span>
-                            <strong>${name}</strong>
-                            <small>ID ${accountId} - ${country}</small>
-                        </span>
-                    </a>
-                `;
-            }).join("");
-            results.hidden = false;
+            const runSearch = async () => {
+                const query = input.value.trim();
+                if (query.length < 2) {
+                    hideResults();
+                    return;
+                }
+
+                if (activeController) activeController.abort();
+                activeController = new AbortController();
+
+                try {
+                    const response = await fetch(`/api/player-search?q=${encodeURIComponent(query)}`, {
+                        headers: { "Accept": "application/json" },
+                        signal: activeController.signal,
+                    });
+                    if (!response.ok) throw new Error("Search failed");
+                    renderResults(await response.json());
+                } catch (error) {
+                    if (error.name !== "AbortError") hideResults();
+                }
+            };
+
+            input.addEventListener("input", () => {
+                window.clearTimeout(debounceTimer);
+                debounceTimer = window.setTimeout(runSearch, 220);
+            });
+
+            input.addEventListener("focus", () => {
+                if (input.value.trim().length >= 2 && !results.innerHTML) runSearch();
+            });
+
+            document.addEventListener("click", (event) => {
+                if (!form.contains(event.target)) hideResults();
+            });
+
+            input.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") hideResults();
+            });
         };
 
-        const runSearch = async () => {
-            const query = input.value.trim();
-            if (query.length < 2) {
-                hideResults();
-                return;
-            }
-
-            if (activeController) activeController.abort();
-            activeController = new AbortController();
-
-            try {
-                const response = await fetch(`/api/player-search?q=${encodeURIComponent(query)}`, {
-                    headers: { "Accept": "application/json" },
-                    signal: activeController.signal,
-                });
-                if (!response.ok) throw new Error("Search failed");
-                renderResults(await response.json());
-            } catch (error) {
-                if (error.name !== "AbortError") hideResults();
-            }
-        };
-
-        input.addEventListener("input", () => {
-            window.clearTimeout(debounceTimer);
-            debounceTimer = window.setTimeout(runSearch, 220);
-        });
-
-        input.addEventListener("focus", () => {
-            if (input.value.trim().length >= 2 && !results.innerHTML) runSearch();
-        });
-
-        document.addEventListener("click", (event) => {
-            if (!form.contains(event.target)) hideResults();
-        });
-
-        input.addEventListener("keydown", (event) => {
-            if (event.key === "Escape") hideResults();
-        });
+        document.querySelectorAll("[data-player-search]").forEach(setupPlayerSearch);
     })();
     </script>
     {% block scripts %}{% endblock %}

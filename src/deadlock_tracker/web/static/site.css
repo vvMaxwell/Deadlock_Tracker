@@ -2826,6 +2826,10 @@ h2 {
     min-width: 0;
 }
 
+.home-search-form .header-search-field {
+    width: 100%;
+}
+
 .header-search input {
     width: 100%;
     height: 44px;
@@ -4149,10 +4153,107 @@ a:not(.brand-mark):not(.side-rail-brand):not(.result-card):not(.match-card-link)
 }
 
 .back-link,
-.refresh-link,
 .search-form button,
 .header-search button {
     color: #120f0c !important;
+}
+
+.refresh-link {
+    color: var(--accent-strong) !important;
+    background: transparent;
+}
+
+.meta-row,
+.hero-notes,
+.row-metrics,
+.result-meta {
+    gap: 14px 18px;
+}
+
+.meta-row span,
+.meta-row a,
+.hero-notes span,
+.row-metrics span,
+.result-meta span {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+}
+
+.meta-row a {
+    color: var(--accent-strong);
+}
+
+.hero-notes span + span,
+.meta-row span + span,
+.meta-row a {
+    padding-left: 18px;
+    border-left: 1px solid var(--line);
+}
+
+.section-badge,
+.match-played,
+.metric-pill,
+.match-summary span,
+.match-result,
+.hero-card-metrics span,
+.item-card-tags span,
+.street-brawl-item-badge,
+.lane-player-badge,
+.lane-player-item-pill {
+    border-radius: 8px;
+}
+
+.player-hero,
+.overview-card,
+.panel,
+.hero-card-row,
+.match-card,
+.platform-card,
+.faq-card,
+.item-card,
+.normal-build-card,
+.street-brawl-hero-card,
+.street-brawl-item-row,
+.patch-card,
+.team-board,
+.lane-player-row,
+.score-row {
+    border-radius: 10px;
+}
+
+.player-hero {
+    padding: 28px 32px;
+}
+
+.overview-card,
+.panel,
+.hero-card-row,
+.match-card,
+.platform-card,
+.faq-card,
+.item-card,
+.patch-card {
+    background: transparent;
+}
+
+.hero-actions {
+    align-items: center;
+}
+
+.back-link,
+.refresh-link {
+    border-radius: 10px;
+    min-height: 44px;
+    padding: 13px 18px;
+}
+
+.refresh-link {
+    border-color: var(--line-strong);
+    color: var(--accent-strong) !important;
+    background: transparent;
 }
 
 @media (max-width: 900px) {
