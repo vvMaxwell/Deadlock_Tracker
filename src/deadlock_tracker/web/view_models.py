@@ -25,6 +25,8 @@ class MatchView:
     kda: str
     net_worth: int
     last_hits: int
+    winning_team_label: str
+    matchup_rows: list[MatchupRowView]
 
 
 @dataclass(slots=True)

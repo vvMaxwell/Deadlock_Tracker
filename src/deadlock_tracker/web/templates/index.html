@@ -20,9 +20,16 @@
                     autocomplete="off"
                     data-player-search-input
                 >
+                <span class="player-search-spinner" data-player-search-spinner hidden aria-hidden="true"></span>
                 <div class="header-search-popover" data-player-search-results hidden></div>
             </div>
-            <button type="submit">Search</button>
+            <button type="submit">
+                <svg class="search-button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m16 16 4 4"></path>
+                </svg>
+                <span>Search</span>
+            </button>
         </form>
         {% if error_message %}
         <p class="error-message">{{ error_message }}</p>

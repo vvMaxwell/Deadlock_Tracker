@@ -2948,6 +2948,24 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             )
             for stat in summary.hero_stats[:6]
         ]
+        recent_match_metadata = await _load_recent_match_metadata(
+            player_service.api,
+            summary.recent_matches,
+        )
+        recent_match_account_ids = sorted(
+            {
+                player.account_id
+                for metadata in recent_match_metadata.values()
+                for player in getattr(metadata, "players", [])
+                if player.account_id
+            }
+        )
+        recent_match_profiles = await _load_steam_profiles(
+            player_service.api,
+            recent_match_account_ids,
+        )
+        recent_match_item_info = await _load_item_info(player_service.api)
+
         recent_matches = [
             MatchView(
                 hero_name=summary.hero_info.get(match.hero_id).name if summary.hero_info.get(match.hero_id) else f"Hero {match.hero_id}",
@@ -2967,6 +2985,19 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
                 kda=player_service.format_kda(match.player_kills, match.player_deaths, match.player_assists),
                 net_worth=match.net_worth or 0,
                 last_hits=match.last_hits or 0,
+                winning_team_label=_team_label(
+                    getattr(recent_match_metadata[match.match_id], "winning_team", None)
+                    if match.match_id in recent_match_metadata
+                    else None
+                ),
+                matchup_rows=_build_recent_matchup_rows(
+                    recent_match_metadata.get(match.match_id),
+                    summary.hero_info,
+                    recent_match_profiles,
+                    recent_match_item_info,
+                    viewed_account_id=summary.player.account_id,
+                    player_service=player_service,
+                ),
             )
             for match in summary.recent_matches
         ]
@@ -3410,8 +3441,99 @@ def _friendly_mode_label(game_mode: int | None) -> str | None:
     return mapping.get(game_mode)
 
 
+async def _load_recent_match_metadata(api: object, matches: list[object]) -> dict[int, object]:
+    get_match_metadata = getattr(api, "get_match_metadata", None)
+    if get_match_metadata is None:
+        return {}
+
+    metadata_by_match_id: dict[int, object] = {}
+    for match in matches:
+        match_id = getattr(match, "match_id", None)
+        if match_id is None:
+            continue
+        try:
+            metadata_by_match_id[int(match_id)] = await get_match_metadata(int(match_id))
+        except DeadlockError:
+            continue
+    return metadata_by_match_id
+
+
+async def _load_steam_profiles(api: object, account_ids: list[int]) -> dict[int, object]:
+    get_steam_profiles = getattr(api, "get_steam_profiles", None)
+    if get_steam_profiles is None or not account_ids:
+        return {}
+
+    try:
+        return await get_steam_profiles(account_ids)
+    except DeadlockError:
+        return {}
+
+
+async def _load_item_info(api: object) -> dict[int, object]:
+    get_all_item_info = getattr(api, "get_all_item_info", None)
+    if get_all_item_info is None:
+        return {}
+
+    try:
+        return await get_all_item_info()
+    except DeadlockError:
+        return {}
+
+
 def _team_label(team: int | None) -> str:
-    return {0: "Team 0", 1: "Team 1"}.get(team, "Unknown Team")
+    return {0: "Arch Mother", 1: "Hidden King"}.get(team, "Unknown Team")
+
+
+def _build_recent_matchup_rows(
+    metadata: object | None,
+    hero_info: dict[int, object],
+    steam_profiles: dict[int, object],
+    item_info_map: dict[int, object],
+    *,
+    viewed_account_id: int,
+    player_service: PlayerService,
+) -> list[MatchupRowView]:
+    if metadata is None:
+        return []
+
+    players: list[MatchDetailPlayerView] = []
+    winning_team = getattr(metadata, "winning_team", None)
+    for item in getattr(metadata, "players", []):
+        profile = steam_profiles.get(item.account_id)
+        hero = hero_info.get(item.hero_id)
+        result = "Win" if winning_team is not None and item.team == winning_team else "Loss"
+        players.append(
+            MatchDetailPlayerView(
+                account_id=item.account_id,
+                personaname=(getattr(profile, "personaname", None) if profile else None) or str(item.account_id),
+                profileurl=(
+                    getattr(profile, "profileurl", None)
+                    if profile
+                    else f"https://steamcommunity.com/profiles/{item.account_id}"
+                ) or f"https://steamcommunity.com/profiles/{item.account_id}",
+                avatarfull=getattr(profile, "avatarfull", None) if profile else None,
+                hero_name=getattr(hero, "name", None) if hero else f"Hero {item.hero_id}",
+                hero_icon_url=getattr(hero, "icon_small", None) if hero else None,
+                team=item.team,
+                result=result,
+                is_viewed_player=item.account_id == viewed_account_id,
+                kills=item.kills or 0,
+                deaths=item.deaths or 0,
+                assists=item.assists or 0,
+                kda=player_service.format_kda(item.kills, item.deaths, item.assists),
+                souls=item.net_worth or 0,
+                player_damage=item.player_damage or 0,
+                objective_damage=item.objective_damage or 0,
+                healing=item.healing or 0,
+                last_hits=item.last_hits or 0,
+                denies=item.denies or 0,
+                level=item.level or 0,
+                lane_number=item.assigned_lane,
+                lane_text=_lane_text(item.assigned_lane),
+                items=_build_match_item_views(item.items, item_info_map),
+            )
+        )
+    return _build_matchup_rows(players)
 
 
 def _lane_text(lane: int | None) -> str:

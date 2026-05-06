@@ -71,9 +71,16 @@
                     autocomplete="off"
                     data-player-search-input
                 >
+                <span class="player-search-spinner" data-player-search-spinner hidden aria-hidden="true"></span>
                 <div class="header-search-popover" data-player-search-results hidden></div>
             </div>
-            <button type="submit">Search</button>
+            <button type="submit">
+                <svg class="search-button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m16 16 4 4"></path>
+                </svg>
+                <span>Search</span>
+            </button>
         </form>
     </nav>
     <aside class="site-drawer" id="site-drawer">
@@ -188,10 +195,16 @@
         const setupPlayerSearch = (form) => {
             const input = form.querySelector("[data-player-search-input]");
             const results = form.querySelector("[data-player-search-results]");
+            const spinner = form.querySelector("[data-player-search-spinner]");
             if (!input || !results) return;
 
             let debounceTimer = null;
             let activeController = null;
+
+            const setLoading = (isLoading) => {
+                form.classList.toggle("is-loading", isLoading);
+                if (spinner) spinner.hidden = !isLoading;
+            };
 
             const hideResults = () => {
                 results.hidden = true;
@@ -230,21 +243,26 @@
                 const query = input.value.trim();
                 if (query.length < 2) {
                     hideResults();
+                    setLoading(false);
                     return;
                 }
 
                 if (activeController) activeController.abort();
                 activeController = new AbortController();
+                const controller = activeController;
+                setLoading(true);
 
                 try {
                     const response = await fetch(`/api/player-search?q=${encodeURIComponent(query)}`, {
                         headers: { "Accept": "application/json" },
-                        signal: activeController.signal,
+                        signal: controller.signal,
                     });
                     if (!response.ok) throw new Error("Search failed");
                     renderResults(await response.json());
                 } catch (error) {
                     if (error.name !== "AbortError") hideResults();
+                } finally {
+                    if (activeController === controller) setLoading(false);
                 }
             };
 
@@ -263,6 +281,10 @@
 
             input.addEventListener("keydown", (event) => {
                 if (event.key === "Escape") hideResults();
+            });
+
+            form.addEventListener("submit", () => {
+                if (input.value.trim()) setLoading(true);
             });
         };
 

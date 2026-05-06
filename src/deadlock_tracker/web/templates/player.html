@@ -7,7 +7,6 @@
     <div>
         <div class="hero-actions">
             <a class="back-link" href="/">Back to search</a>
-            <a class="refresh-link" href="{{ player_refresh_url }}">Refresh Match History</a>
         </div>
         <p class="eyebrow">Player Profile</p>
         <h1>{{ overview.personaname }}</h1>
@@ -98,6 +97,14 @@
         <div class="section-heading">
             <div class="section-heading-top">
                 <h2>Recent Matches</h2>
+                <a class="match-history-refresh" href="{{ player_refresh_url }}" aria-label="Refresh match history" title="Refresh match history">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M21 12a9 9 0 0 1-15.5 6.2" />
+                        <path d="M3 12A9 9 0 0 1 18.5 5.8" />
+                        <path d="M21 5v6h-6" />
+                        <path d="M3 19v-6h6" />
+                    </svg>
+                </a>
             </div>
             <p>Hero, result, KDA, and match length.</p>
         </div>
@@ -130,6 +137,75 @@
                     <span class="metric-pill metric-pill-souls">Souls Collected {{ match.net_worth }}</span>
                     <span class="metric-pill">Last Hits {{ match.last_hits }}</span>
                 </div>
+                {% if match.matchup_rows %}
+                <div class="match-history-lanes">
+                    <div class="match-history-team-heads">
+                        <span>Arch Mother{% if match.winning_team_label == "Arch Mother" %} Winner{% endif %}</span>
+                        <span>Hidden King{% if match.winning_team_label == "Hidden King" %} Winner{% endif %}</span>
+                    </div>
+                    <div class="match-history-lane-list">
+                        {% for row in match.matchup_rows %}
+                        <div class="match-history-lane-row">
+                            <div class="match-history-lane-player">
+                                {% if row.left_player %}
+                                {% if row.left_player.hero_icon_url %}
+                                <img class="hero-icon match-history-hero-icon" src="{{ row.left_player.hero_icon_url }}" alt="{{ row.left_player.hero_name }}">
+                                {% else %}
+                                <div class="hero-icon hero-icon-fallback match-history-hero-icon">{{ row.left_player.hero_name[:2] }}</div>
+                                {% endif %}
+                                <div>
+                                    <p>{{ row.left_player.hero_name }}</p>
+                                    <strong>{{ row.left_player.personaname }}</strong>
+                                </div>
+                                <div class="match-history-item-slots" aria-label="{{ row.left_player.personaname }} items">
+                                    {% for index in range(12) %}
+                                    {% if index < row.left_player.items|length %}
+                                    {% set item = row.left_player.items[index] %}
+                                    <span class="match-history-item-slot match-history-item-slot-filled" title="{{ item.item_name }}">
+                                        {% if item.item_image_url %}
+                                        <img src="{{ item.item_image_url }}" alt="{{ item.item_name }}">
+                                        {% endif %}
+                                    </span>
+                                    {% else %}
+                                    <span class="match-history-item-slot" aria-hidden="true"></span>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <span class="match-history-lane-label lane-color-pill-{{ row.lane_text|lower|replace(' ', '-') }}">{{ row.lane_text }}</span>
+                            <div class="match-history-lane-player match-history-lane-player-right">
+                                {% if row.right_player %}
+                                <div>
+                                    <p>{{ row.right_player.hero_name }}</p>
+                                    <strong>{{ row.right_player.personaname }}</strong>
+                                </div>
+                                <div class="match-history-item-slots" aria-label="{{ row.right_player.personaname }} items">
+                                    {% for index in range(12) %}
+                                    {% if index < row.right_player.items|length %}
+                                    {% set item = row.right_player.items[index] %}
+                                    <span class="match-history-item-slot match-history-item-slot-filled" title="{{ item.item_name }}">
+                                        {% if item.item_image_url %}
+                                        <img src="{{ item.item_image_url }}" alt="{{ item.item_name }}">
+                                        {% endif %}
+                                    </span>
+                                    {% else %}
+                                    <span class="match-history-item-slot" aria-hidden="true"></span>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% if row.right_player.hero_icon_url %}
+                                <img class="hero-icon match-history-hero-icon" src="{{ row.right_player.hero_icon_url }}" alt="{{ row.right_player.hero_name }}">
+                                {% else %}
+                                <div class="hero-icon hero-icon-fallback match-history-hero-icon">{{ row.right_player.hero_name[:2] }}</div>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </article>
             </a>
             {% endfor %}
