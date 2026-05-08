@@ -173,7 +173,7 @@
                                 </div>
                                 {% endif %}
                             </div>
-                            <span class="match-history-lane-label lane-color-pill-{{ row.lane_text|lower|replace(' ', '-') }}">{{ row.lane_text }}</span>
+                            <span class="match-history-lane-label lane-color-streak lane-color-streak-{{ row.lane_text|lower|replace(' ', '-') }}" aria-label="{{ row.lane_text }} lane"></span>
                             <div class="match-history-lane-player match-history-lane-player-right">
                                 {% if row.right_player %}
                                 <div>

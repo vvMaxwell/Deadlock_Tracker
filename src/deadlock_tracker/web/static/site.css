@@ -335,6 +335,7 @@ h2 {
 
 .home-hero {
     display: block;
+    overflow: visible;
     padding: 20px 24px;
     border-radius: 18px;
     box-shadow: none;
@@ -2067,9 +2068,9 @@ h2 {
 .match-history-team-heads,
 .match-history-lane-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 74px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 8px minmax(0, 1fr);
     gap: 10px;
-    align-items: center;
+    align-items: stretch;
 }
 
 .match-history-team-heads {
@@ -2170,17 +2171,12 @@ h2 {
 }
 
 .match-history-lane-label {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 30px;
-    padding: 6px 8px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    color: var(--muted);
-    background: var(--panel-lift);
-    font-size: 0.74rem;
-    font-weight: 800;
+    align-self: stretch;
+    justify-self: center;
+    width: 4px;
+    min-height: 100%;
+    padding: 0;
+    border: 0;
 }
 
 .metric-pill {
@@ -2304,18 +2300,18 @@ h2 {
 
 .matchup-line {
     display: grid;
-    grid-template-columns: 88px minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-columns: 8px minmax(0, 1fr) auto minmax(0, 1fr);
     gap: 12px;
-    align-items: start;
+    align-items: stretch;
 }
 
 .matchup-line-lane {
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 100%;
 }
 
-.matchup-line-lane span,
 .matchup-center {
     padding: 10px 12px;
     border-radius: 999px;
@@ -2327,25 +2323,24 @@ h2 {
     font-weight: 700;
 }
 
-.lane-color-pill-yellow {
-    color: #f3dd92;
-    border-color: rgba(243, 221, 146, 0.3);
-    background:
-        var(--panel);
+.lane-color-streak {
+    display: block;
+    width: 4px;
+    min-height: 100%;
+    border-radius: 0;
+    background: var(--line-strong);
 }
 
-.lane-color-pill-green {
-    color: #9ee5a5;
-    border-color: rgba(158, 229, 165, 0.3);
-    background:
-        var(--panel);
+.lane-color-streak-yellow {
+    background: #f3dd92;
 }
 
-.lane-color-pill-blue {
-    color: #93baf6;
-    border-color: rgba(147, 186, 246, 0.3);
-    background:
-        var(--panel);
+.lane-color-streak-green {
+    background: #65d989;
+}
+
+.lane-color-streak-blue {
+    background: #6fa7f2;
 }
 
 .matchup-center {
@@ -3822,7 +3817,9 @@ body.menu-open {
     }
 
     .match-history-lane-label {
-        width: fit-content;
+        width: 100%;
+        height: 4px;
+        min-height: 4px;
         justify-self: center;
     }
 
@@ -4021,6 +4018,8 @@ p {
 }
 
 .home-search-form {
+    position: relative;
+    z-index: 10030;
     margin-top: 10px;
 }
 
@@ -4290,6 +4289,7 @@ a:not(.brand-mark):not(.side-rail-brand):not(.result-card):not(.match-card-link)
 }
 
 .home-hero {
+    z-index: 10010;
     padding: 46px 0 34px;
 }
 
@@ -4615,4 +4615,155 @@ a:not(.brand-mark):not(.side-rail-brand):not(.result-card):not(.match-card-link)
     .seo-copy-shell .faq-grid {
         gap: 24px;
     }
+}
+
+/* No-bubble UI pass */
+
+.side-rail-menu.menu-button,
+.side-rail-brand,
+.side-rail-menu.menu-button[aria-expanded="true"],
+.side-rail-menu.menu-button:hover,
+.side-rail-brand:hover {
+    width: auto !important;
+    min-width: 42px;
+    height: 42px !important;
+    padding: 0 8px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.side-rail-menu.menu-button {
+    border-right: 1px solid var(--line) !important;
+    padding-right: 14px !important;
+}
+
+.side-rail-brand {
+    gap: 10px;
+    padding-left: 12px !important;
+}
+
+.side-rail-brand img {
+    width: 20px;
+    height: 20px;
+}
+
+.menu-button-icon span {
+    border-radius: 0 !important;
+}
+
+.site-nav-badge,
+.site-nav-badge-muted,
+.section-badge,
+.match-played,
+.metric-pill,
+.match-summary span,
+.match-result,
+.hero-card-metrics span,
+.item-card-tags span,
+.street-brawl-item-badge,
+.lane-player-badge,
+.lane-player-stats span,
+.lane-player-items-arrow,
+.match-head-meta span,
+.matchup-line-lane span,
+.matchup-center,
+.meta-filter-submit,
+.street-brawl-tier-pill,
+.hero-meta-row span,
+.table-filter-pill,
+.rank-bar-tooltip,
+.street-brawl-mode-pill,
+.row-metrics span,
+.result-meta span {
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.site-nav-badge,
+.site-nav-badge-muted,
+.section-badge,
+.match-played,
+.metric-pill,
+.match-summary span,
+.match-result,
+.hero-card-metrics span,
+.item-card-tags span,
+.street-brawl-item-badge,
+.lane-player-badge,
+.lane-player-stats span,
+.match-head-meta span,
+.matchup-line-lane span,
+.matchup-center,
+.meta-filter-submit,
+.street-brawl-tier-pill,
+.hero-meta-row span,
+.table-filter-pill,
+.street-brawl-mode-pill,
+.row-metrics span,
+.result-meta span {
+    border-width: 0 !important;
+    padding: 0 !important;
+}
+
+.section-badge + .section-badge,
+.match-summary span + span,
+.metric-pill + .metric-pill,
+.hero-card-metrics span + span,
+.item-card-tags span + span,
+.lane-player-stats span + span,
+.match-head-meta span + span,
+.hero-meta-row span + span,
+.row-metrics span + span,
+.result-meta span + span {
+    padding-left: 12px !important;
+    border-left: 1px solid var(--line) !important;
+}
+
+.lane-player-item-pill,
+.match-history-item-slot,
+.match-history-refresh,
+.player-search-spinner {
+    border-radius: 5px !important;
+}
+
+.lane-color-streak,
+.match-history-lane-label.lane-color-streak {
+    border-radius: 0 !important;
+    background: var(--line-strong) !important;
+}
+
+.lane-color-streak-yellow,
+.match-history-lane-label.lane-color-streak-yellow {
+    background: #f3dd92 !important;
+}
+
+.lane-color-streak-green,
+.match-history-lane-label.lane-color-streak-green {
+    background: #65d989 !important;
+}
+
+.lane-color-streak-blue,
+.match-history-lane-label.lane-color-streak-blue {
+    background: #6fa7f2 !important;
+}
+
+.player-search-spinner {
+    border-radius: 50% !important;
+}
+
+.header-search input,
+.header-search button,
+.home-search-form .header-search input,
+.home-search-form .header-search button,
+.search-form input,
+.search-form button,
+.back-link,
+.refresh-link,
+.site-drawer,
+.header-search-popover,
+.header-search-result {
+    border-radius: 6px !important;
 }

@@ -34,8 +34,8 @@
     <div class="matchup-line-list">
         {% for row in matchup_rows %}
         <article class="matchup-line">
-            <div class="matchup-line-lane">
-                <span class="lane-color-pill lane-color-pill-{{ row.lane_text|lower|replace(' ', '-') }}">{{ row.lane_text }}</span>
+            <div class="matchup-line-lane" aria-label="{{ row.lane_text }} lane">
+                <span class="lane-color-streak lane-color-streak-{{ row.lane_text|lower|replace(' ', '-') }}" aria-hidden="true"></span>
             </div>
 
             <div class="matchup-side matchup-side-left">
