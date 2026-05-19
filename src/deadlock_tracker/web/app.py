@@ -3802,7 +3802,7 @@ def _slugify(value: str) -> str:
 
 def _public_origin(request: Request) -> str:
     host = request.headers.get("host", "testserver")
-    if host.startswith("testserver"):
+    if host.startswith(("testserver", "localhost", "127.0.0.1", "[::1]")):
         return f"{request.url.scheme}://{host}"
     return f"https://{host}"
 
