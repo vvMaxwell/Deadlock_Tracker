@@ -144,8 +144,8 @@ class DeadlockError(Exception):
 class DeadlockAPI:
     def __init__(self) -> None:
         settings = get_settings()
-        self.base_url = settings.deadlock_api_base_url
-        self.assets_url = settings.deadlock_assets_base_url
+        self.base_url = settings.deadlock_api_base_url.rstrip("/")
+        self.assets_url = _normalize_assets_base_url(settings.deadlock_assets_base_url)
         self.api_key = settings.deadlock_api_key
         self._hero_info: dict[int, DeadlockHeroInfo] | None = None
         self._item_info: dict[int, DeadlockItemInfo] = {}
@@ -346,7 +346,7 @@ class DeadlockAPI:
         if self._hero_info is not None:
             return self._hero_info
 
-        payload = await self._get_json(f"{self.assets_url}/v2/heroes")
+        payload = await self._get_json(f"{self.assets_url}/heroes")
         self._hero_info = {
             item["id"]: DeadlockHeroInfo(
                 hero_id=item["id"],
@@ -382,7 +382,7 @@ class DeadlockAPI:
         if item_id in self._item_info:
             return self._item_info[item_id]
 
-        payload = await self._get_json(f"{self.assets_url}/v2/items/{item_id}")
+        payload = await self._get_json(f"{self.assets_url}/items/{item_id}")
         item = DeadlockItemInfo(
             item_id=payload["id"],
             class_name=payload["class_name"],
@@ -404,7 +404,7 @@ class DeadlockAPI:
         if self._item_info:
             return self._item_info
 
-        payload = await self._get_json(f"{self.assets_url}/v2/items")
+        payload = await self._get_json(f"{self.assets_url}/items")
         self._item_info = {
             item["id"]: DeadlockItemInfo(
                 item_id=item["id"],
@@ -428,7 +428,7 @@ class DeadlockAPI:
         if self._rank_info is not None:
             return self._rank_info
 
-        payload = await self._get_json(f"{self.assets_url}/v2/ranks")
+        payload = await self._get_json(f"{self.assets_url}/ranks")
         self._rank_info = [
             DeadlockRankInfo(
                 tier=item["tier"],
@@ -811,18 +811,9 @@ class DeadlockAPI:
         )
 
     async def get_patches(self, *, limit: int = 12) -> list[DeadlockPatch]:
-        payload = await self._get_json(f"{self.base_url}/v1/patches")
+        payload = await self._get_json(f"{self.base_url}/v2/patches")
         patches = [
-            DeadlockPatch(
-                title=item["title"],
-                pub_date=item["pub_date"],
-                link=item["link"],
-                guid=(item.get("guid") or {}).get("text", ""),
-                author=item.get("author", ""),
-                category=(item.get("category") or {}).get("text", ""),
-                creator=item.get("dc_creator", ""),
-                content_html=item.get("content_encoded", ""),
-            )
+            _parse_patch(item)
             for item in payload
             if item.get("title") and item.get("link")
         ]
@@ -987,6 +978,57 @@ def _parse_last_updated(raw: Any) -> int | None:
         except ValueError:
             return None
     return None
+
+
+def _normalize_assets_base_url(raw_url: str) -> str:
+    url = raw_url.rstrip("/")
+    if url in {
+        "https://assets.deadlock-api.com",
+        "http://assets.deadlock-api.com",
+    }:
+        return "https://api.deadlock-api.com/v1/assets"
+    if url.endswith("/v1/assets"):
+        return url
+    if url in {
+        "https://api.deadlock-api.com",
+        "http://api.deadlock-api.com",
+    }:
+        return f"{url}/v1/assets"
+    return url
+
+
+def _parse_patch(item: dict[str, Any]) -> DeadlockPatch:
+    source = str(item.get("source") or "")
+    category = item.get("category") or {}
+    content = item.get("content")
+    if content is None:
+        content = item.get("content_encoded", "")
+    guid = _patch_guid_text(item)
+
+    return DeadlockPatch(
+        title=item["title"],
+        pub_date=item["pub_date"],
+        link=item["link"],
+        guid=guid,
+        author=item.get("author", ""),
+        category=category.get("text", "") if isinstance(category, dict) else "",
+        creator=item.get("dc_creator", "") or source.title(),
+        content_html=content,
+        source=source,
+    )
+
+
+def _patch_guid_text(item: dict[str, Any]) -> str:
+    raw_guid = (item.get("guid") or {}).get("text", "")
+    if not isinstance(raw_guid, str) or "/" not in raw_guid:
+        return raw_guid if isinstance(raw_guid, str) else ""
+
+    parsed = urlparse(raw_guid)
+    path_id = Path(parsed.path).name
+    if path_id:
+        source = str(item.get("source") or "feed")
+        return f"{source}-{path_id}"
+    return ""
 
 
 def _log_api_error(

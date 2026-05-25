@@ -304,6 +304,7 @@ class DeadlockPatch:
     category: str
     creator: str
     content_html: str
+    source: str = ""
 
 
 @dataclass(slots=True)

@@ -4,6 +4,8 @@ from fastapi.testclient import TestClient
 
 from deadlock_tracker.clients.deadlock_api import DeadlockAPI
 from deadlock_tracker.clients.deadlock_api import DeadlockError
+from deadlock_tracker.clients.deadlock_api import _normalize_assets_base_url
+from deadlock_tracker.clients.deadlock_api import _parse_patch
 from deadlock_tracker.clients.deadlock_api import _parse_statlocker_profiles
 from deadlock_tracker.clients.deadlock_api import _parse_tracklock_profiles
 from deadlock_tracker.models import (
@@ -1631,7 +1633,7 @@ def test_deadlock_api_adds_api_key_header(monkeypatch) -> None:
         (),
         {
             "deadlock_api_base_url": "https://api.deadlock-api.com",
-            "deadlock_assets_base_url": "https://assets.deadlock-api.com",
+            "deadlock_assets_base_url": "https://api.deadlock-api.com/v1/assets",
             "deadlock_api_key": "test-key",
         },
     )())
@@ -1639,6 +1641,31 @@ def test_deadlock_api_adds_api_key_header(monkeypatch) -> None:
     api = DeadlockAPI()
 
     assert api._request_headers()["X-API-KEY"] == "test-key"
+
+
+def test_deadlock_api_normalizes_legacy_assets_base_url() -> None:
+    assert _normalize_assets_base_url("https://assets.deadlock-api.com") == "https://api.deadlock-api.com/v1/assets"
+    assert _normalize_assets_base_url("https://api.deadlock-api.com") == "https://api.deadlock-api.com/v1/assets"
+    assert _normalize_assets_base_url("https://api.deadlock-api.com/v1/assets") == "https://api.deadlock-api.com/v1/assets"
+
+
+def test_v2_patch_feed_payload_maps_to_patch_model() -> None:
+    patch = _parse_patch(
+        {
+            "source": "steam",
+            "title": "Gameplay Update",
+            "pub_date": "2026-05-22T21:51:02Z",
+            "link": "https://store.steampowered.com/news/app/1422450/view/1",
+            "guid": {"is_perma_link": True, "text": "https://store.steampowered.com/news/app/1422450/view/1"},
+            "content": "<p>Balance changes</p>",
+        }
+    )
+
+    assert patch.title == "Gameplay Update"
+    assert patch.guid == "steam-1"
+    assert patch.creator == "Steam"
+    assert patch.content_html == "<p>Balance changes</p>"
+    assert patch.source == "steam"
 
 
 def test_statlocker_profile_search_payload_maps_to_deadlock_players() -> None:
@@ -1731,7 +1758,7 @@ def test_player_page_does_not_render_api_key(monkeypatch) -> None:
         (),
         {
             "deadlock_api_base_url": "https://api.deadlock-api.com",
-            "deadlock_assets_base_url": "https://assets.deadlock-api.com",
+            "deadlock_assets_base_url": "https://api.deadlock-api.com/v1/assets",
             "deadlock_api_key": secret,
         },
     )())

@@ -15,7 +15,7 @@ class Settings:
     web_port: int
     deadlock_api_key: str
     deadlock_api_base_url: str = "https://api.deadlock-api.com"
-    deadlock_assets_base_url: str = "https://assets.deadlock-api.com"
+    deadlock_assets_base_url: str = "https://api.deadlock-api.com/v1/assets"
 
 
 @lru_cache(maxsize=1)
@@ -31,4 +31,11 @@ def get_settings() -> Settings:
         web_host=os.getenv("DEADLOCK_WEB_HOST", "127.0.0.1").strip() or "127.0.0.1",
         web_port=int(web_port_raw) if web_port_raw.isdigit() else 8000,
         deadlock_api_key=os.getenv("DEADLOCK_API_KEY", "").strip(),
+        deadlock_api_base_url=os.getenv("DEADLOCK_API_BASE_URL", "https://api.deadlock-api.com").strip()
+        or "https://api.deadlock-api.com",
+        deadlock_assets_base_url=os.getenv(
+            "DEADLOCK_ASSETS_BASE_URL",
+            "https://api.deadlock-api.com/v1/assets",
+        ).strip()
+        or "https://api.deadlock-api.com/v1/assets",
     )
