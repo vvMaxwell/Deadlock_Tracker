@@ -40,7 +40,7 @@
     <noscript>
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="{{ url_for('static', path='/site.css') }}?v={{ static_css_version }}">
+    <link rel="stylesheet" href="/static/site.css?v={{ static_css_version }}">
     <style>[hidden] { display: none !important; }</style>
     {% if structured_data %}
     <script type="application/ld+json">{{ structured_data|safe }}</script>

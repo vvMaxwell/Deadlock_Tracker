@@ -58,8 +58,11 @@ If Docker does not start, make sure Docker Desktop is running first.
 
 This repo includes a production deployment path for a Linux VPS:
 
-- `deploy/bootstrap-vps.sh` installs Docker, Compose, Git, and opens ports `22` and `80`
-- `deploy/docker-compose.yml` runs the FastAPI app behind Nginx
+- `deploy/bootstrap-vps.sh` installs Docker, Compose, and Git
+- CloudPanel handles public Nginx reverse proxying and SSL on ports `80` and `443`
+- `deploy/docker-compose.yml` only runs the FastAPI app container
+- The Docker app binds FastAPI to `127.0.0.1:8000`
+- CloudPanel should reverse proxy `deadlockstattracker.com` to `http://127.0.0.1:8000`
 - `.github/workflows/deploy.yml` deploys the latest `main` branch over SSH
 
 Initial server bootstrap:
@@ -78,7 +81,4 @@ GitHub Actions secrets expected by the deploy workflow:
 
 For the Deadlock API key itself, do not commit it and do not use a GitHub Actions variable. Put it in the server-side `deploy/app.env` file as `DEADLOCK_API_KEY=...`, or template that file from a GitHub Actions secret if you later automate env sync.
 
-For custom domains behind Cloudflare, place the Cloudflare Origin certificate and key on the VPS at:
-
-- `/home/deadlockdeploy/certs/origin.crt`
-- `/home/deadlockdeploy/certs/origin.key`
+For custom domains behind Cloudflare, CloudPanel should manage the origin certificate. Cloudflare SSL can use `Full`, then switch to `Full (strict)` once a valid origin or Let's Encrypt certificate is installed in CloudPanel.
