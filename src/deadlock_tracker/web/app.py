@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+from collections import deque
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from html import escape
 from html.parser import HTMLParser
@@ -59,6 +61,25 @@ SITEMAP_DATE = datetime.fromtimestamp(STATIC_CSS_VERSION, UTC).date().isoformat(
 
 app = FastAPI(title="Deadlock Stats Tracker", version="0.1.0")
 
+
+@dataclass(frozen=True, slots=True)
+class RateLimitRule:
+    name: str
+    limit: int
+    window_seconds: int
+    exact_paths: tuple[str, ...] = ()
+    path_prefixes: tuple[str, ...] = ()
+    query_params: tuple[str, ...] = ()
+
+
+RATE_LIMIT_RULES: tuple[RateLimitRule, ...] = (
+    RateLimitRule("player-search", limit=30, window_seconds=60, exact_paths=("/api/player-search",)),
+    RateLimitRule("player-refresh", limit=5, window_seconds=3600, path_prefixes=("/players/",), query_params=("refresh",)),
+    RateLimitRule("player-pages", limit=90, window_seconds=60, path_prefixes=("/players/",)),
+    RateLimitRule("sitemap", limit=10, window_seconds=60, exact_paths=("/sitemap.xml",)),
+)
+_rate_limit_hits: dict[tuple[str, str], deque[float]] = {}
+
 LEADERBOARD_REGIONS: list[tuple[str, str, str, str]] = [
     ("north-america", "North America", "Top Deadlock players in North America.", "NAmerica"),
     ("europe", "Europe", "Top Deadlock players in Europe.", "Europe"),
@@ -83,6 +104,63 @@ class CachedStaticFiles(StaticFiles):
 
 
 app.mount("/static", CachedStaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    rule = _rate_limit_rule_for(request)
+    if rule is None:
+        return await call_next(request)
+
+    client_id = _rate_limit_client_id(request)
+    allowed, retry_after = _check_rate_limit(rule, client_id, now=time())
+    if not allowed:
+        return _noindex_response(JSONResponse(
+            {"detail": "Too many requests. Try again shortly."},
+            status_code=429,
+            headers={"Retry-After": str(retry_after)},
+        ))
+
+    return await call_next(request)
+
+
+def _rate_limit_rule_for(request: Request) -> RateLimitRule | None:
+    path = request.url.path
+    for rule in RATE_LIMIT_RULES:
+        if rule.exact_paths and path not in rule.exact_paths:
+            continue
+        if rule.path_prefixes and not path.startswith(rule.path_prefixes):
+            continue
+        if rule.query_params and not any(param in request.query_params for param in rule.query_params):
+            continue
+        return rule
+    return None
+
+
+def _rate_limit_client_id(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        first_hop = forwarded_for.split(",", 1)[0].strip()
+        if first_hop:
+            return first_hop
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def _check_rate_limit(rule: RateLimitRule, client_id: str, *, now: float) -> tuple[bool, int]:
+    key = (rule.name, client_id)
+    hits = _rate_limit_hits.setdefault(key, deque())
+    window_start = now - rule.window_seconds
+    while hits and hits[0] <= window_start:
+        hits.popleft()
+
+    if len(hits) >= rule.limit:
+        retry_after = max(1, int((hits[0] + rule.window_seconds) - now) + 1)
+        return False, retry_after
+
+    hits.append(now)
+    return True, 0
 
 
 def _html_response(response: HTMLResponse) -> HTMLResponse:

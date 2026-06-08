@@ -40,6 +40,41 @@ def test_healthcheck_returns_ok() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_rate_limit_returns_429_after_limit(monkeypatch) -> None:
+    web_app._rate_limit_hits.clear()
+    monkeypatch.setattr(
+        web_app,
+        "RATE_LIMIT_RULES",
+        (web_app.RateLimitRule("test-healthz", limit=1, window_seconds=60, exact_paths=("/healthz",)),),
+    )
+
+    client = TestClient(web_app.app)
+    assert client.get("/healthz").status_code == 200
+
+    response = client.get("/healthz")
+
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == "60"
+    assert response.json() == {"detail": "Too many requests. Try again shortly."}
+
+
+def test_rate_limit_uses_forwarded_client_ip(monkeypatch) -> None:
+    web_app._rate_limit_hits.clear()
+    monkeypatch.setattr(
+        web_app,
+        "RATE_LIMIT_RULES",
+        (web_app.RateLimitRule("test-forwarded", limit=1, window_seconds=60, exact_paths=("/healthz",)),),
+    )
+
+    client = TestClient(web_app.app)
+
+    first_response = client.get("/healthz", headers={"X-Forwarded-For": "203.0.113.10"})
+    second_response = client.get("/healthz", headers={"X-Forwarded-For": "203.0.113.20"})
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+
+
 def test_robots_txt_lists_sitemap() -> None:
     client = TestClient(web_app.app)
     response = client.get("/robots.txt")
