@@ -32,6 +32,16 @@ from deadlock_tracker.models import (
 from deadlock_tracker.web import app as web_app
 
 
+def _json_ld_payload(html: str) -> list[dict]:
+    marker = '<script type="application/ld+json">'
+    start = html.index(marker) + len(marker)
+    end = html.index("</script>", start)
+    payload = html[start:end]
+    parsed = json.loads(payload)
+    assert isinstance(parsed, list)
+    return parsed
+
+
 def test_healthcheck_returns_ok() -> None:
     client = TestClient(web_app.app)
     response = client.get("/healthz")
@@ -169,13 +179,7 @@ def test_home_json_ld_is_valid_json() -> None:
     client = TestClient(web_app.app)
     response = client.get("/")
 
-    marker = '<script type="application/ld+json">'
-    start = response.text.index(marker) + len(marker)
-    end = response.text.index("</script>", start)
-    payload = response.text[start:end]
-
-    parsed = json.loads(payload)
-    assert isinstance(parsed, list)
+    parsed = _json_ld_payload(response.text)
     assert parsed[0]["@type"] == "Organization"
     assert parsed[0]["logo"]["@type"] == "ImageObject"
     assert parsed[1]["@type"] == "WebSite"
@@ -355,13 +359,7 @@ def test_faq_json_ld_is_valid_json() -> None:
     client = TestClient(web_app.app)
     response = client.get("/faq")
 
-    marker = '<script type="application/ld+json">'
-    start = response.text.index(marker) + len(marker)
-    end = response.text.index("</script>", start)
-    payload = response.text[start:end]
-
-    parsed = json.loads(payload)
-    assert isinstance(parsed, list)
+    parsed = _json_ld_payload(response.text)
     assert any(entry.get("@type") == "FAQPage" for entry in parsed)
 
 
@@ -589,6 +587,9 @@ def test_hero_detail_page_renders(monkeypatch) -> None:
     assert "Abrams" in response.text
     assert "Mystic Shot" in response.text
     assert "Abrams matchups" in response.text
+    parsed = _json_ld_payload(response.text)
+    assert any(entry.get("@type") == "ItemList" and entry.get("name") == "Top Items for Abrams" for entry in parsed)
+    assert any(entry.get("@type") == "FAQPage" for entry in parsed)
 
 
 def test_hero_detail_page_degrades_gracefully_when_meta_calls_fail(monkeypatch) -> None:
@@ -914,6 +915,9 @@ def test_item_detail_page_renders(monkeypatch) -> None:
     assert response.status_code == 200
     assert "Mystic Shot" in response.text
     assert "100 matches" in response.text
+    parsed = _json_ld_payload(response.text)
+    assert any(entry.get("@type") == "FAQPage" for entry in parsed)
+    assert any(entry.get("primaryImageOfPage") == "https://example.com/item.png" for entry in parsed)
 
 
 def test_item_detail_page_degrades_gracefully_when_stats_fail(monkeypatch) -> None:
@@ -1180,6 +1184,8 @@ def test_leaderboards_hub_page_renders(monkeypatch) -> None:
     assert "Deadlock Leaderboards" in response.text
     assert "/leaderboards/north-america" in response.text
     assert "/leaderboards/north-america/1/abrams" in response.text
+    parsed = _json_ld_payload(response.text)
+    assert any(entry.get("@type") == "ItemList" and entry.get("name") == "Deadlock Regional Leaderboards" for entry in parsed)
 
 
 def test_leaderboard_region_page_renders(monkeypatch) -> None:
@@ -1252,6 +1258,8 @@ def test_leaderboard_region_page_renders(monkeypatch) -> None:
     assert "/players/123/topplayer" in response.text
     assert "/leaderboards/north-america/1/abrams" in response.text
     assert "https://example.com/avatar.png" in response.text
+    parsed = _json_ld_payload(response.text)
+    assert any(entry.get("@type") == "ItemList" and entry.get("name") == "Top Deadlock Players in North America" for entry in parsed)
 
 
 def test_rank_distribution_page_renders(monkeypatch) -> None:

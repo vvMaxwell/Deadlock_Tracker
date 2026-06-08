@@ -1240,6 +1240,32 @@ async def leaderboards(request: Request) -> HTMLResponse:
                         ("Leaderboards", str(request.url_for("leaderboards"))),
                     ],
                 ),
+                _item_list_structured_data(
+                    "Deadlock Regional Leaderboards",
+                    [
+                        (region.region_name, _public_url(request, region.detail_url))
+                        for region in region_cards
+                    ],
+                ),
+                _item_list_structured_data(
+                    "Deadlock Hero Leaderboards",
+                    [
+                        (hero.hero_name, _public_url(request, hero.build_url))
+                        for hero in hero_cards[:30]
+                    ],
+                ),
+                _faq_structured_data(
+                    [
+                        (
+                            "What leaderboards are available?",
+                            "Deadlock Stats Tracker includes regional leaderboards and hero-specific leaderboard pages for top players.",
+                        ),
+                        (
+                            "Can I open a leaderboard for one hero?",
+                            "Yes. Pick a hero from the leaderboard page to open a hero-specific leaderboard for a region.",
+                        ),
+                    ]
+                ),
             ],
             region_cards=region_cards,
             hero_cards=hero_cards,
@@ -1340,6 +1366,21 @@ async def leaderboard_region(request: Request, region_slug: str) -> HTMLResponse
                         ("Home", str(request.url_for("home"))),
                         ("Leaderboards", str(request.url_for("leaderboards"))),
                         (region_name, str(request.url_for("leaderboard_region", region_slug=region_slug))),
+                    ],
+                ),
+                _item_list_structured_data(
+                    f"Top Deadlock Players in {region_name}",
+                    [
+                        (row.player_name, _public_url(request, row.player_url))
+                        for row in rows
+                        if row.player_url
+                    ],
+                ),
+                _item_list_structured_data(
+                    f"{region_name} Deadlock Hero Leaderboards",
+                    [
+                        (hero.hero_name, _public_url(request, hero.build_url))
+                        for hero in hero_cards[:30]
                     ],
                 ),
             ],
@@ -1471,6 +1512,14 @@ async def leaderboard_region_hero(
                         (hero.name, canonical_url),
                     ],
                 ),
+                _item_list_structured_data(
+                    f"Best {hero.name} Players in {region_name}",
+                    [
+                        (row.player_name, _public_url(request, row.player_url))
+                        for row in rows
+                        if row.player_url
+                    ],
+                ),
             ],
             region_slug=region_slug,
             region_name=region_name,
@@ -1553,6 +1602,25 @@ async def rank_distribution(request: Request) -> HTMLResponse:
                         ("Home", str(request.url_for("home"))),
                         ("Rank Distribution", str(request.url_for("rank_distribution"))),
                     ],
+                ),
+                _item_list_structured_data(
+                    "Deadlock Hero Rank Distribution Pages",
+                    [
+                        (hero.hero_name, _public_url(request, hero.build_url))
+                        for hero in hero_cards[:30]
+                    ],
+                ),
+                _faq_structured_data(
+                    [
+                        (
+                            "What does the Deadlock rank distribution show?",
+                            "The rank distribution page summarizes visible Deadlock player ranks and shows how many visible players appear in each badge range.",
+                        ),
+                        (
+                            "Can I view rank distribution by hero?",
+                            "Yes. Each hero has a rank distribution page showing where that hero appears most often across visible ranked players.",
+                        ),
+                    ]
                 ),
             ],
             rank_distribution=tiers,
@@ -2057,6 +2125,22 @@ async def best_items(
                         ("Best Items", str(request.url_for("best_items"))),
                     ],
                 ),
+                _item_list_structured_data(
+                    "Highest Win Rate Deadlock Items",
+                    [(item.item_name, _public_url(request, item.detail_url)) for item in best_item_rows[:20]],
+                ),
+                _faq_structured_data(
+                    [
+                        (
+                            "How are the best Deadlock items ranked?",
+                            "Items are sorted by recent win rate with minimum match filters so low-sample results are easier to avoid.",
+                        ),
+                        (
+                            "Can item rankings be filtered by hero?",
+                            "Yes. The item ranking page can be filtered by hero, rank range, mode, time window, and minimum matches.",
+                        ),
+                    ]
+                ),
             ],
             hero_options=[
                 FilterOptionView(value="", label="All heroes"),
@@ -2159,7 +2243,10 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
         _base_context(
             request,
             page_title=f"{item.name} Item Guide | Deadlock Stats Tracker",
-            meta_description=f"See recent Deadlock item results by mode for {item.name}.",
+            meta_description=(
+                f"See {item.name} item stats in Deadlock, including win rate, match count, "
+                "player count, average buy timing, and related item ranking pages."
+            ),
             canonical_url=canonical_url,
             structured_data=[
                 {
@@ -2167,7 +2254,11 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
                     "@type": "WebPage",
                     "name": f"{item.name} Item Guide",
                     "url": canonical_url,
-                    "description": f"See recent Deadlock item results by mode for {item.name}.",
+                    "description": (
+                        f"See {item.name} item stats in Deadlock, including win rate, match count, "
+                        "player count, average buy timing, and related item ranking pages."
+                    ),
+                    "primaryImageOfPage": item.shop_image or item.image,
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -2176,6 +2267,18 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
                         ("Best Items", str(request.url_for("best_items"))),
                         (item.name, str(request.url_for("item_detail", item_id=str(item.item_id), item_slug=_slugify(item.name)))),
                     ],
+                ),
+                _faq_structured_data(
+                    [
+                        (
+                            f"What does the {item.name} page show?",
+                            f"The {item.name} page compares recent item performance by mode, including win rate, matches, players, and average buy timing when available.",
+                        ),
+                        (
+                            "Where can I compare this item against other Deadlock items?",
+                            "Use the Best Items page or item directory to compare this item with other upgrades.",
+                        ),
+                    ]
                 ),
             ],
             item=item,
@@ -2291,6 +2394,22 @@ async def best_heroes(
                         ("Home", str(request.url_for("home"))),
                         ("Best Heroes", str(request.url_for("best_heroes"))),
                     ],
+                ),
+                _item_list_structured_data(
+                    "Best Deadlock Heroes by Win Rate",
+                    [(hero.hero_name, _public_url(request, hero.detail_url)) for hero in hero_rows[:20]],
+                ),
+                _faq_structured_data(
+                    [
+                        (
+                            "How are the best Deadlock heroes ranked?",
+                            "Heroes are sorted by recent win rate, then pick rate and match count to keep the ranking useful for active play.",
+                        ),
+                        (
+                            "Why do filtered hero ranking pages use noindex?",
+                            "Filtered pages are kept out of the index so the canonical hero ranking page stays stronger and duplicate query variants do not compete with it.",
+                        ),
+                    ]
                 ),
             ],
             rank_options=_rank_floor_options(),
@@ -2417,7 +2536,10 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
         _base_context(
             request,
             page_title=f"{hero.name} Guide | Deadlock Stats Tracker",
-            meta_description=f"See win rate, top items, matchups, and builds for {hero.name}.",
+            meta_description=(
+                f"See {hero.name} stats in Deadlock, including win rate, best items, matchups, "
+                "synergies, builds, skill path data, and leaderboard links."
+            ),
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
                 request, str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
@@ -2428,7 +2550,11 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
                     "@type": "WebPage",
                     "name": f"{hero.name} Guide",
                     "url": canonical_url,
-                    "description": f"See win rate, top items, matchups, and builds for {hero.name}.",
+                    "description": (
+                        f"See {hero.name} stats in Deadlock, including win rate, best items, matchups, "
+                        "synergies, builds, skill path data, and leaderboard links."
+                    ),
+                    "primaryImageOfPage": hero.portrait_url or hero.background_image_url or hero.icon_small,
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -2437,6 +2563,22 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
                         ("Best Heroes", str(request.url_for("best_heroes"))),
                         (hero.name, str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name)))),
                     ],
+                ),
+                _item_list_structured_data(
+                    f"Top Items for {hero.name}",
+                    [(item.item_name, _public_url(request, item.item_url)) for item in top_items],
+                ),
+                _faq_structured_data(
+                    [
+                        (
+                            f"What can I find on the {hero.name} guide?",
+                            f"The {hero.name} guide brings together recent win rate, top items, matchups, synergies, builds, skill path data, and leaderboard links.",
+                        ),
+                        (
+                            f"Where can I see the best {hero.name} players?",
+                            f"Use the {hero.name} leaderboard link to open hero-specific leaderboard results by region.",
+                        ),
+                    ]
                 ),
             ],
             hero=hero,
@@ -2573,6 +2715,10 @@ async def hero_items(request: Request, hero_id: str, hero_slug: str) -> HTMLResp
                         (hero.name, str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name)))),
                         ("Best Items", str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name)))),
                     ],
+                ),
+                _item_list_structured_data(
+                    f"Best Items for {hero.name}",
+                    [(item.item_name, _public_url(request, item.item_url)) for item in top_items[:20]],
                 ),
             ],
             hero=hero,
@@ -3809,6 +3955,44 @@ def _breadcrumb_structured_data(request: Request, crumbs: list[tuple[str, str]])
                 "item": _public_url(request, url),
             }
             for index, (name, url) in enumerate(crumbs, start=1)
+        ],
+    }
+
+
+def _item_list_structured_data(
+    name: str,
+    items: list[tuple[str, str]],
+) -> dict[str, object]:
+    return {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": name,
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": index,
+                "name": item_name,
+                "url": item_url,
+            }
+            for index, (item_name, item_url) in enumerate(items, start=1)
+        ],
+    }
+
+
+def _faq_structured_data(items: list[tuple[str, str]]) -> dict[str, object]:
+    return {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": question,
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": answer,
+                },
+            }
+            for question, answer in items
         ],
     }
 

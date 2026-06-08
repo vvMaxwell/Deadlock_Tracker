@@ -10,7 +10,7 @@
     </div>
     <p class="eyebrow">Regional Leaderboard</p>
     <h1>{{ region_name }} Deadlock Leaderboard</h1>
-    <p class="lede">Top players for {{ region_name }}.</p>
+    <p class="lede">Top Deadlock players in {{ region_name }}, with badge estimates, profile links when available, and hero leaderboard shortcuts for the same region.</p>
 
     <section class="panel panel-matches">
         <div class="section-heading">
@@ -57,7 +57,7 @@
     <section class="results-section">
         <div class="section-heading">
             <h2>{{ region_name }} Hero Leaderboards</h2>
-            <p>Hero leaderboards by region.</p>
+            <p>Open a hero leaderboard to focus the {{ region_name }} rankings on one hero, then jump to that hero guide for items, matchups, builds, and rank distribution.</p>
         </div>
         <div class="street-brawl-hero-grid">
             {% for hero in hero_cards %}
@@ -74,6 +74,13 @@
             </a>
             {% endfor %}
         </div>
+    </section>
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <h2>Related regional stats</h2>
+            <p>Browse all <a class="text-link" href="/leaderboards">Deadlock leaderboards</a>, compare overall <a class="text-link" href="/best-heroes">hero win rates</a>, or check the <a class="text-link" href="/rank-distribution">rank distribution</a> for a wider view of visible players.</p>
+        </article>
     </section>
 </section>
 {% endblock %}

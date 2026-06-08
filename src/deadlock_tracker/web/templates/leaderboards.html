@@ -10,7 +10,7 @@
     </div>
     <p class="eyebrow">Leaderboards</p>
     <h1>Deadlock Leaderboards</h1>
-    <p class="lede">Browse top players by region, or open a hero leaderboard to see who is doing well on a specific hero.</p>
+    <p class="lede">Browse top Deadlock players by region, open hero-specific leaderboards, and jump from leaderboard rows into player profiles when public profile data is available.</p>
 
     <section class="faq-grid">
         {% for region in region_cards %}
@@ -25,7 +25,7 @@
     <section class="results-section">
         <div class="section-heading">
             <h2>Hero Leaderboards</h2>
-            <p>Pick a hero to open the global leaderboard for that hero.</p>
+            <p>Pick a hero to open a leaderboard focused on players performing well with that hero. Hero leaderboard pages also link back to hero guides and rank distribution pages.</p>
         </div>
         <div class="street-brawl-hero-grid">
             {% for hero in hero_cards %}
@@ -42,6 +42,13 @@
             </a>
             {% endfor %}
         </div>
+    </section>
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <h2>More ranking pages</h2>
+            <p>Compare overall hero performance on <a class="text-link" href="/best-heroes">Best Heroes</a>, item performance on <a class="text-link" href="/best-items">Best Items</a>, or badge spread on the <a class="text-link" href="/rank-distribution">Deadlock Rank Distribution</a> page.</p>
+        </article>
     </section>
 </section>
 {% endblock %}

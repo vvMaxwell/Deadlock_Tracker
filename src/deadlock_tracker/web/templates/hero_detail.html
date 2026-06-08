@@ -16,7 +16,7 @@
         <div>
             <p class="eyebrow">Hero Page</p>
             <h1>{{ hero.name }}</h1>
-            <p class="lede">Hero stats, items, matchups, partners, and builds.</p>
+            <p class="lede">{{ hero.name }} stats, best items, matchup trends, synergy picks, build links, rank distribution, and leaderboard pages for Deadlock.</p>
             {% if hero_stat %}
             <div class="section-badge-group">
                 <span class="section-badge section-badge-soft">{{ ((hero_stat.wins / hero_stat.matches) if hero_stat.matches else 0)|round(3) * 100 }}% win rate</span>
@@ -143,7 +143,8 @@
     <section class="faq-grid">
         <article class="platform-card faq-card">
             <h2>{{ hero.name }} overview</h2>
-            <p>Compare {{ hero.name }} with <a class="text-link" href="/best-heroes">Best Heroes</a>.</p>
+            <p>Use this page as a starting point for {{ hero.name }}. The item list highlights recent Normal mode upgrades, while the matchup and synergy previews point toward heroes that tend to perform well with or against {{ hero.name }}.</p>
+            <p>Compare {{ hero.name }} with the full <a class="text-link" href="/best-heroes">Best Heroes</a> ranking or open <a class="text-link" href="{{ hero_items_url }}">Best Items for {{ hero.name }}</a> for the expanded item table.</p>
         </article>
         <article class="platform-card faq-card">
             <h2>More Deadlock pages</h2>

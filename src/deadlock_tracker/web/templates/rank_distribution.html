@@ -8,7 +8,8 @@
         <a class="back-link" href="/">Back to search</a>
         <a class="back-link" href="/leaderboards">Leaderboards</a>
     </div>
-    <h1>Player Rank Graph</h1>
+    <h1>Deadlock Rank Distribution</h1>
+    <p class="lede">A visible-player snapshot of Deadlock ranks, badge ranges, and hero-specific rank distribution pages.</p>
 
     <section class="overview-grid">
         {% for card in summary_cards %}
@@ -23,6 +24,7 @@
     <section class="results-section">
         <div class="section-heading">
             <h2>Ranks</h2>
+            <p>Each bar shows visible players in a badge division. Use the hero rank pages below to compare how individual heroes appear across the ranked population.</p>
         </div>
         <div class="rank-distribution-chart">
             {% for tier in rank_distribution %}
@@ -74,6 +76,13 @@
             </a>
             {% endfor %}
         </div>
+    </section>
+
+    <section class="faq-grid">
+        <article class="platform-card faq-card">
+            <h2>More Deadlock rankings</h2>
+            <p>Use <a class="text-link" href="/leaderboards">Leaderboards</a> for top players, <a class="text-link" href="/best-heroes">Best Heroes</a> for win rate rankings, and <a class="text-link" href="/best-items">Best Items</a> for recent item performance.</p>
+        </article>
     </section>
 </section>
 {% endblock %}
