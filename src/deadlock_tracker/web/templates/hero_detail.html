@@ -21,7 +21,7 @@
             <div class="section-badge-group">
                 <span class="section-badge section-badge-soft">{{ ((hero_stat.wins / hero_stat.matches) if hero_stat.matches else 0)|round(3) * 100 }}% win rate</span>
                 <span class="section-badge section-badge-soft">{{ hero_stat.matches }} matches</span>
-                <span class="section-badge section-badge-soft">{{ hero_stat.players }} players</span>
+                {% if hero_stat.players is not none %}<span class="section-badge section-badge-soft">{{ hero_stat.players }} players</span>{% endif %}
             </div>
             {% endif %}
         </div>

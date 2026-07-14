@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 from fastapi.testclient import TestClient
@@ -1684,6 +1685,19 @@ def test_deadlock_api_adds_api_key_header(monkeypatch) -> None:
     api = DeadlockAPI()
 
     assert api._request_headers()["X-API-KEY"] == "test-key"
+
+
+def test_hero_analytics_accepts_current_payload_without_players(monkeypatch) -> None:
+    async def fake_get_json(*_: object, **__: object) -> list[dict[str, int]]:
+        return [{"hero_id": 1, "wins": 60, "losses": 40, "matches": 100}]
+
+    api = DeadlockAPI()
+    monkeypatch.setattr(api, "_get_json", fake_get_json)
+
+    stats = asyncio.run(api.get_hero_analytics())
+
+    assert len(stats) == 1
+    assert stats[0].players is None
 
 
 def test_deadlock_api_normalizes_legacy_assets_base_url() -> None:

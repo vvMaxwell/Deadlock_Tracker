@@ -311,13 +311,10 @@ class DeadlockAPI:
         *,
         limit: int = 10,
         force_refetch: bool = False,
-        only_stored_history: bool = False,
     ) -> list[DeadlockMatch]:
         params: dict[str, str] = {}
         if force_refetch:
             params["force_refetch"] = "true"
-        elif only_stored_history:
-            params["only_stored_history"] = "true"
 
         payload = await self._get_json(
             f"{self.base_url}/v1/players/{account_id}/match-history",
@@ -510,7 +507,7 @@ class DeadlockAPI:
                 wins=item["wins"],
                 losses=item["losses"],
                 matches=item["matches"],
-                players=item["players"],
+                players=item.get("players"),
             )
             for item in payload
             if item.get("hero_id") not in {None, 0}

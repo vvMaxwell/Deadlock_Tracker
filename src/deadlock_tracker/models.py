@@ -61,7 +61,7 @@ class DeadlockHeroAnalytics:
     wins: int
     losses: int
     matches: int
-    players: int
+    players: int | None
 
 
 @dataclass(slots=True)

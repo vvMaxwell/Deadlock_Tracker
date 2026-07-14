@@ -63,7 +63,6 @@ class PlayerService:
                 player.account_id,
                 limit=50,
                 force_refetch=True,
-                only_stored_history=False,
             )
         else:
             match_history = await self.api.get_match_history(player.account_id, limit=50)

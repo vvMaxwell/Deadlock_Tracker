@@ -2362,7 +2362,11 @@ async def best_heroes(
                     win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat.matches else "0.0%",
                     pick_rate_percent=f"{pick_rate:.1%}",
                     matches_text=f"{stat.matches:,} matches",
-                    players_text=f"{stat.players:,} players",
+                    players_text=(
+                        f"{stat.players:,} players"
+                        if stat.players is not None
+                        else "Unavailable"
+                    ),
                     wins_text=f"{stat.wins:,} wins",
                     losses_text=f"{stat.losses:,} losses",
                 )

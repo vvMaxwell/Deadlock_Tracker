@@ -121,7 +121,6 @@ async def test_build_player_summary_refresh_uses_force_refetch_mode() -> None:
             "account_id": 123,
             "limit": 50,
             "force_refetch": True,
-            "only_stored_history": False,
         }
     ]
 
