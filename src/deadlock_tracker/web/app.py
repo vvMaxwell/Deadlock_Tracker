@@ -59,6 +59,15 @@ TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 STATIC_CSS_VERSION = int((BASE_DIR / "static" / "site.css").stat().st_mtime)
 SITEMAP_DATE = datetime.fromtimestamp(STATIC_CSS_VERSION, UTC).date().isoformat()
 
+# json.dumps does not escape these, so without escaping them a value containing
+# "</script>" (e.g. an attacker-controlled Host header reflected into a canonical
+# URL) can break out of the <script type="application/ld+json"> tag it's embedded in.
+_JSON_SCRIPT_ESCAPES = {
+    ord("<"): "\\u003c",
+    ord(">"): "\\u003e",
+    ord("&"): "\\u0026",
+}
+
 app = FastAPI(title="Deadlock Stats Tracker", version="0.1.0")
 
 
@@ -138,11 +147,16 @@ def _rate_limit_rule_for(request: Request) -> RateLimitRule | None:
 
 
 def _rate_limit_client_id(request: Request) -> str:
+    # The app only ever receives direct connections from the local reverse proxy
+    # (see README: Docker binds 127.0.0.1:8000, Nginx/CloudPanel fronts it). That
+    # proxy appends the real client IP as the LAST hop of X-Forwarded-For; earlier
+    # hops are attacker-controlled, so trusting the first hop lets a client spoof a
+    # fresh rate-limit bucket on every request.
     forwarded_for = request.headers.get("x-forwarded-for", "")
     if forwarded_for:
-        first_hop = forwarded_for.split(",", 1)[0].strip()
-        if first_hop:
-            return first_hop
+        last_hop = forwarded_for.rsplit(",", 1)[-1].strip()
+        if last_hop:
+            return last_hop
     if request.client and request.client.host:
         return request.client.host
     return "unknown"
@@ -289,7 +303,7 @@ def _base_context(request: Request, **context: object) -> dict[str, object]:
     else:
         structured_data = [*sitewide_structured_data, structured_data]
     if structured_data is not None:
-        structured_data = json.dumps(structured_data, separators=(",", ":"))
+        structured_data = json.dumps(structured_data, separators=(",", ":")).translate(_JSON_SCRIPT_ESCAPES)
 
     return {
         "site_name": site_name,
