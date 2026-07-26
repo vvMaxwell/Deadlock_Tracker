@@ -252,7 +252,7 @@ def test_home_menu_drawer_renders_outside_header() -> None:
     assert '<aside class="site-drawer" id="site-drawer">' in response.text
     assert 'class="menu-button side-rail-menu" type="button" aria-label="Toggle menu"' in response.text
     assert "data-site-menu-toggle" in response.text
-    assert "site-drawer-close" not in response.text
+    assert "data-site-menu-close" in response.text
     assert "setMenuOpen(!drawer.classList.contains" in response.text
     for label in (
         "Home",
@@ -264,9 +264,18 @@ def test_home_menu_drawer_renders_outside_header() -> None:
         "About",
     ):
         assert label in response.text
-    assert '<a href="/">Search</a>' in response.text
-    assert '<a href="/about">About & Contact</a>' in response.text
+    assert '<a href="/" aria-current="page">Search</a>' in response.text
+    assert '<a href="/about">About &amp; Contact</a>' in response.text
     assert '<a href="/privacy-policy">Privacy Policy</a>' in response.text
+
+
+def test_drawer_marks_only_the_current_page() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/best-items")
+
+    assert response.text.count('aria-current="page"') == 1
+    assert '<a href="/best-items" aria-current="page">Best Items</a>' in response.text
+    assert '<a href="/items">Items</a>' in response.text
 
 
 def test_privacy_policy_page_renders_adsense_disclosures() -> None:

@@ -83,62 +83,71 @@
             </button>
         </form>
     </nav>
+    {% set current_path = (request_path or '/').rstrip('/') or '/' %}
+    {%- macro nav_link(href, label) -%}
+<a href="{{ href }}"{% if (href.rstrip('/') or '/') == current_path %} aria-current="page"{% endif %}>{{ label }}</a>
+    {%- endmacro -%}
     <aside class="site-drawer" id="site-drawer">
         <div class="site-drawer-head">
             <div>
                 <p class="site-header-eyebrow">Browse</p>
                 <p class="site-drawer-title">Navigation</p>
             </div>
+            <button class="site-drawer-close" type="button" aria-label="Close menu" data-site-menu-close>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18"></path>
+                </svg>
+            </button>
         </div>
         <div class="site-drawer-section">
             <p class="site-drawer-label">Home</p>
             <nav class="site-drawer-nav">
-                <a href="/">Search</a>
+                {{ nav_link('/', 'Search') }}
             </nav>
         </div>
         <div class="site-drawer-section">
             <p class="site-drawer-label">Heroes</p>
             <nav class="site-drawer-nav">
-                <a href="/heroes">Heroes</a>
-                <a href="/best-heroes">Best Heroes</a>
+                {{ nav_link('/heroes', 'Heroes') }}
+                {{ nav_link('/best-heroes', 'Best Heroes') }}
             </nav>
         </div>
         <div class="site-drawer-section">
             <p class="site-drawer-label">Builds</p>
             <nav class="site-drawer-nav">
-                <a href="/builds">Builds</a>
-                <a href="/street-brawl-builds">Street Brawl Builds</a>
+                {{ nav_link('/builds', 'Builds') }}
+                {{ nav_link('/street-brawl-builds', 'Street Brawl Builds') }}
             </nav>
         </div>
         <div class="site-drawer-section">
             <p class="site-drawer-label">Items</p>
             <nav class="site-drawer-nav">
-                <a href="/items">Items</a>
-                <a href="/best-items">Best Items</a>
+                {{ nav_link('/items', 'Items') }}
+                {{ nav_link('/best-items', 'Best Items') }}
             </nav>
         </div>
         <div class="site-drawer-section">
             <p class="site-drawer-label">Stats</p>
             <nav class="site-drawer-nav">
-                <a href="/leaderboards">Leaderboards</a>
-                <a href="/rank-distribution">Rank Distribution</a>
+                {{ nav_link('/leaderboards', 'Leaderboards') }}
+                {{ nav_link('/rank-distribution', 'Rank Distribution') }}
             </nav>
         </div>
         <div class="site-drawer-section">
             <p class="site-drawer-label">Updates & Help</p>
             <nav class="site-drawer-nav">
-                <a href="/patch-notes">Patch Notes</a>
-                <a href="/faq">FAQ</a>
-                <a href="/discord-bot">Discord Bot</a>
+                {{ nav_link('/patch-notes', 'Patch Notes') }}
+                {{ nav_link('/faq', 'FAQ') }}
+                {{ nav_link('/discord-bot', 'Discord Bot') }}
             </nav>
         </div>
         <div class="site-drawer-section">
             <p class="site-drawer-label">About</p>
             <nav class="site-drawer-nav">
-                <a href="/about">About & Contact</a>
-                <a href="/privacy-policy">Privacy Policy</a>
-                <a href="/credits">Credits</a>
-                <a href="/disclaimers">Disclaimers</a>
+                {{ nav_link('/about', 'About & Contact') }}
+                {{ nav_link('/privacy-policy', 'Privacy Policy') }}
+                {{ nav_link('/credits', 'Credits') }}
+                {{ nav_link('/disclaimers', 'Disclaimers') }}
             </nav>
         </div>
     </aside>
@@ -174,12 +183,31 @@
         const menuButton = document.querySelector("[data-site-menu-toggle]");
         const drawer = document.getElementById("site-drawer");
         const backdrop = document.querySelector("[data-site-menu-backdrop]");
+        const closeButton = document.querySelector("[data-site-menu-close]");
         if (!menuButton || !drawer || !backdrop) return;
+
+        const rail = document.querySelector(".site-side-rail");
+        if (rail) {
+            const syncRailHeight = () => {
+                document.documentElement.style.setProperty("--rail-h", rail.offsetHeight + "px");
+            };
+            syncRailHeight();
+            window.addEventListener("resize", syncRailHeight);
+            if (window.ResizeObserver) new ResizeObserver(syncRailHeight).observe(rail);
+            // The site font loads async; the rail can grow once it swaps in.
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncRailHeight);
+        }
 
         const setMenuOpen = (isOpen) => {
             drawer.classList.toggle("is-open", isOpen);
             document.body.classList.toggle("site-menu-open", isOpen);
             menuButton.setAttribute("aria-expanded", String(isOpen));
+            if (isOpen) {
+                const firstLink = drawer.querySelector(".site-drawer-nav a");
+                if (firstLink) firstLink.focus({ preventScroll: true });
+            } else {
+                menuButton.focus({ preventScroll: true });
+            }
         };
 
         menuButton.addEventListener("click", () => {
@@ -187,9 +215,10 @@
         });
 
         backdrop.addEventListener("click", () => setMenuOpen(false));
+        if (closeButton) closeButton.addEventListener("click", () => setMenuOpen(false));
 
         document.addEventListener("keydown", (event) => {
-            if (event.key === "Escape") setMenuOpen(false);
+            if (event.key === "Escape" && drawer.classList.contains("is-open")) setMenuOpen(false);
         });
     })();
 
