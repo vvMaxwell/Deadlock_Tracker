@@ -1839,7 +1839,15 @@ async def hero_builds(
         if parsed_rank_floor in {11, 21, 31, 41, 51, 61, 71, 81, 91, 101, 111}
         else None
     )
-    selected_language = language if language in BUILD_LANGUAGE_VALUES else None
+    # An absent or unusable value means the English default; "any" is the explicit
+    # opt out that turns the language filter off entirely.
+    if language == ANY_BUILD_LANGUAGE:
+        selected_language = ANY_BUILD_LANGUAGE
+    elif language in BUILD_LANGUAGE_VALUES:
+        selected_language = language
+    else:
+        selected_language = DEFAULT_BUILD_LANGUAGE
+    build_language = None if selected_language == ANY_BUILD_LANGUAGE else selected_language
     if parsed_hero_id is None:
         return _html_response(TEMPLATES.TemplateResponse(
             request,
@@ -1906,7 +1914,7 @@ async def hero_builds(
             sort_direction="desc",
             only_latest=True,
             min_unix_timestamp=int(time()) - 90 * 86400,
-            build_language=selected_language,
+            build_language=build_language,
         )
         build_stats = await api.get_hero_build_stats(
             hero_id=hero.hero_id,
@@ -2012,7 +2020,7 @@ async def hero_builds(
             # out of the index the way the other filtered meta pages are.
             meta_robots=(
                 "index,follow"
-                if selected_rank_floor is None and selected_language is None
+                if selected_rank_floor is None and selected_language == DEFAULT_BUILD_LANGUAGE
                 else "noindex,follow"
             ),
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
@@ -2049,7 +2057,8 @@ async def hero_builds(
             rank_options=_rank_floor_options(),
             selected_rank_floor=str(selected_rank_floor) if selected_rank_floor is not None else "",
             language_options=_build_language_options(),
-            selected_language=selected_language or "",
+            selected_language=selected_language,
+            any_language_value=ANY_BUILD_LANGUAGE,
             build_filter_action=_url_path(canonical_url),
             current_mode_name="Normal",
             current_mode_description="Public builds paired with recent Normal mode item results and ability-order data.",
@@ -4212,12 +4221,18 @@ def _build_rank_distribution_summary_views(
     ]
 
 
+# Build pages default to English because the site itself is English; readers who
+# want the wider pool opt in with ?language=any. Absent means default, not "all".
+DEFAULT_BUILD_LANGUAGE = "English"
+ANY_BUILD_LANGUAGE = "any"
+
+
 def _build_language_options() -> list[FilterOptionView]:
     """Languages the /v1/builds endpoint accepts, in rough order of how many
     public Deadlock builds are written in each."""
     return [
-        FilterOptionView(value="", label="Any language"),
         FilterOptionView(value="English", label="English"),
+        FilterOptionView(value=ANY_BUILD_LANGUAGE, label="All languages"),
         FilterOptionView(value="ChineseSimplified", label="Chinese (Simplified)"),
         FilterOptionView(value="Russian", label="Russian"),
         FilterOptionView(value="SpanishSpain", label="Spanish (Spain)"),
@@ -4239,7 +4254,9 @@ def _build_language_options() -> list[FilterOptionView]:
 
 
 BUILD_LANGUAGE_VALUES = frozenset(
-    option.value for option in _build_language_options() if option.value
+    option.value
+    for option in _build_language_options()
+    if option.value and option.value != ANY_BUILD_LANGUAGE
 )
 
 

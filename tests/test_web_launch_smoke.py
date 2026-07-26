@@ -1272,20 +1272,48 @@ def test_hero_builds_forwards_language_to_build_search(monkeypatch) -> None:
     assert seen["build_language"] == "Russian"
     assert '<option value="Russian" selected>Russian</option>' in response.text
     assert '<meta name="robots" content="noindex,follow">' in response.text
-    # An empty result under a language filter should say why, not look broken.
+    # An empty result under a language filter should say why, not look broken,
+    # and the way out must keep any rank filter rather than clearing everything.
     assert "written in that language" in response.text
+    assert 'href="/builds/1/abrams?language=any"' in response.text
+
+
+def test_hero_builds_defaults_to_english(monkeypatch) -> None:
+    seen = _build_stats_badge_recorder(monkeypatch)
+    client = TestClient(web_app.app)
+
+    response = client.get("/builds/1/abrams")
+
+    assert response.status_code == 200
+    assert seen["build_language"] == "English"
+    assert '<option value="English" selected>English</option>' in response.text
+    # The default view is the canonical one, so it stays indexable.
+    assert '<meta name="robots" content="index,follow">' in response.text
+
+
+def test_hero_builds_any_language_opts_out_of_the_default(monkeypatch) -> None:
+    seen = _build_stats_badge_recorder(monkeypatch)
+    client = TestClient(web_app.app)
+
+    response = client.get("/builds/1/abrams?language=any")
+
+    assert response.status_code == 200
+    # "any" must reach the client as no filter at all, not as a literal language.
+    assert seen["build_language"] is None
+    assert '<option value="any" selected>All languages</option>' in response.text
+    assert '<meta name="robots" content="noindex,follow">' in response.text
 
 
 def test_hero_builds_rejects_unknown_language(monkeypatch) -> None:
     client = TestClient(web_app.app)
 
-    # Only the documented enum reaches the API; anything else falls back to any language.
+    # Only the documented enum reaches the API; anything else falls back to the default.
     for bad in ("Klingon", "russian", "'; DROP TABLE--", ""):
         seen = _build_stats_badge_recorder(monkeypatch)
         response = client.get("/builds/1/abrams", params={"language": bad})
 
         assert response.status_code == 200, bad
-        assert seen["build_language"] is None, bad
+        assert seen["build_language"] == "English", bad
         assert '<meta name="robots" content="index,follow">' in response.text
 
 

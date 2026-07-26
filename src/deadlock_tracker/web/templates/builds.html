@@ -90,8 +90,9 @@
                 <button class="meta-filter-submit" type="submit">Apply</button>
             </form>
             <p class="meta-filter-note">
-                Win rate and match count come from matches at this rank and above, which also changes the order
-                builds are listed in. Builds without enough matches at that rank show no win rate.
+                Builds are shown in English by default; switch to <strong>All languages</strong> to include the
+                wider pool. Win rate and match count come from matches at the selected rank and above, which also
+                changes the order builds are listed in. Builds without enough matches at that rank show no win rate.
             </p>
 
             <div class="normal-build-overview">
@@ -169,10 +170,10 @@
             </div>
 
             {% if not build_cards and not error_message %}
-            {% if selected_language %}
+            {% if selected_language != any_language_value %}
             <p class="empty-state">
                 No public {{ selected_hero_name }} builds are written in that language.
-                <a class="text-link" href="{{ build_filter_action }}{% if selected_rank_floor %}?rank_floor={{ selected_rank_floor }}{% endif %}">Show every language</a>.
+                <a class="text-link" href="{{ build_filter_action }}?language={{ any_language_value }}{% if selected_rank_floor %}&amp;rank_floor={{ selected_rank_floor }}{% endif %}">Show all languages</a>.
             </p>
             {% else %}
             <p class="empty-state">No public Normal mode builds are available for {{ selected_hero_name }} yet.</p>
