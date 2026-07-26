@@ -1277,7 +1277,7 @@ h2 {
 .hero-meta-head,
 .hero-meta-row {
     display: grid;
-    grid-template-columns: 52px minmax(220px, 1.4fr) repeat(5, minmax(120px, 1fr));
+    grid-template-columns: 52px minmax(220px, 1.4fr) repeat(4, minmax(120px, 1fr));
     gap: 14px;
     align-items: center;
 }

@@ -78,7 +78,6 @@ class BestHeroView:
     win_rate_percent: str
     pick_rate_percent: str
     matches_text: str
-    players_text: str
     wins_text: str
     losses_text: str
 

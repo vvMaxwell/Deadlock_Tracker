@@ -7,7 +7,7 @@
     <div class="section-heading">
         <p class="eyebrow">Rankings</p>
         <h1>Best Heroes</h1>
-        <p class="lede">Deadlock hero win rates by rank, mode, time window, pick rate, match count, and player count.</p>
+        <p class="lede">Deadlock hero win rates by rank, mode, time window, pick rate, and match count.</p>
     </div>
 
     <form class="meta-filter-form meta-filter-form-compact" method="get" action="/best-heroes" data-street-brawl-rank-lock>
@@ -73,7 +73,6 @@
                 <span>Win Rate</span>
                 <span>Pick Rate</span>
                 <span>Matches</span>
-                <span>Players</span>
                 <span>Record</span>
             </div>
 
@@ -101,10 +100,6 @@
                 <div class="hero-meta-stat">
                     <span>Matches</span>
                     <strong>{{ hero.matches_text }}</strong>
-                </div>
-                <div class="hero-meta-stat">
-                    <span>Players</span>
-                    <strong>{{ hero.players_text }}</strong>
                 </div>
                 <div class="hero-meta-stat">
                     <span>Record</span>
