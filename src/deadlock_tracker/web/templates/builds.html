@@ -69,6 +69,23 @@
                 <h2>{{ selected_hero_name }} Builds</h2>
                 <p>Popular public builds, with recent item results and common core items when available.</p>
             </div>
+
+            <form class="meta-filter-form meta-filter-form-compact" method="get" action="{{ build_filter_action }}">
+                <label>
+                    <span>Win rates from</span>
+                    <select name="rank_floor">
+                        {% for option in rank_options %}
+                        <option value="{{ option.value }}"{% if option.value == selected_rank_floor %} selected{% endif %}>{{ option.label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button class="meta-filter-submit" type="submit">Apply</button>
+            </form>
+            <p class="meta-filter-note">
+                Win rate and match count come from matches at this rank and above, which also changes the order
+                builds are listed in. Builds without enough matches at that rank show no win rate.
+            </p>
+
             <div class="normal-build-overview">
                 <div>
                     <span>Builds</span>

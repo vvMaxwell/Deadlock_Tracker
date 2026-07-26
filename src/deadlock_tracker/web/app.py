@@ -1824,9 +1824,20 @@ async def builds_hub(request: Request, hero_id: str | None = None) -> HTMLRespon
 
 
 @app.get("/builds/{hero_id}/{hero_slug}", response_class=HTMLResponse, name="hero_builds")
-async def hero_builds(request: Request, hero_id: str, hero_slug: str) -> HTMLResponse:
+async def hero_builds(
+    request: Request,
+    hero_id: str,
+    hero_slug: str,
+    rank_floor: str | None = None,
+) -> HTMLResponse:
     api = PlayerService().api
     parsed_hero_id = _parse_optional_int(hero_id)
+    parsed_rank_floor = _parse_optional_int(rank_floor)
+    selected_rank_floor = (
+        parsed_rank_floor
+        if parsed_rank_floor in {11, 21, 31, 41, 51, 61, 71, 81, 91, 101, 111}
+        else None
+    )
     if parsed_hero_id is None:
         return _html_response(TEMPLATES.TemplateResponse(
             request,
@@ -1898,6 +1909,7 @@ async def hero_builds(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             hero_id=hero.hero_id,
             min_matches=20,
             min_unix_timestamp=int(time()) - 30 * 86400,
+            min_average_badge=selected_rank_floor,
         )
         item_stats = await api.get_item_stats(
             hero_id=hero.hero_id,
@@ -1993,6 +2005,9 @@ async def hero_builds(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             page_title=f"{hero.name} Normal Build | Deadlock Stats Tracker",
             meta_description=f"See recent {hero.name} Normal mode builds in Deadlock, plus item results and common opening paths.",
             canonical_url=canonical_url,
+            # Rank-filtered views duplicate the canonical build page, so keep them
+            # out of the index the way the other filtered meta pages are.
+            meta_robots="index,follow" if selected_rank_floor is None else "noindex,follow",
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
                 request, str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
             ),
@@ -2024,6 +2039,9 @@ async def hero_builds(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             item_rows=item_rows,
             guide=guide,
             error_message=error_message,
+            rank_options=_rank_floor_options(),
+            selected_rank_floor=str(selected_rank_floor) if selected_rank_floor is not None else "",
+            build_filter_action=_url_path(canonical_url),
             current_mode_name="Normal",
             current_mode_description="Public builds paired with recent Normal mode item results and ability-order data.",
         ),

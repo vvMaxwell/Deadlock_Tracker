@@ -1196,6 +1196,71 @@ def test_hero_builds_page_renders(monkeypatch) -> None:
     assert "Mystic Shot" in response.text
 
 
+def _build_stats_badge_recorder(monkeypatch) -> dict[str, object]:
+    """Runs the hero build page against stub data, recording the rank passed upstream."""
+    seen: dict[str, object] = {}
+
+    class FakeApi:
+        async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
+            return {
+                1: DeadlockHeroInfo(
+                    hero_id=1,
+                    name="Abrams",
+                    icon_small=None,
+                    portrait_url=None,
+                    background_image_url=None,
+                )
+            }
+
+        async def search_builds(self, **_: object) -> list[DeadlockBuild]:
+            return []
+
+        async def get_hero_build_stats(self, **kwargs: object) -> list[DeadlockHeroBuildStat]:
+            seen["min_average_badge"] = kwargs.get("min_average_badge")
+            return []
+
+        async def get_item_stats(self, **_: object) -> list[DeadlockItemStat]:
+            return []
+
+        async def get_ability_order_stats(self, **_: object) -> list[DeadlockAbilityOrderStat]:
+            return []
+
+        async def get_all_item_info(self) -> dict[int, DeadlockItemInfo]:
+            return {}
+
+    class FakePlayerService:
+        def __init__(self) -> None:
+            self.api = FakeApi()
+
+    monkeypatch.setattr(web_app, "PlayerService", FakePlayerService)
+    return seen
+
+
+def test_hero_builds_forwards_rank_floor_to_build_stats(monkeypatch) -> None:
+    seen = _build_stats_badge_recorder(monkeypatch)
+    client = TestClient(web_app.app)
+
+    response = client.get("/builds/1/abrams?rank_floor=101")
+
+    assert response.status_code == 200
+    assert seen["min_average_badge"] == 101
+    assert '<option value="101" selected>Ascendant+</option>' in response.text
+    # Filtered views duplicate the canonical build page.
+    assert '<meta name="robots" content="noindex,follow">' in response.text
+
+
+def test_hero_builds_ignores_unusable_rank_floor(monkeypatch) -> None:
+    client = TestClient(web_app.app)
+
+    for bad in ("abc", "999", "-5", ""):
+        seen = _build_stats_badge_recorder(monkeypatch)
+        response = client.get(f"/builds/1/abrams?rank_floor={bad}")
+
+        assert response.status_code == 200, bad
+        assert seen["min_average_badge"] is None, bad
+        assert '<meta name="robots" content="index,follow">' in response.text
+
+
 def test_leaderboards_hub_page_renders(monkeypatch) -> None:
     class FakeApi:
         async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:

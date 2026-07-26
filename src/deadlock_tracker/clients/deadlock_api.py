@@ -673,12 +673,15 @@ class DeadlockAPI:
         hero_id: int,
         min_matches: int = 20,
         min_unix_timestamp: int | None = None,
+        min_average_badge: int | None = None,
     ) -> list[DeadlockHeroBuildStat]:
         params: dict[str, str] = {
             "min_matches": str(min_matches),
         }
         if min_unix_timestamp is not None:
             params["min_unix_timestamp"] = str(min_unix_timestamp)
+        if min_average_badge is not None:
+            params["min_average_badge"] = str(min_average_badge)
 
         payload = await self._get_json(f"{self.base_url}/v1/analytics/hero-build-stats/{hero_id}", params=params)
         return [
