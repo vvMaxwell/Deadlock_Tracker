@@ -47,6 +47,29 @@
     {% endif %}
 </head>
 <body>
+    {%- set current_path = (request_path or '/').rstrip('/') or '/' -%}
+    {%- set nav_groups = [
+        ('Heroes', [('/heroes', 'Heroes'), ('/best-heroes', 'Best Heroes')]),
+        ('Items', [('/items', 'Items'), ('/best-items', 'Best Items')]),
+        ('Builds', [('/builds', 'Builds'), ('/street-brawl-builds', 'Street Brawl Builds')]),
+        ('Stats', [('/leaderboards', 'Leaderboards'), ('/rank-distribution', 'Rank Distribution')]),
+        ('Updates & Help', [('/patch-notes', 'Patch Notes'), ('/faq', 'FAQ'), ('/discord-bot', 'Discord Bot')]),
+        ('About', [('/about', 'About & Contact'), ('/privacy-policy', 'Privacy Policy'), ('/credits', 'Credits'), ('/disclaimers', 'Disclaimers')])
+    ] -%}
+    {%- set top_groups = nav_groups[:4] -%}
+    {%- set more_groups = nav_groups[4:] -%}
+    {%- macro nav_link(href, label) -%}
+<a href="{{ href }}"{% if (href.rstrip('/') or '/') == current_path %} aria-current="page"{% endif %}>{{ label }}</a>
+    {%- endmacro -%}
+    {#- A section counts as current when the path matches a link or sits beneath it,
+        so detail pages like /heroes/15/abrams still light up the Heroes tab. -#}
+    {%- macro section_is_current(links) -%}
+        {%- set ns = namespace(hit=false) -%}
+        {%- for href, label in links -%}
+            {%- if current_path == href or current_path.startswith(href ~ '/') -%}{%- set ns.hit = true -%}{%- endif -%}
+        {%- endfor -%}
+        {{- 'is-current' if ns.hit else '' -}}
+    {%- endmacro -%}
     <nav class="site-side-rail" aria-label="Primary navigation">
         <button class="menu-button side-rail-menu" type="button" aria-label="Toggle menu" aria-controls="site-drawer" aria-expanded="false" data-site-menu-toggle>
             <span class="menu-button-icon" aria-hidden="true">
@@ -59,6 +82,37 @@
             <img src="{{ brand_symbol_url }}" alt="Deadlock Stats Tracker logo" loading="eager" decoding="async">
             <span>Deadlock Stats Tracker</span>
         </a>
+        <div class="primary-nav" data-primary-nav>
+            {% for label, links in top_groups %}
+            <div class="primary-nav-item" data-nav-item>
+                <button class="primary-nav-trigger {{ section_is_current(links) }}" type="button" aria-expanded="false" data-nav-trigger>
+                    <span>{{ label }}</span>
+                    <svg class="primary-nav-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                </button>
+                <div class="primary-nav-panel" data-nav-panel>
+                    {% for href, text in links %}
+                    {{ nav_link(href, text) }}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            <div class="primary-nav-item" data-nav-item>
+                <button class="primary-nav-trigger {{ section_is_current(more_groups[0][1] + more_groups[1][1]) }}" type="button" aria-expanded="false" data-nav-trigger>
+                    <span>More</span>
+                    <svg class="primary-nav-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                </button>
+                <div class="primary-nav-panel primary-nav-panel-wide" data-nav-panel>
+                    {% for label, links in more_groups %}
+                    <div class="primary-nav-panel-group">
+                        <p class="primary-nav-panel-label">{{ label }}</p>
+                        {% for href, text in links %}
+                        {{ nav_link(href, text) }}
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
         <form class="header-search" method="get" action="/" data-player-search>
             <div class="header-search-field">
                 <label class="sr-only" for="header-player-search">Search player, profile URL, or account ID</label>
@@ -83,10 +137,6 @@
             </button>
         </form>
     </nav>
-    {% set current_path = (request_path or '/').rstrip('/') or '/' %}
-    {%- macro nav_link(href, label) -%}
-<a href="{{ href }}"{% if (href.rstrip('/') or '/') == current_path %} aria-current="page"{% endif %}>{{ label }}</a>
-    {%- endmacro -%}
     <aside class="site-drawer" id="site-drawer">
         <div class="site-drawer-head">
             <div>
@@ -105,51 +155,16 @@
                 {{ nav_link('/', 'Search') }}
             </nav>
         </div>
+        {% for label, links in nav_groups %}
         <div class="site-drawer-section">
-            <p class="site-drawer-label">Heroes</p>
+            <p class="site-drawer-label">{{ label }}</p>
             <nav class="site-drawer-nav">
-                {{ nav_link('/heroes', 'Heroes') }}
-                {{ nav_link('/best-heroes', 'Best Heroes') }}
+                {% for href, text in links %}
+                {{ nav_link(href, text) }}
+                {% endfor %}
             </nav>
         </div>
-        <div class="site-drawer-section">
-            <p class="site-drawer-label">Builds</p>
-            <nav class="site-drawer-nav">
-                {{ nav_link('/builds', 'Builds') }}
-                {{ nav_link('/street-brawl-builds', 'Street Brawl Builds') }}
-            </nav>
-        </div>
-        <div class="site-drawer-section">
-            <p class="site-drawer-label">Items</p>
-            <nav class="site-drawer-nav">
-                {{ nav_link('/items', 'Items') }}
-                {{ nav_link('/best-items', 'Best Items') }}
-            </nav>
-        </div>
-        <div class="site-drawer-section">
-            <p class="site-drawer-label">Stats</p>
-            <nav class="site-drawer-nav">
-                {{ nav_link('/leaderboards', 'Leaderboards') }}
-                {{ nav_link('/rank-distribution', 'Rank Distribution') }}
-            </nav>
-        </div>
-        <div class="site-drawer-section">
-            <p class="site-drawer-label">Updates & Help</p>
-            <nav class="site-drawer-nav">
-                {{ nav_link('/patch-notes', 'Patch Notes') }}
-                {{ nav_link('/faq', 'FAQ') }}
-                {{ nav_link('/discord-bot', 'Discord Bot') }}
-            </nav>
-        </div>
-        <div class="site-drawer-section">
-            <p class="site-drawer-label">About</p>
-            <nav class="site-drawer-nav">
-                {{ nav_link('/about', 'About & Contact') }}
-                {{ nav_link('/privacy-policy', 'Privacy Policy') }}
-                {{ nav_link('/credits', 'Credits') }}
-                {{ nav_link('/disclaimers', 'Disclaimers') }}
-            </nav>
-        </div>
+        {% endfor %}
     </aside>
     <button class="site-drawer-backdrop" id="site-drawer-backdrop" type="button" aria-label="Close menu" data-site-menu-backdrop></button>
     <div class="page-shell">
@@ -219,6 +234,52 @@
 
         document.addEventListener("keydown", (event) => {
             if (event.key === "Escape" && drawer.classList.contains("is-open")) setMenuOpen(false);
+        });
+    })();
+
+    (() => {
+        const navItems = [...document.querySelectorAll("[data-nav-item]")];
+        if (!navItems.length) return;
+
+        const closeAll = (except) => {
+            navItems.forEach((item) => {
+                if (item === except) return;
+                item.classList.remove("is-open");
+                item.querySelector("[data-nav-trigger]").setAttribute("aria-expanded", "false");
+            });
+        };
+
+        navItems.forEach((item) => {
+            const trigger = item.querySelector("[data-nav-trigger]");
+
+            // Hover is handled in CSS so the menu still opens without JavaScript.
+            trigger.addEventListener("click", () => {
+                const willOpen = !item.classList.contains("is-open");
+                closeAll(item);
+                item.classList.toggle("is-open", willOpen);
+                trigger.setAttribute("aria-expanded", String(willOpen));
+            });
+        });
+
+        document.addEventListener("click", (event) => {
+            if (!event.target.closest("[data-nav-item]")) closeAll(null);
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape") return;
+            const open = navItems.find((item) => item.classList.contains("is-open"));
+            if (!open) return;
+            open.querySelector("[data-nav-trigger]").focus({ preventScroll: true });
+            closeAll(null);
+        });
+
+        document.addEventListener("focusin", (event) => {
+            const item = event.target.closest("[data-nav-item]");
+            if (item) {
+                closeAll(item);
+            } else if (!event.target.closest("[data-primary-nav]")) {
+                closeAll(null);
+            }
         });
     })();
 

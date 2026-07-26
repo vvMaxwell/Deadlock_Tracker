@@ -260,7 +260,7 @@ def test_home_menu_drawer_renders_outside_header() -> None:
         "Builds",
         "Items",
         "Stats",
-        "Updates & Help",
+        "Updates &amp; Help",
         "About",
     ):
         assert label in response.text
@@ -269,13 +269,41 @@ def test_home_menu_drawer_renders_outside_header() -> None:
     assert '<a href="/privacy-policy">Privacy Policy</a>' in response.text
 
 
-def test_drawer_marks_only_the_current_page() -> None:
+def test_inline_primary_nav_renders_in_the_header() -> None:
+    client = TestClient(web_app.app)
+    response = client.get("/")
+
+    assert "data-primary-nav" in response.text
+    # Four section dropdowns plus More. The trailing ">" keeps this counting
+    # rendered buttons rather than the "[data-nav-trigger]" selectors in the script.
+    assert response.text.count("data-nav-trigger>") == 5
+    for label in ("Heroes", "Items", "Builds", "Stats", "More"):
+        assert f"<span>{label}</span>" in response.text
+
+
+def test_navs_mark_the_current_page() -> None:
     client = TestClient(web_app.app)
     response = client.get("/best-items")
 
-    assert response.text.count('aria-current="page"') == 1
+    # Once in the inline header nav, once in the drawer.
+    assert response.text.count('aria-current="page"') == 2
     assert '<a href="/best-items" aria-current="page">Best Items</a>' in response.text
     assert '<a href="/items">Items</a>' in response.text
+
+
+def test_section_tab_marks_current_for_descendant_pages() -> None:
+    client = TestClient(web_app.app)
+
+    # A hero detail page should still light up the Heroes tab, and only that one.
+    response = client.get("/heroes/15/bebop")
+
+    assert response.status_code == 200
+    assert response.text.count("primary-nav-trigger is-current") == 1
+    heroes_tab = response.text.split('<span>Heroes</span>')[0]
+    assert heroes_tab.endswith(
+        '<button class="primary-nav-trigger is-current" type="button" '
+        'aria-expanded="false" data-nav-trigger>\n                    '
+    )
 
 
 def test_privacy_policy_page_renders_adsense_disclosures() -> None:

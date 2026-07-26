@@ -5063,3 +5063,223 @@ a:not(.brand-mark):not(.side-rail-brand):not(.result-card):not(.match-card-link)
         padding-block: 8px;
     }
 }
+
+/* ---------------------------------------------------------------------------
+   Primary navigation.
+
+   Below --nav-inline-min the site uses the hamburger drawer; at or above it the
+   sections live inline in the header the way a desktop menu bar does, and the
+   drawer (and its toggle) are removed entirely so there is exactly one nav.
+   --------------------------------------------------------------------------- */
+
+.primary-nav {
+    display: none;
+}
+
+.primary-nav-item {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
+.primary-nav-trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    border: 1px solid transparent;
+    border-radius: 8px !important;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.94rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.primary-nav-trigger:hover,
+.primary-nav-trigger:focus-visible,
+.primary-nav-item.is-open .primary-nav-trigger {
+    border-color: var(--line-strong);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+}
+
+/* The section the current page belongs to, e.g. Heroes while on a hero page. */
+.primary-nav-trigger.is-current {
+    color: var(--accent-strong);
+}
+
+.primary-nav-trigger.is-current::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    bottom: 2px;
+    left: 12px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+}
+
+.primary-nav-caret {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    opacity: 0.7;
+    transition: transform 0.16s ease;
+}
+
+.primary-nav-item.is-open .primary-nav-caret {
+    transform: rotate(180deg);
+}
+
+.primary-nav-panel {
+    position: absolute;
+    top: calc(100% + 12px);
+    left: 0;
+    z-index: 10;
+    display: grid;
+    gap: 2px;
+    min-width: 210px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 10px !important;
+    background: var(--panel-strong);
+    box-shadow: 0 22px 48px rgba(0, 0, 0, 0.46);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: opacity 0.14s ease, transform 0.14s ease, visibility 0.14s;
+}
+
+/* Bridges the gap between trigger and panel so moving the pointer down does
+   not cross a dead zone and close the menu. */
+.primary-nav-panel::before {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    left: 0;
+    height: 12px;
+}
+
+/* :focus-within covers keyboard users, .is-open is the click/tap toggle, and the
+   hover rule below is scoped to real pointers so the panels do not stick open on
+   touch. Between them the menu still works with JavaScript disabled. */
+.primary-nav-item.is-open > .primary-nav-panel,
+.primary-nav-item:focus-within > .primary-nav-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+@media (hover: hover) {
+    .primary-nav-item:hover > .primary-nav-panel {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .primary-nav-item:hover .primary-nav-trigger {
+        border-color: var(--line-strong);
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+    }
+
+    .primary-nav-item:hover .primary-nav-caret {
+        transform: rotate(180deg);
+    }
+}
+
+.primary-nav-panel a {
+    display: flex;
+    align-items: center;
+    padding: 9px 12px;
+    border-radius: 8px !important;
+    color: var(--text);
+    font-size: 0.94rem;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.16s ease, color 0.16s ease;
+}
+
+.primary-nav-panel a:hover,
+.primary-nav-panel a:focus-visible {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+}
+
+.primary-nav-panel a[aria-current="page"] {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.primary-nav-panel-wide {
+    right: 0;
+    left: auto;
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+    gap: 4px 14px;
+}
+
+.primary-nav-panel-group {
+    display: grid;
+    align-content: start;
+    gap: 2px;
+}
+
+.primary-nav-panel-label {
+    margin: 0 0 2px;
+    padding: 4px 12px 0;
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+@media (min-width: 1180px) {
+    .site-side-rail .primary-nav {
+        /* Full header height, so the dropdowns anchor to the header's bottom
+           edge rather than opening inside it. */
+        align-self: stretch;
+        display: flex;
+        align-items: stretch;
+        gap: 2px;
+        margin-left: 10px;
+    }
+
+    /* One navigation at a time: the drawer is the small-screen form of this. */
+    .site-side-rail .side-rail-menu.menu-button {
+        display: none !important;
+    }
+
+    .site-drawer,
+    .site-drawer-backdrop {
+        display: none !important;
+    }
+}
+
+@media (min-width: 1180px) and (max-width: 1320px) {
+    .site-side-rail .header-search {
+        flex-basis: 380px;
+    }
+
+    .primary-nav-trigger {
+        padding: 0 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .primary-nav-panel,
+    .primary-nav-caret {
+        transition: none;
+    }
+}
