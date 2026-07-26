@@ -643,7 +643,24 @@ def test_hero_detail_page_degrades_gracefully_when_meta_calls_fail(monkeypatch) 
                 )
             }
 
+        # The page fetches its meta lookups concurrently, so every one of them
+        # is attempted. Any of them failing must still leave a usable page.
         async def get_hero_analytics(self, **_: object) -> list:
+            raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.")
+
+        async def get_item_stats(self, **_: object) -> list:
+            raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.")
+
+        async def get_hero_counter_stats(self, **_: object) -> list:
+            raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.")
+
+        async def get_hero_synergy_stats(self, **_: object) -> list:
+            raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.")
+
+        async def get_ability_order_stats(self, **_: object) -> list:
+            raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.")
+
+        async def get_all_item_info(self) -> dict:
             raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.")
 
     class FakePlayerService:
@@ -1994,3 +2011,79 @@ def test_player_page_does_not_render_api_key(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert secret not in response.text
+
+
+def test_pages_survive_upstream_dropping_the_players_field(monkeypatch) -> None:
+    """hero-stats silently dropped `players` once and took /best-heroes down with
+    a KeyError. Every analytics parser must tolerate it going missing."""
+    from deadlock_tracker.clients import deadlock_api as api_module
+
+    payloads = {
+        "item-stats": [
+            {"item_id": 101, "wins": 25, "losses": 5, "matches": 30, "avg_buy_time_s": 120.0},
+        ],
+        "hero-build-stats": [
+            {"hero_id": 1, "hero_build_id": 777, "wins": 30, "losses": 10, "matches": 40},
+        ],
+        "ability-order-stats": [
+            {"hero_id": 1, "abilities": [101, 102], "wins": 30, "losses": 10, "matches": 40},
+        ],
+        "hero-stats": [
+            {"hero_id": 1, "wins": 30, "losses": 10, "matches": 40},
+        ],
+    }
+
+    async def fake_get_json(self, url, params=None):  # noqa: ANN001
+        for key, payload in payloads.items():
+            if key in url:
+                return payload
+        return []
+
+    monkeypatch.setattr(api_module.DeadlockAPI, "_get_json", fake_get_json)
+    api = api_module.DeadlockAPI()
+
+    import asyncio
+
+    item_stats = asyncio.run(api.get_item_stats(hero_id=1))
+    build_stats = asyncio.run(api.get_hero_build_stats(hero_id=1))
+    ability_stats = asyncio.run(api.get_ability_order_stats(hero_id=1))
+    hero_stats = asyncio.run(api.get_hero_analytics())
+
+    # Parsing must succeed with players simply absent, not raise KeyError.
+    assert item_stats[0].players is None
+    assert item_stats[0].matches == 30
+    assert build_stats[0].players is None
+    assert ability_stats[0].players is None
+    assert hero_stats[0].players is None
+
+
+def test_public_pages_are_edge_cacheable() -> None:
+    client = TestClient(web_app.app)
+
+    for path in ("/", "/faq", "/best-heroes", "/leaderboards"):
+        response = client.get(path)
+        cache_control = response.headers.get("cache-control", "")
+
+        assert response.status_code == 200, path
+        assert "s-maxage" in cache_control, path
+        assert "no-store" not in cache_control, path
+        # Pragma: no-cache would undo the above for older intermediaries.
+        assert "pragma" not in response.headers, path
+
+
+def test_player_pages_are_never_cached() -> None:
+    client = TestClient(web_app.app)
+
+    response = client.get("/players/definitely-not-a-real-player-99999")
+
+    assert "no-store" in response.headers.get("cache-control", "")
+    assert "s-maxage" not in response.headers.get("cache-control", "")
+
+
+def test_error_pages_are_not_edge_cached() -> None:
+    client = TestClient(web_app.app)
+
+    response = client.get("/this-route-does-not-exist")
+
+    assert response.status_code == 404
+    assert "s-maxage" not in response.headers.get("cache-control", "")

@@ -98,10 +98,12 @@
                         <span class="item-stat-label">Matches</span>
                         <strong>{{ item.matches_text }}</strong>
                     </div>
+                    {% if item.players_text %}
                     <div>
                         <span class="item-stat-label">Players</span>
                         <strong>{{ item.players_text }}</strong>
                     </div>
+                    {% endif %}
                     <div>
                         <span class="item-stat-label">Timing</span>
                         <strong>{{ item.avg_buy_time_text }}</strong>

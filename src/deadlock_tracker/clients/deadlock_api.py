@@ -473,7 +473,7 @@ class DeadlockAPI:
                 wins=item["wins"],
                 losses=item["losses"],
                 matches=item["matches"],
-                players=item["players"],
+                players=item.get("players"),
                 avg_buy_time_s=item.get("avg_buy_time_s"),
                 avg_sell_time_s=item.get("avg_sell_time_s"),
                 avg_buy_time_relative=item.get("avg_buy_time_relative"),
@@ -694,7 +694,7 @@ class DeadlockAPI:
                 wins=item["wins"],
                 losses=item["losses"],
                 matches=item["matches"],
-                players=item["players"],
+                players=item.get("players"),
             )
             for item in payload
             if item.get("hero_build_id") is not None
@@ -763,7 +763,7 @@ class DeadlockAPI:
                 wins=item["wins"],
                 losses=item["losses"],
                 matches=item["matches"],
-                players=item["players"],
+                players=item.get("players"),
             )
             for item in payload
             if item.get("abilities")

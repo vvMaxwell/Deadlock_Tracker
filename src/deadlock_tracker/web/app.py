@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from collections import deque
@@ -113,6 +114,40 @@ class CachedStaticFiles(StaticFiles):
 
 
 app.mount("/static", CachedStaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+
+# Public pages are byte-identical for every visitor (no cookies, no sessions, no
+# auth) and the stats behind them move slowly, so let Cloudflare serve them from
+# the edge instead of rebuilding each view from several upstream API calls.
+# max-age is deliberately short for browsers; s-maxage does the real work at the
+# CDN, and stale-while-revalidate keeps a refresh off the visitor's critical path.
+PUBLIC_CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+UNCACHEABLE_PATH_PREFIXES = ("/players",)
+
+
+def _is_edge_cacheable(request: Request, response: StarletteResponse) -> bool:
+    if request.method != "GET":
+        return False
+    # Only successful HTML pages. Errors, redirects and the JSON search endpoint
+    # must keep whatever caching policy they set for themselves.
+    if response.status_code != 200:
+        return False
+    if not response.headers.get("content-type", "").startswith("text/html"):
+        return False
+    # Player pages are specific to whoever was looked up.
+    return not request.url.path.startswith(UNCACHEABLE_PATH_PREFIXES)
+
+
+@app.middleware("http")
+async def cache_control_middleware(request: Request, call_next):
+    response = await call_next(request)
+    if _is_edge_cacheable(request, response):
+        response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
+        # Starlette's MutableHeaders has no pop(); Pragma would otherwise keep
+        # older intermediaries treating the page as uncacheable.
+        if "pragma" in response.headers:
+            del response.headers["Pragma"]
+    return response
 
 
 @app.middleware("http")
@@ -1907,34 +1942,40 @@ async def hero_builds(
     guide: StreetBrawlGuideView | None = None
     error_message: str | None = None
     try:
-        builds = await api.search_builds(
-            hero_id=hero.hero_id,
-            limit=12,
-            sort_by="weekly_favorites",
-            sort_direction="desc",
-            only_latest=True,
-            min_unix_timestamp=int(time()) - 90 * 86400,
-            build_language=build_language,
+        # These five lookups only share the hero id, so run them concurrently:
+        # in series the page waits for their combined latency instead of the
+        # slowest one. gather still raises the first DeadlockError, which the
+        # surrounding handler turns into the on-page error message.
+        builds, build_stats, item_stats, ability_orders, item_info_map = await asyncio.gather(
+            api.search_builds(
+                hero_id=hero.hero_id,
+                limit=12,
+                sort_by="weekly_favorites",
+                sort_direction="desc",
+                only_latest=True,
+                min_unix_timestamp=int(time()) - 90 * 86400,
+                build_language=build_language,
+            ),
+            api.get_hero_build_stats(
+                hero_id=hero.hero_id,
+                min_matches=20,
+                min_unix_timestamp=int(time()) - 30 * 86400,
+                min_average_badge=selected_rank_floor,
+            ),
+            api.get_item_stats(
+                hero_id=hero.hero_id,
+                game_mode="normal",
+                min_matches=100,
+                min_unix_timestamp=int(time()) - 7 * 86400,
+            ),
+            api.get_ability_order_stats(
+                hero_id=hero.hero_id,
+                game_mode="normal",
+                min_matches=50,
+                min_unix_timestamp=int(time()) - 30 * 86400,
+            ),
+            api.get_all_item_info(),
         )
-        build_stats = await api.get_hero_build_stats(
-            hero_id=hero.hero_id,
-            min_matches=20,
-            min_unix_timestamp=int(time()) - 30 * 86400,
-            min_average_badge=selected_rank_floor,
-        )
-        item_stats = await api.get_item_stats(
-            hero_id=hero.hero_id,
-            game_mode="normal",
-            min_matches=100,
-            min_unix_timestamp=int(time()) - 7 * 86400,
-        )
-        ability_orders = await api.get_ability_order_stats(
-            hero_id=hero.hero_id,
-            game_mode="normal",
-            min_matches=50,
-            min_unix_timestamp=int(time()) - 30 * 86400,
-        )
-        item_info_map = await api.get_all_item_info()
 
         stats_by_build_id = {entry.hero_build_id: entry for entry in build_stats}
         ranked_builds = sorted(
@@ -1967,7 +2008,7 @@ async def hero_builds(
                     weekly_favorite_text=f"{build.num_weekly_favorites or 0:,} weekly favorites",
                     win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat and stat.matches else None,
                     matches_text=f"{stat.matches:,} matches" if stat and stat.matches else None,
-                    players_text=f"{stat.players:,} players" if stat and stat.players else None,
+                    players_text=_players_text(stat.players) if stat else None,
                     categories=categories,
                     item_names=item_names,
                 )
@@ -1995,7 +2036,7 @@ async def hero_builds(
                     cost_text=f"{item_info.cost:,} souls" if item_info.cost else "Cost Unknown",
                     win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat.matches else "0.0%",
                     matches_text=f"{stat.matches:,} matches",
-                    players_text=f"{stat.players:,} players",
+                    players_text=_players_text(stat.players),
                     avg_buy_time_text=_friendly_time_seconds(stat.avg_buy_time_s),
                     wins_text=f"{stat.wins:,} wins",
                     losses_text=f"{stat.losses:,} losses",
@@ -2140,7 +2181,7 @@ async def best_items(
                     tier_text=f"Tier {item_info.item_tier}" if item_info.item_tier else "Tier Unknown",
                     cost_text=f"{item_info.cost:,} souls" if item_info.cost else "Cost Unknown",
                     matches_text=f"{stat.matches:,} matches",
-                    players_text=f"{stat.players:,} players",
+                    players_text=_players_text(stat.players),
                     win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat.matches else "0.0%",
                     wins_text=f"{stat.wins:,} wins",
                     losses_text=f"{stat.losses:,} losses",
@@ -2279,7 +2320,7 @@ async def item_detail(request: Request, item_id: str, item_slug: str) -> HTMLRes
                     mode_name="Normal" if mode_name == "normal" else "Street Brawl",
                     win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat.matches else "0.0%",
                     matches_text=f"{stat.matches:,} matches",
-                    players_text=f"{stat.players:,} players",
+                    players_text=_players_text(stat.players),
                     timing_text=_friendly_time_seconds(stat.avg_buy_time_s),
                 )
             )
@@ -2535,12 +2576,30 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
     guide: StreetBrawlGuideView | None = None
     data_warning: str | None = None
     try:
-        analytics = await api.get_hero_analytics(game_mode="normal", min_matches=500)
+        # Independent lookups, so pay the slowest one rather than the sum.
+        lookups = [
+            api.get_hero_analytics(game_mode="normal", min_matches=500),
+            api.get_item_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=100),
+            api.get_hero_counter_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200),
+            api.get_hero_synergy_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200),
+            api.get_all_item_info(),
+        ]
+        has_ability_orders = hasattr(api, "get_ability_order_stats")
+        if has_ability_orders:
+            lookups.append(
+                api.get_ability_order_stats(
+                    hero_id=hero.hero_id,
+                    game_mode="normal",
+                    min_matches=50,
+                    min_unix_timestamp=int(time()) - 30 * 86400,
+                )
+            )
+
+        results = await asyncio.gather(*lookups)
+        analytics, item_stats, counter_stats, synergy_stats, item_info_map = results[:5]
+        ability_orders = results[5] if has_ability_orders else []
+
         hero_stat = next((entry for entry in analytics if entry.hero_id == hero.hero_id), None)
-        item_stats = await api.get_item_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=100)
-        counter_stats = await api.get_hero_counter_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200)
-        synergy_stats = await api.get_hero_synergy_stats(hero_id=hero.hero_id, game_mode="normal", min_matches=200)
-        item_info_map = await api.get_all_item_info()
         ranked_items = sorted(
             [
                 (stat, item_info_map.get(stat.item_id))
@@ -2566,16 +2625,9 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
         ]
         matchup_preview = _build_counter_views(counter_stats, hero_info, request=request, view="favorable", limit=3)
         synergy_preview = _build_synergy_views(synergy_stats, hero.hero_id, hero_info, request=request, limit=3)
-        if hasattr(api, "get_ability_order_stats"):
-            ability_orders = await api.get_ability_order_stats(
-                hero_id=hero.hero_id,
-                game_mode="normal",
-                min_matches=50,
-                min_unix_timestamp=int(time()) - 30 * 86400,
-            )
-            most_common_path = max(ability_orders, key=lambda entry: entry.matches, default=None)
-            if most_common_path is not None:
-                guide = _build_skill_path_guide(hero, most_common_path, item_info_map)
+        most_common_path = max(ability_orders, key=lambda entry: entry.matches, default=None)
+        if most_common_path is not None:
+            guide = _build_skill_path_guide(hero, most_common_path, item_info_map)
     except DeadlockError as error:
         data_warning = _friendly_meta_error_message(error, topic=f"{hero.name} hero details")
 
@@ -3005,25 +3057,28 @@ async def street_brawl_builds(
     guide: StreetBrawlGuideView | None = None
 
     try:
-        item_stats = await api.get_item_stats(
-            hero_id=selected_hero.hero_id,
-            game_mode="street_brawl",
-            min_matches=selected_min_matches,
-            min_unix_timestamp=int(time()) - selected_window_days * 86400,
+        item_stats, ability_orders, item_info_map = await asyncio.gather(
+            api.get_item_stats(
+                hero_id=selected_hero.hero_id,
+                game_mode="street_brawl",
+                min_matches=selected_min_matches,
+                min_unix_timestamp=int(time()) - selected_window_days * 86400,
+            ),
+            api.get_ability_order_stats(
+                hero_id=selected_hero.hero_id,
+                game_mode="street_brawl",
+                min_matches=1,
+                min_unix_timestamp=int(time()) - selected_window_days * 86400,
+            ),
+            api.get_all_item_info(),
         )
-        ability_orders = await api.get_ability_order_stats(
-            hero_id=selected_hero.hero_id,
-            game_mode="street_brawl",
-            min_matches=1,
-            min_unix_timestamp=int(time()) - selected_window_days * 86400,
-        )
+        # This retry depends on the result above, so it stays sequential.
         if not ability_orders:
             ability_orders = await api.get_ability_order_stats(
                 hero_id=selected_hero.hero_id,
                 game_mode="street_brawl",
                 min_matches=1,
             )
-        item_info_map = await api.get_all_item_info()
 
         filtered_items = []
         for stat in item_stats:
@@ -3054,7 +3109,7 @@ async def street_brawl_builds(
                     cost_text=f"{item_info.cost:,} souls" if item_info.cost else "Cost Unknown",
                     win_rate_percent=f"{(stat.wins / stat.matches):.1%}" if stat.matches else "0.0%",
                     matches_text=f"{stat.matches:,} matches",
-                    players_text=f"{stat.players:,} players",
+                    players_text=_players_text(stat.players),
                     avg_buy_time_text=_friendly_time_seconds(stat.avg_buy_time_s),
                     wins_text=f"{stat.wins:,} wins",
                     losses_text=f"{stat.losses:,} losses",
@@ -3622,7 +3677,7 @@ def _build_skill_path_guide(hero: object, path: object, item_info_map: dict[int,
         skill_path_rows=_build_skill_path_rows(hero, getattr(path, "abilities", []), item_info_map),
         ability_path_text=" ".join(step.ability_point for step in ability_steps),
         path_matches_text=f"{getattr(path, 'matches', 0):,} matches",
-        path_players_text=f"{getattr(path, 'players', 0):,} players",
+        path_players_text=_players_text(getattr(path, "players", None)),
         path_win_rate_percent=(
             f"{(getattr(path, 'wins', 0) / getattr(path, 'matches', 0)):.1%}"
             if getattr(path, "matches", 0)
@@ -4129,6 +4184,15 @@ def _public_url(request: Request, url: str) -> str:
 
 def _url_path(url: str) -> str:
     return urlsplit(url).path or "/"
+
+
+def _players_text(players: int | None) -> str | None:
+    """The upstream analytics endpoints have dropped the player count before
+    (it vanished from hero-stats), so treat it as optional everywhere and let
+    the templates hide the line rather than rendering a placeholder."""
+    if players is None:
+        return None
+    return f"{players:,} players"
 
 
 def _build_player_rank_distribution_views(

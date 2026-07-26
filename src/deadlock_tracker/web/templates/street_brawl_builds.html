@@ -117,10 +117,12 @@
                             <span>Matches</span>
                             <strong>{{ item.matches_text }}</strong>
                         </div>
+                        {% if item.players_text %}
                         <div>
                             <span>Players</span>
                             <strong>{{ item.players_text }}</strong>
                         </div>
+                        {% endif %}
                         <div>
                             <span>Timing</span>
                             <strong>{{ item.avg_buy_time_text }}</strong>
@@ -145,7 +147,7 @@
                         <div class="street-brawl-inline-meta">
                             <span>{{ guide.path_win_rate_percent }} top path win rate</span>
                             <span>{{ guide.path_matches_text }}</span>
-                            <span>{{ guide.path_players_text }}</span>
+                            {% if guide.path_players_text %}<span>{{ guide.path_players_text }}</span>{% endif %}
                         </div>
                     </div>
                     {% if guide.hero_portrait_url %}

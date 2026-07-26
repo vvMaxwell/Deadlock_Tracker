@@ -61,7 +61,7 @@ class BestItemView:
     tier_text: str
     cost_text: str
     matches_text: str
-    players_text: str
+    players_text: str | None
     win_rate_percent: str
     wins_text: str
     losses_text: str
@@ -92,7 +92,7 @@ class StreetBrawlBuildItemView:
     cost_text: str
     win_rate_percent: str
     matches_text: str
-    players_text: str
+    players_text: str | None
     avg_buy_time_text: str
     wins_text: str
     losses_text: str
@@ -133,7 +133,7 @@ class StreetBrawlGuideView:
     skill_path_rows: list[SkillPathRowView]
     ability_path_text: str
     path_matches_text: str
-    path_players_text: str
+    path_players_text: str | None
     path_win_rate_percent: str
 
 
@@ -293,7 +293,7 @@ class ItemModeStatView:
     mode_name: str
     win_rate_percent: str
     matches_text: str
-    players_text: str
+    players_text: str | None
     timing_text: str
 
 

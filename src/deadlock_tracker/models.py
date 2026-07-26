@@ -157,7 +157,7 @@ class DeadlockItemStat:
     wins: int
     losses: int
     matches: int
-    players: int
+    players: int | None
     avg_buy_time_s: float | None
     avg_sell_time_s: float | None
     avg_buy_time_relative: float | None
@@ -170,7 +170,7 @@ class DeadlockAbilityOrderStat:
     wins: int
     losses: int
     matches: int
-    players: int
+    players: int | None
 
 
 @dataclass(slots=True)
@@ -225,7 +225,7 @@ class DeadlockHeroBuildStat:
     wins: int
     losses: int
     matches: int
-    players: int
+    players: int | None
 
 
 @dataclass(slots=True)
