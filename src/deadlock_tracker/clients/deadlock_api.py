@@ -640,12 +640,15 @@ class DeadlockAPI:
         sort_direction: str = "desc",
         only_latest: bool = True,
         min_unix_timestamp: int | None = None,
+        build_language: str | None = None,
     ) -> list[DeadlockBuild]:
         params: dict[str, str] = {
             "limit": str(limit),
             "sort_by": sort_by,
             "sort_direction": sort_direction,
         }
+        if build_language is not None:
+            params["build_language"] = build_language
         if hero_id is not None:
             params["hero_id"] = str(hero_id)
         if only_latest:

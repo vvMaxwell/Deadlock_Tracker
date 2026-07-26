@@ -1197,7 +1197,7 @@ def test_hero_builds_page_renders(monkeypatch) -> None:
 
 
 def _build_stats_badge_recorder(monkeypatch) -> dict[str, object]:
-    """Runs the hero build page against stub data, recording the rank passed upstream."""
+    """Runs the hero build page against stub data, recording the filters passed upstream."""
     seen: dict[str, object] = {}
 
     class FakeApi:
@@ -1212,7 +1212,8 @@ def _build_stats_badge_recorder(monkeypatch) -> dict[str, object]:
                 )
             }
 
-        async def search_builds(self, **_: object) -> list[DeadlockBuild]:
+        async def search_builds(self, **kwargs: object) -> list[DeadlockBuild]:
+            seen["build_language"] = kwargs.get("build_language")
             return []
 
         async def get_hero_build_stats(self, **kwargs: object) -> list[DeadlockHeroBuildStat]:
@@ -1259,6 +1260,44 @@ def test_hero_builds_ignores_unusable_rank_floor(monkeypatch) -> None:
         assert response.status_code == 200, bad
         assert seen["min_average_badge"] is None, bad
         assert '<meta name="robots" content="index,follow">' in response.text
+
+
+def test_hero_builds_forwards_language_to_build_search(monkeypatch) -> None:
+    seen = _build_stats_badge_recorder(monkeypatch)
+    client = TestClient(web_app.app)
+
+    response = client.get("/builds/1/abrams?language=Russian")
+
+    assert response.status_code == 200
+    assert seen["build_language"] == "Russian"
+    assert '<option value="Russian" selected>Russian</option>' in response.text
+    assert '<meta name="robots" content="noindex,follow">' in response.text
+    # An empty result under a language filter should say why, not look broken.
+    assert "written in that language" in response.text
+
+
+def test_hero_builds_rejects_unknown_language(monkeypatch) -> None:
+    client = TestClient(web_app.app)
+
+    # Only the documented enum reaches the API; anything else falls back to any language.
+    for bad in ("Klingon", "russian", "'; DROP TABLE--", ""):
+        seen = _build_stats_badge_recorder(monkeypatch)
+        response = client.get("/builds/1/abrams", params={"language": bad})
+
+        assert response.status_code == 200, bad
+        assert seen["build_language"] is None, bad
+        assert '<meta name="robots" content="index,follow">' in response.text
+
+
+def test_hero_builds_combines_rank_and_language(monkeypatch) -> None:
+    seen = _build_stats_badge_recorder(monkeypatch)
+    client = TestClient(web_app.app)
+
+    response = client.get("/builds/1/abrams?rank_floor=61&language=ChineseSimplified")
+
+    assert response.status_code == 200
+    assert seen["min_average_badge"] == 61
+    assert seen["build_language"] == "ChineseSimplified"
 
 
 def test_leaderboards_hub_page_renders(monkeypatch) -> None:

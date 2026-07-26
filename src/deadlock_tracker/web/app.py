@@ -1829,6 +1829,7 @@ async def hero_builds(
     hero_id: str,
     hero_slug: str,
     rank_floor: str | None = None,
+    language: str | None = None,
 ) -> HTMLResponse:
     api = PlayerService().api
     parsed_hero_id = _parse_optional_int(hero_id)
@@ -1838,6 +1839,7 @@ async def hero_builds(
         if parsed_rank_floor in {11, 21, 31, 41, 51, 61, 71, 81, 91, 101, 111}
         else None
     )
+    selected_language = language if language in BUILD_LANGUAGE_VALUES else None
     if parsed_hero_id is None:
         return _html_response(TEMPLATES.TemplateResponse(
             request,
@@ -1904,6 +1906,7 @@ async def hero_builds(
             sort_direction="desc",
             only_latest=True,
             min_unix_timestamp=int(time()) - 90 * 86400,
+            build_language=selected_language,
         )
         build_stats = await api.get_hero_build_stats(
             hero_id=hero.hero_id,
@@ -2005,9 +2008,13 @@ async def hero_builds(
             page_title=f"{hero.name} Normal Build | Deadlock Stats Tracker",
             meta_description=f"See recent {hero.name} Normal mode builds in Deadlock, plus item results and common opening paths.",
             canonical_url=canonical_url,
-            # Rank-filtered views duplicate the canonical build page, so keep them
+            # Filtered views duplicate the canonical build page, so keep them
             # out of the index the way the other filtered meta pages are.
-            meta_robots="index,follow" if selected_rank_floor is None else "noindex,follow",
+            meta_robots=(
+                "index,follow"
+                if selected_rank_floor is None and selected_language is None
+                else "noindex,follow"
+            ),
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
                 request, str(request.url_for("static", path="/community-assets/graphics/background-city.png"))
             ),
@@ -2041,6 +2048,8 @@ async def hero_builds(
             error_message=error_message,
             rank_options=_rank_floor_options(),
             selected_rank_floor=str(selected_rank_floor) if selected_rank_floor is not None else "",
+            language_options=_build_language_options(),
+            selected_language=selected_language or "",
             build_filter_action=_url_path(canonical_url),
             current_mode_name="Normal",
             current_mode_description="Public builds paired with recent Normal mode item results and ability-order data.",
@@ -4201,6 +4210,37 @@ def _build_rank_distribution_summary_views(
             detail="Highest populated sub-rank currently visible to the site.",
         ),
     ]
+
+
+def _build_language_options() -> list[FilterOptionView]:
+    """Languages the /v1/builds endpoint accepts, in rough order of how many
+    public Deadlock builds are written in each."""
+    return [
+        FilterOptionView(value="", label="Any language"),
+        FilterOptionView(value="English", label="English"),
+        FilterOptionView(value="ChineseSimplified", label="Chinese (Simplified)"),
+        FilterOptionView(value="Russian", label="Russian"),
+        FilterOptionView(value="SpanishSpain", label="Spanish (Spain)"),
+        FilterOptionView(value="SpanishLatinAmerica", label="Spanish (Latin America)"),
+        FilterOptionView(value="PortugueseBrazil", label="Portuguese (Brazil)"),
+        FilterOptionView(value="PortuguesePortugal", label="Portuguese (Portugal)"),
+        FilterOptionView(value="German", label="German"),
+        FilterOptionView(value="French", label="French"),
+        FilterOptionView(value="Italian", label="Italian"),
+        FilterOptionView(value="Polish", label="Polish"),
+        FilterOptionView(value="Czech", label="Czech"),
+        FilterOptionView(value="Ukrainian", label="Ukrainian"),
+        FilterOptionView(value="Turkish", label="Turkish"),
+        FilterOptionView(value="Korean", label="Korean"),
+        FilterOptionView(value="Japanese", label="Japanese"),
+        FilterOptionView(value="Thai", label="Thai"),
+        FilterOptionView(value="Vietnamese", label="Vietnamese"),
+    ]
+
+
+BUILD_LANGUAGE_VALUES = frozenset(
+    option.value for option in _build_language_options() if option.value
+)
 
 
 def _rank_floor_options() -> list[FilterOptionView]:
