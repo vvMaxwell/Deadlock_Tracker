@@ -27,6 +27,11 @@ class MatchView:
     last_hits: int
     winning_team_label: str
     matchup_rows: list[MatchupRowView]
+    ranked_badge_text: str | None = None
+    ranked_badge_image_url: str | None = None
+    ranked_delta_text: str | None = None
+    ranked_delta_direction: str = "none"
+    ranked_notes: list[str] | None = None
 
 
 @dataclass(slots=True)
@@ -184,6 +189,7 @@ class ProfileOverviewView:
     rank_is_stale: bool
     cache_updated_text: str
     latest_match_text: str
+    rank_source_text: str = "Current rank."
 
 
 @dataclass(slots=True)
@@ -230,6 +236,26 @@ class MatchDetailOverviewView:
     viewed_player_result: str
     viewed_player_name: str
     average_rank_text: str
+    is_ranked: bool = False
+    rank_interval_text: str | None = None
+
+
+@dataclass(slots=True)
+class MatchRankedRowView:
+    """Ranked movement and hero XP for one player in one match."""
+
+    personaname: str
+    hero_name: str
+    hero_icon_url: str | None
+    is_viewed_player: bool
+    result: str
+    badge_text: str
+    badge_image_url: str | None
+    progress_text: str | None
+    delta_text: str | None
+    delta_direction: str
+    notes: list[str]
+    hero_xp_text: str | None
 
 
 @dataclass(slots=True)
@@ -333,8 +359,6 @@ class LeaderboardEntryView:
     player_url: str | None
     avatarfull: str | None
     hero_names_text: str
-    rank_name: str
-    rank_badge_image_url: str | None
 
 
 @dataclass(slots=True)

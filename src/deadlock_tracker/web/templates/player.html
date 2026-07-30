@@ -53,7 +53,7 @@
             {% endif %}
             <div class="rank-overview-copy">
                 <h2>{{ overview.rank_name }}</h2>
-                <p class="overview-stat">Current rank.</p>
+                <p class="overview-stat">{{ overview.rank_source_text }}</p>
             </div>
         </div>
     </article>
@@ -125,7 +125,7 @@
                         </div>
                     </div>
                     <div class="match-top-right">
-                        <span class="match-result match-result-{{ match.result|lower }}">{{ match.result }}</span>
+                        <span class="match-result match-result-{{ match.result|lower|replace(' ', '-') }}">{{ match.result }}</span>
                         <span class="match-played">Played {{ match.played_text }}</span>
                     </div>
                 </div>
@@ -137,6 +137,24 @@
                     <span class="metric-pill metric-pill-souls">Souls Collected {{ match.net_worth }}</span>
                     <span class="metric-pill">Last Hits {{ match.last_hits }}</span>
                 </div>
+                {% if match.ranked_badge_text or match.ranked_delta_text or match.ranked_notes %}
+                <div class="match-ranked-row">
+                    {% if match.ranked_badge_text %}
+                    <span class="match-ranked-badge">
+                        {% if match.ranked_badge_image_url %}
+                        <img src="{{ match.ranked_badge_image_url }}" alt="" loading="lazy" decoding="async" width="28" height="28">
+                        {% endif %}
+                        {{ match.ranked_badge_text }}
+                    </span>
+                    {% endif %}
+                    {% if match.ranked_delta_text %}
+                    <span class="match-ranked-delta match-ranked-delta-{{ match.ranked_delta_direction }}">{{ match.ranked_delta_text }} ranked progress</span>
+                    {% endif %}
+                    {% for note in match.ranked_notes or [] %}
+                    <span class="metric-pill">{{ note }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
                 {% if match.matchup_rows %}
                 <div class="match-history-lanes">
                     <div class="match-history-team-heads">

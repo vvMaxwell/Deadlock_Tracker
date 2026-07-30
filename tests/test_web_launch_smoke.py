@@ -381,9 +381,9 @@ def test_rank_distribution_includes_top_percent_labels() -> None:
             type("RankRow", (), {"rank": 112, "players": 10})(),
         ],
         [
-            DeadlockRankInfo(tier=1, name="Initiate", color="#111", image_small=None, image_small_by_division={}),
-            DeadlockRankInfo(tier=8, name="Oracle", color="#888", image_small=None, image_small_by_division={}),
-            DeadlockRankInfo(tier=11, name="Eternus", color="#0f0", image_small=None, image_small_by_division={}),
+            DeadlockRankInfo(tier=1, name="Initiate", color="#111", image_large=None, image_chalk=None),
+            DeadlockRankInfo(tier=8, name="Oracle", color="#888", image_large=None, image_chalk=None),
+            DeadlockRankInfo(tier=11, name="Eternus", color="#0f0", image_large=None, image_chalk=None),
         ],
     )
 
@@ -1386,10 +1386,7 @@ def test_leaderboard_region_page_renders(monkeypatch) -> None:
                     (),
                     {
                         "account_name": "TopPlayer",
-                        "badge_level": 81,
                         "rank": 81,
-                        "ranked_rank": None,
-                        "ranked_subrank": None,
                         "possible_account_ids": [123],
                         "top_hero_ids": [1],
                     },
@@ -1425,8 +1422,8 @@ def test_leaderboard_region_page_renders(monkeypatch) -> None:
                     tier=8,
                     name="Oracle",
                     color="#888",
-                    image_small="https://example.com/oracle.png",
-                    image_small_by_division={1: "https://example.com/oracle-1.png"},
+                    image_large="https://example.com/oracle.png",
+                    image_chalk="https://example.com/oracle-chalk.png",
                 )
             ]
 
@@ -1459,8 +1456,8 @@ def test_rank_distribution_page_renders(monkeypatch) -> None:
 
         async def get_rank_info(self) -> list[DeadlockRankInfo]:
             return [
-                DeadlockRankInfo(tier=1, name="Initiate", color="#111", image_small=None, image_small_by_division={}),
-                DeadlockRankInfo(tier=8, name="Oracle", color="#888", image_small=None, image_small_by_division={}),
+                DeadlockRankInfo(tier=1, name="Initiate", color="#111", image_large=None, image_chalk=None),
+                DeadlockRankInfo(tier=8, name="Oracle", color="#888", image_large=None, image_chalk=None),
             ]
 
         async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
@@ -1536,8 +1533,8 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
                     tier=8,
                     name="Oracle",
                     color="#955138",
-                    image_small=None,
-                    image_small_by_division={1: "https://example.com/oracle-1.png"},
+                    image_large="https://example.com/oracle.png",
+                    image_chalk=None,
                 )
             ]
 
@@ -1546,6 +1543,9 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
 
         def win_rate(self, stat: DeadlockHeroStat) -> float:
             return stat.wins / stat.matches_played
+
+        def displayed_rank(self, summary: PlayerSummary) -> int | None:
+            return summary.rank.rank if summary.rank else None
 
         def rank_name(self, summary: PlayerSummary) -> str:
             return "Oracle 1"
@@ -1630,7 +1630,7 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
     assert response.status_code == 200
     assert "Refresh is temporarily unavailable." in response.text
     assert "Showing saved match history." in response.text
-    assert "oracle-1.png" in response.text
+    assert "oracle.png" in response.text
     assert '<link rel="canonical" href="http://testserver/players/123/tester">' in response.text
 
 
@@ -1706,6 +1706,9 @@ def test_legacy_player_url_redirects_to_canonical_slug(monkeypatch) -> None:
     class FakePlayerService:
         api = FakeApi()
 
+        def displayed_rank(self, summary: PlayerSummary) -> int | None:
+            return summary.rank.rank if summary.rank else None
+
         def rank_name(self, summary: PlayerSummary) -> str:
             return "Unknown"
 
@@ -1756,6 +1759,9 @@ def test_canonical_player_url_does_not_redirect_forever_on_public_host(monkeypat
 
     class FakePlayerService:
         api = FakeApi()
+
+        def displayed_rank(self, summary: PlayerSummary) -> int | None:
+            return summary.rank.rank if summary.rank else None
 
         def rank_name(self, summary: PlayerSummary) -> str:
             return "Unknown"
@@ -1821,6 +1827,9 @@ def test_canonical_match_url_does_not_redirect_forever_on_public_host(monkeypatc
 
         async def get_all_item_info(self) -> dict[int, DeadlockItemInfo]:
             return {}
+
+        async def get_rank_info(self) -> list[DeadlockRankInfo]:
+            return []
 
         async def get_steam_profiles(self, account_ids: list[int]) -> dict[int, object]:
             return {}
@@ -1960,6 +1969,9 @@ def test_player_page_does_not_render_api_key(monkeypatch) -> None:
 
     class FakePlayerService:
         api = FakeApi()
+
+        def displayed_rank(self, summary: PlayerSummary) -> int | None:
+            return summary.rank.rank if summary.rank else None
 
         def rank_name(self, summary: PlayerSummary) -> str:
             return "Unknown"

@@ -126,11 +126,11 @@ class DeadlockPlayerRankDistribution:
 
 @dataclass(slots=True)
 class DeadlockLeaderboardEntry:
+    """The Matchmaking Update stopped the game sending badge data with
+    leaderboards, so entries carry placement and heroes only."""
+
     account_name: str | None
-    badge_level: int | None
     rank: int | None
-    ranked_rank: int | None
-    ranked_subrank: int | None
     possible_account_ids: list[int]
     top_hero_ids: list[int]
 
@@ -230,11 +230,14 @@ class DeadlockHeroBuildStat:
 
 @dataclass(slots=True)
 class DeadlockRankInfo:
+    """One badge tier. The game no longer ships per-subrank art, so a tier has a
+    single large badge plus an optional chalk variant."""
+
     tier: int
     name: str
     color: str | None
-    image_small: str | None
-    image_small_by_division: dict[int, str]
+    image_large: str | None
+    image_chalk: str | None
 
 
 @dataclass(slots=True)
@@ -252,6 +255,11 @@ class DeadlockMatch:
     net_worth: int | None
     last_hits: int | None
     match_result: int | None
+    player_match_outcome: int | None = None
+    ranked_display_badge: int | None = None
+    ranked_delta: int | None = None
+    ranked_calibration_match: int | None = None
+    ranked_used_demotion_protection: bool | None = None
 
 
 @dataclass(slots=True)
@@ -259,6 +267,27 @@ class DeadlockMatchItem:
     item_id: int
     game_time_s: int | None
     sold_time_s: int | None
+
+
+@dataclass(slots=True)
+class DeadlockPlayerRankData:
+    """Per-player ranked movement for one match, from `player_rank_data`."""
+
+    initial_display_rank: int | None
+    initial_flat_progress: int | None
+    final_flat_progress: int | None
+    desired_progress_change: int | None
+    initial_calibration_games: int | None
+    initial_demotion_protection_games: int | None
+    consumed_demotion_protection: bool | None
+    initial_win_streak: int | None
+
+
+@dataclass(slots=True)
+class DeadlockHeroXpReward:
+    hero_id: int | None
+    xp_grant: int | None
+    reason: int | None
 
 
 @dataclass(slots=True)
@@ -279,6 +308,9 @@ class DeadlockMatchPlayer:
     objective_damage: int | None
     healing: int | None
     items: list[DeadlockMatchItem]
+    player_match_outcome: int | None = None
+    rank_data: DeadlockPlayerRankData | None = None
+    hero_xp_rewards: list[DeadlockHeroXpReward] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -292,6 +324,8 @@ class DeadlockMatchMetadata:
     players: list[DeadlockMatchPlayer]
     average_badge_team0: int | None = None
     average_badge_team1: int | None = None
+    ranked_type: int | None = None
+    rank_interval: int | None = None
 
 
 @dataclass(slots=True)
@@ -314,3 +348,4 @@ class PlayerSummary:
     hero_stats: list[DeadlockHeroStat]
     recent_matches: list[DeadlockMatch]
     hero_info: dict[int, DeadlockHeroInfo]
+    ranked_match: DeadlockMatch | None = None

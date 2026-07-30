@@ -19,6 +19,12 @@
             {% if overview.average_rank_text != "Unknown" %}
             <span>Avg Rank {{ overview.average_rank_text }}</span>
             {% endif %}
+            {% if overview.is_ranked %}
+            <span>Ranked</span>
+            {% endif %}
+            {% if overview.rank_interval_text %}
+            <span>{{ overview.rank_interval_text }}</span>
+            {% endif %}
             <span>{{ overview.duration }}</span>
         </div>
     </div>
@@ -57,7 +63,7 @@
                             {% if row.left_player.is_viewed_player %}
                             <span class="match-played">You</span>
                             {% endif %}
-                            <span class="match-result match-result-{{ row.left_player.result|lower }}">{{ row.left_player.result }}</span>
+                            <span class="match-result match-result-{{ row.left_player.result|lower|replace(' ', '-') }}">{{ row.left_player.result }}</span>
                         </div>
                     </div>
                     <div class="lane-player-stats">
@@ -117,7 +123,7 @@
                             {% if row.right_player.is_viewed_player %}
                             <span class="match-played">You</span>
                             {% endif %}
-                            <span class="match-result match-result-{{ row.right_player.result|lower }}">{{ row.right_player.result }}</span>
+                            <span class="match-result match-result-{{ row.right_player.result|lower|replace(' ', '-') }}">{{ row.right_player.result }}</span>
                         </div>
                     </div>
                     <div class="lane-player-stats">
@@ -159,4 +165,55 @@
         {% endfor %}
     </div>
 </section>
+
+{% if ranked_rows %}
+<section class="lane-board lane-board-bundled">
+    <div class="lane-board-head">
+        <div>
+            <p class="eyebrow">Ranked</p>
+            <h2>Rank Movement</h2>
+        </div>
+    </div>
+    <div class="ranked-row-list">
+        {% for row in ranked_rows %}
+        <article class="ranked-row{% if row.is_viewed_player %} ranked-row-focus{% endif %}">
+            <div class="ranked-row-player">
+                {% if row.hero_icon_url %}
+                <img class="hero-icon score-hero-icon" src="{{ row.hero_icon_url }}" alt="{{ row.hero_name }}" loading="lazy" decoding="async">
+                {% else %}
+                <div class="hero-icon hero-icon-fallback score-hero-icon">{{ row.hero_name[:2] }}</div>
+                {% endif %}
+                <div>
+                    <p class="match-hero">{{ row.hero_name }}</p>
+                    <h3>{{ row.personaname }}{% if row.is_viewed_player %} <span class="match-played">You</span>{% endif %}</h3>
+                </div>
+            </div>
+            <div class="ranked-row-badge">
+                {% if row.badge_image_url %}
+                <img src="{{ row.badge_image_url }}" alt="" loading="lazy" decoding="async" width="40" height="40">
+                {% endif %}
+                <span>{{ row.badge_text }}</span>
+            </div>
+            <div class="ranked-row-progress">
+                <span class="match-result match-result-{{ row.result|lower|replace(' ', '-') }}">{{ row.result }}</span>
+                {% if row.delta_text %}
+                <span class="match-ranked-delta match-ranked-delta-{{ row.delta_direction }}">{{ row.delta_text }}</span>
+                {% endif %}
+                {% if row.progress_text %}
+                <span class="match-played">{{ row.progress_text }}</span>
+                {% endif %}
+            </div>
+            <div class="ranked-row-notes">
+                {% for note in row.notes %}
+                <span class="metric-pill">{{ note }}</span>
+                {% endfor %}
+                {% if row.hero_xp_text %}
+                <span class="metric-pill">{{ row.hero_xp_text }}</span>
+                {% endif %}
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
 {% endblock %}

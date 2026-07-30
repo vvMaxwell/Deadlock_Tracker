@@ -23,6 +23,7 @@ from deadlock_tracker.models import (
     DeadlockHeroInfo,
     DeadlockHeroBuild,
     DeadlockHeroBuildStat,
+    DeadlockHeroXpReward,
     DeadlockLeaderboardEntry,
     DeadlockHeroSynergyStat,
     DeadlockItemInfo,
@@ -34,6 +35,7 @@ from deadlock_tracker.models import (
     DeadlockMatchPlayer,
     DeadlockPlayer,
     DeadlockPatch,
+    DeadlockPlayerRankData,
     DeadlockPlayerRankDistribution,
     DeadlockRank,
     DeadlockRankInfo,
@@ -135,6 +137,37 @@ RANK_NAME_BY_CODE = {
     115: "Eternus 5",
     116: "Eternus 6",
 }
+
+
+# Mirrors the API's ActiveMatchMode enum. Mode 8 was renamed from Calibration to
+# NewPlayerPlacement in the Matchmaking Update.
+MATCH_MODE_NAME_BY_CODE = {
+    0: "Invalid",
+    1: "Unranked",
+    2: "Private Lobby",
+    3: "Co-op Bot",
+    4: "Ranked",
+    5: "Server Test",
+    6: "Tutorial",
+    7: "Hero Labs",
+    8: "New Player Placement",
+}
+
+PLAYER_MATCH_OUTCOME_WIN = 1
+
+# player_match_outcome, as documented on the match history endpoint. Outcome 0
+# ("invalid") is deliberately absent: callers fall back to comparing the player's
+# team against the winning team when the game did not score the match.
+PLAYER_MATCH_OUTCOME_NAME_BY_CODE = {
+    PLAYER_MATCH_OUTCOME_WIN: "Win",
+    2: "Loss",
+    3: "Penalized",
+    4: "Penalized Party",
+    5: "Not Scored",
+}
+
+# hero_xp_rewards[].reason is an undocumented enum, so grants are summed per hero
+# rather than labelled by reason.
 
 
 class DeadlockError(Exception):
@@ -335,6 +368,11 @@ class DeadlockAPI:
                 net_worth=item.get("net_worth"),
                 last_hits=item.get("last_hits"),
                 match_result=item.get("match_result"),
+                player_match_outcome=item.get("player_match_outcome"),
+                ranked_display_badge=item.get("ranked_display_badge"),
+                ranked_delta=item.get("ranked_delta"),
+                ranked_calibration_match=item.get("ranked_calibration_match"),
+                ranked_used_demotion_protection=item.get("ranked_used_demotion_protection"),
             )
             for item in payload[:limit]
         ]
@@ -431,15 +469,8 @@ class DeadlockAPI:
                 tier=item["tier"],
                 name=item["name"],
                 color=item.get("color"),
-                image_small=(item.get("images") or {}).get("small"),
-                image_small_by_division={
-                    division: image_url
-                    for division in range(1, 7)
-                    if (image_url := (
-                        (item.get("images") or {}).get(f"small_subrank{division}_webp")
-                        or (item.get("images") or {}).get(f"small_subrank{division}")
-                    ))
-                },
+                image_large=_rank_image(item.get("images"), "large"),
+                image_chalk=_rank_image(item.get("images"), "chalk"),
             )
             for item in payload
         ]
@@ -718,10 +749,7 @@ class DeadlockAPI:
         return [
             DeadlockLeaderboardEntry(
                 account_name=item.get("account_name"),
-                badge_level=item.get("badge_level"),
                 rank=item.get("rank"),
-                ranked_rank=item.get("ranked_rank"),
-                ranked_subrank=item.get("ranked_subrank"),
                 possible_account_ids=[
                     int(account_id)
                     for account_id in (item.get("possible_account_ids") or [])
@@ -798,6 +826,9 @@ class DeadlockAPI:
                     for entry in item.get("items", [])
                     if entry.get("item_id") is not None
                 ],
+                player_match_outcome=item.get("player_match_outcome"),
+                rank_data=_parse_player_rank_data(item.get("player_rank_data")),
+                hero_xp_rewards=_parse_hero_xp_rewards(item.get("hero_xp_rewards")),
             )
             for item in match_info.get("players", [])
         ]
@@ -811,6 +842,8 @@ class DeadlockAPI:
             players=players,
             average_badge_team0=match_info.get("average_badge_team0"),
             average_badge_team1=match_info.get("average_badge_team1"),
+            ranked_type=match_info.get("ranked_type"),
+            rank_interval=match_info.get("rank_interval"),
         )
 
     async def get_patches(self, *, limit: int = 12) -> list[DeadlockPatch]:
@@ -1220,6 +1253,49 @@ def _final_stat_value(stats: Any, field: str) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _parse_player_rank_data(payload: Any) -> DeadlockPlayerRankData | None:
+    if not isinstance(payload, dict):
+        return None
+    return DeadlockPlayerRankData(
+        initial_display_rank=payload.get("initial_display_rank"),
+        initial_flat_progress=payload.get("initial_flat_progress"),
+        final_flat_progress=payload.get("final_flat_progress"),
+        desired_progress_change=payload.get("desired_progress_change"),
+        initial_calibration_games=payload.get("initial_calibration_games"),
+        initial_demotion_protection_games=payload.get("initial_demotion_protection_games"),
+        consumed_demotion_protection=payload.get("consumed_demotion_protection"),
+        initial_win_streak=payload.get("initial_win_streak"),
+    )
+
+
+def _parse_hero_xp_rewards(payload: Any) -> list[DeadlockHeroXpReward]:
+    """Rewards arrive wrapped one level deep, as `[{"xp_grant": {...}}, ...]`."""
+    if not isinstance(payload, list):
+        return []
+    rewards: list[DeadlockHeroXpReward] = []
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        grant = entry.get("xp_grant") if isinstance(entry.get("xp_grant"), dict) else entry
+        rewards.append(
+            DeadlockHeroXpReward(
+                hero_id=grant.get("hero_id"),
+                xp_grant=grant.get("xp_grant"),
+                reason=grant.get("reason"),
+            )
+        )
+    return rewards
+
+
+def _rank_image(images: Any, variant: str) -> str | None:
+    """Pick a rank badge image, preferring webp. Only `large` and `chalk` are
+    current; the `small*` and `*_subrank*` keys are deprecated and still point
+    at the pre-Matchmaking-Update art, so they are never used here."""
+    if not isinstance(images, dict):
+        return None
+    return images.get(f"{variant}_webp") or images.get(variant)
 
 
 def friendly_rank_name(rank: int | None) -> str:

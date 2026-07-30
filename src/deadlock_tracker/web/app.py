@@ -18,7 +18,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.responses import Response as StarletteResponse
 
-from deadlock_tracker.clients.deadlock_api import DeadlockError, friendly_rank_name
+from deadlock_tracker.clients.deadlock_api import (
+    MATCH_MODE_NAME_BY_CODE,
+    PLAYER_MATCH_OUTCOME_NAME_BY_CODE,
+    DeadlockError,
+    friendly_rank_name,
+)
 from deadlock_tracker.services.player_service import PlayerService
 from deadlock_tracker.web.view_models import (
     BestItemView,
@@ -37,6 +42,7 @@ from deadlock_tracker.web.view_models import (
     MatchLaneView,
     MatchDetailOverviewView,
     MatchDetailPlayerView,
+    MatchRankedRowView,
     MatchView,
     MatchupRowView,
     PaginationLinkView,
@@ -89,6 +95,17 @@ RATE_LIMIT_RULES: tuple[RateLimitRule, ...] = (
     RateLimitRule("sitemap", limit=10, window_seconds=60, exact_paths=("/sitemap.xml",)),
 )
 _rate_limit_hits: dict[tuple[str, str], deque[float]] = {}
+
+# ActiveMatchMode value for the ranked queue.
+RANKED_MATCH_MODE = 4
+
+# Stat pages can be scoped to a patch instead of a rolling day count. The value
+# is what appears in ?window_days=, so it has to stay stable once shipped.
+MATCHMAKING_UPDATE_WINDOW = "matchmaking-update"
+MATCHMAKING_UPDATE_LABEL = "Matchmaking Update (2026-07-30)"
+MATCHMAKING_UPDATE_TIMESTAMP = int(datetime(2026, 7, 30, tzinfo=UTC).timestamp())
+ROLLING_WINDOW_DAYS = ("7", "30", "90")
+DEFAULT_WINDOW = "7"
 
 LEADERBOARD_REGIONS: list[tuple[str, str, str, str]] = [
     ("north-america", "North America", "Top Deadlock players in North America.", "NAmerica"),
@@ -1347,7 +1364,6 @@ async def leaderboard_region(request: Request, region_slug: str) -> HTMLResponse
     try:
         entries = await api.get_leaderboard(region=_region_api_value(region_slug))
         hero_info = await api.get_hero_info()
-        rank_info = await api.get_rank_info()
         steam_profiles = await api.get_steam_profiles(_leaderboard_account_ids(entries[:50]))
     except DeadlockError as error:
         return _html_response(TEMPLATES.TemplateResponse(
@@ -1370,8 +1386,6 @@ async def leaderboard_region(request: Request, region_slug: str) -> HTMLResponse
             player_url=_leaderboard_player_url(request, entry.account_name, entry.possible_account_ids),
             avatarfull=(steam_profiles.get(entry.possible_account_ids[0]).avatarfull if entry.possible_account_ids and steam_profiles.get(entry.possible_account_ids[0]) else None),
             hero_names_text=_leaderboard_hero_names(entry.top_hero_ids, hero_info),
-            rank_name=friendly_rank_name(entry.badge_level or entry.rank),
-            rank_badge_image_url=_rank_badge_image_url(entry.badge_level or entry.rank, rank_info),
         )
         for index, entry in enumerate(entries[:50], start=1)
     ]
@@ -1400,7 +1414,7 @@ async def leaderboard_region(request: Request, region_slug: str) -> HTMLResponse
         _base_context(
             request,
             page_title=f"{region_name} Deadlock Leaderboard | Deadlock Stats Tracker",
-            meta_description=f"Browse top Deadlock players for {region_name}, with badge estimates and top heroes.",
+            meta_description=f"Browse top Deadlock players for {region_name}, with profile links and top heroes.",
             structured_data=[
                 {
                     "@context": "https://schema.org",
@@ -1489,7 +1503,6 @@ async def leaderboard_region_hero(
         if hero is None:
             raise DeadlockError("That hero could not be found.")
         entries = await api.get_leaderboard(region=_region_api_value(region_slug), hero_id=parsed_hero_id)
-        rank_info = await api.get_rank_info()
         steam_profiles = await api.get_steam_profiles(_leaderboard_account_ids(entries[:50]))
     except DeadlockError as error:
         return _html_response(TEMPLATES.TemplateResponse(
@@ -1526,8 +1539,6 @@ async def leaderboard_region_hero(
             player_url=_leaderboard_player_url(request, entry.account_name, entry.possible_account_ids),
             avatarfull=(steam_profiles.get(entry.possible_account_ids[0]).avatarfull if entry.possible_account_ids and steam_profiles.get(entry.possible_account_ids[0]) else None),
             hero_names_text=_leaderboard_hero_names(entry.top_hero_ids, hero_info),
-            rank_name=friendly_rank_name(entry.badge_level or entry.rank),
-            rank_badge_image_url=_rank_badge_image_url(entry.badge_level or entry.rank, rank_info),
         )
         for index, entry in enumerate(entries[:50], start=1)
     ]
@@ -1538,7 +1549,7 @@ async def leaderboard_region_hero(
         _base_context(
             request,
             page_title=f"Best {hero.name} Players in {region_name} | Deadlock Stats Tracker",
-            meta_description=f"Browse top {hero.name} players in {region_name}, with badge estimates and profile links when available.",
+            meta_description=f"Browse top {hero.name} players in {region_name}, with profile links when available.",
             canonical_url=canonical_url,
             og_image=hero.portrait_url or hero.background_image_url or _public_url(
                 request,
@@ -2113,7 +2124,7 @@ async def best_items(
     hero_id: str | None = None,
     rank_floor: str | None = "81",
     mode: str = "normal",
-    window_days: int = 7,
+    window_days: str = DEFAULT_WINDOW,
     min_matches: str | None = "1000",
 ) -> HTMLResponse:
     player_service = PlayerService()
@@ -2121,7 +2132,7 @@ async def best_items(
     error_message: str | None = None
 
     selected_mode = mode if mode in {"normal", "street_brawl"} else "normal"
-    selected_window_days = window_days if window_days in {7, 30, 90} else 7
+    selected_window_days = _selected_window(window_days)
     parsed_hero_id = _parse_optional_int(hero_id)
     parsed_rank_floor = _parse_optional_int(rank_floor)
     parsed_min_matches = _parse_optional_int(min_matches)
@@ -2142,7 +2153,7 @@ async def best_items(
         selected_hero_id is None
         and selected_rank_floor == 81
         and selected_mode == "normal"
-        and selected_window_days == 7
+        and selected_window_days == DEFAULT_WINDOW
         and selected_min_matches == 1000
     )
 
@@ -2152,7 +2163,7 @@ async def best_items(
             game_mode=selected_mode,
             min_matches=selected_min_matches,
             min_average_badge=selected_rank_floor,
-            min_unix_timestamp=int(time()) - selected_window_days * 86400,
+            min_unix_timestamp=_window_min_timestamp(selected_window_days),
         )
         ranked_stats = sorted(
             stats,
@@ -2245,15 +2256,11 @@ async def best_items(
                 FilterOptionView(value="normal", label="Normal"),
                 FilterOptionView(value="street_brawl", label="Street Brawl"),
             ],
-            window_options=[
-                FilterOptionView(value="7", label="Last 7 days"),
-                FilterOptionView(value="30", label="Last 30 days"),
-                FilterOptionView(value="90", label="Last 90 days"),
-            ],
+            window_options=_window_options(),
             selected_hero_id=str(selected_hero_id) if selected_hero_id is not None else "",
             selected_rank_floor=str(selected_rank_floor) if selected_rank_floor is not None else "",
             selected_mode=selected_mode,
-            selected_window_days=str(selected_window_days),
+            selected_window_days=selected_window_days,
             selected_min_matches=selected_min_matches,
             items=best_item_rows,
             error_message=error_message,
@@ -2384,7 +2391,7 @@ async def best_heroes(
     request: Request,
     rank_floor: str | None = "81",
     mode: str = "normal",
-    window_days: int = 7,
+    window_days: str = DEFAULT_WINDOW,
     min_matches: str | None = "1000",
 ) -> HTMLResponse:
     player_service = PlayerService()
@@ -2392,7 +2399,7 @@ async def best_heroes(
     error_message: str | None = None
 
     selected_mode = mode if mode in {"normal", "street_brawl"} else "normal"
-    selected_window_days = window_days if window_days in {7, 30, 90} else 7
+    selected_window_days = _selected_window(window_days)
     parsed_rank_floor = _parse_optional_int(rank_floor)
     parsed_min_matches = _parse_optional_int(min_matches)
     selected_min_matches = min(max(parsed_min_matches or 1000, 100), 5000)
@@ -2409,7 +2416,7 @@ async def best_heroes(
     is_default_view = (
         selected_rank_floor == 81
         and selected_mode == "normal"
-        and selected_window_days == 7
+        and selected_window_days == DEFAULT_WINDOW
         and selected_min_matches == 1000
     )
 
@@ -2418,7 +2425,7 @@ async def best_heroes(
             game_mode=selected_mode,
             min_matches=selected_min_matches,
             min_average_badge=selected_rank_floor,
-            min_unix_timestamp=int(time()) - selected_window_days * 86400,
+            min_unix_timestamp=_window_min_timestamp(selected_window_days),
         )
         filtered_stats = [item for item in stats if item.hero_id in hero_info]
         total_matches = sum(item.matches for item in filtered_stats)
@@ -2507,14 +2514,10 @@ async def best_heroes(
                 FilterOptionView(value="normal", label="Normal"),
                 FilterOptionView(value="street_brawl", label="Street Brawl"),
             ],
-            window_options=[
-                FilterOptionView(value="7", label="Last 7 days"),
-                FilterOptionView(value="30", label="Last 30 days"),
-                FilterOptionView(value="90", label="Last 90 days"),
-            ],
+            window_options=_window_options(),
             selected_rank_floor=str(selected_rank_floor) if selected_rank_floor is not None else "",
             selected_mode=selected_mode,
-            selected_window_days=str(selected_window_days),
+            selected_window_days=selected_window_days,
             selected_min_matches=selected_min_matches,
             heroes=hero_rows,
             error_message=error_message,
@@ -2937,18 +2940,18 @@ async def street_brawl_builds(
     hero_id: str | None = None,
     item_level: str | None = "",
     min_matches: str | None = "100",
-    window_days: int = 7,
+    window_days: str = DEFAULT_WINDOW,
 ) -> HTMLResponse:
     player_service = PlayerService()
     api = player_service.api
     error_message: str | None = None
-    selected_window_days = window_days if window_days in {7, 30, 90} else 7
+    selected_window_days = _selected_window(window_days)
     parsed_min_matches = _parse_optional_int(min_matches)
     selected_min_matches = parsed_min_matches if parsed_min_matches in {50, 100, 250, 500, 1000} else 100
     is_default_view = (
         hero_id in {None, ""}
         and not item_level
-        and selected_window_days == 7
+        and selected_window_days == DEFAULT_WINDOW
         and selected_min_matches == 100
     )
 
@@ -3029,11 +3032,7 @@ async def street_brawl_builds(
                     FilterOptionView(value="4", label="Tier 4"),
                     FilterOptionView(value="legendary", label="Legendary"),
                 ],
-                window_options=[
-                    FilterOptionView(value="7", label="Last 7 days"),
-                    FilterOptionView(value="30", label="Last 30 days"),
-                    FilterOptionView(value="90", label="Last 90 days"),
-                ],
+                window_options=_window_options(),
                 sample_options=[
                     FilterOptionView(value="50", label="50+ matches"),
                     FilterOptionView(value="100", label="100+ matches"),
@@ -3043,7 +3042,7 @@ async def street_brawl_builds(
                 ],
                 selected_hero_id="",
                 selected_item_level=selected_item_level,
-                selected_window_days=str(selected_window_days),
+                selected_window_days=selected_window_days,
                 selected_min_matches=str(selected_min_matches),
                 items=[],
                 guide=None,
@@ -3062,13 +3061,13 @@ async def street_brawl_builds(
                 hero_id=selected_hero.hero_id,
                 game_mode="street_brawl",
                 min_matches=selected_min_matches,
-                min_unix_timestamp=int(time()) - selected_window_days * 86400,
+                min_unix_timestamp=_window_min_timestamp(selected_window_days),
             ),
             api.get_ability_order_stats(
                 hero_id=selected_hero.hero_id,
                 game_mode="street_brawl",
                 min_matches=1,
-                min_unix_timestamp=int(time()) - selected_window_days * 86400,
+                min_unix_timestamp=_window_min_timestamp(selected_window_days),
             ),
             api.get_all_item_info(),
         )
@@ -3166,11 +3165,7 @@ async def street_brawl_builds(
                 FilterOptionView(value="4", label="Tier 4"),
                 FilterOptionView(value="legendary", label="Legendary"),
             ],
-            window_options=[
-                FilterOptionView(value="7", label="Last 7 days"),
-                FilterOptionView(value="30", label="Last 30 days"),
-                FilterOptionView(value="90", label="Last 90 days"),
-            ],
+            window_options=_window_options(),
             sample_options=[
                 FilterOptionView(value="50", label="50+ matches"),
                 FilterOptionView(value="100", label="100+ matches"),
@@ -3180,7 +3175,7 @@ async def street_brawl_builds(
             ],
             selected_hero_id=str(selected_hero.hero_id),
             selected_item_level=selected_item_level,
-            selected_window_days=str(selected_window_days),
+            selected_window_days=selected_window_days,
             selected_min_matches=str(selected_min_matches),
             items=item_rows,
             guide=guide,
@@ -3247,9 +3242,15 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
 
         rank_name = player_service.rank_name(summary)
         rank_info = await player_service.api.get_rank_info()
-        rank_badge_image_url = _rank_badge_image_url(summary.rank.rank if summary.rank else None, rank_info)
+        displayed_rank = player_service.displayed_rank(summary)
+        rank_badge_image_url = _rank_badge_image_url(displayed_rank, rank_info)
         latest_match_ts = max((match.start_time for match in summary.recent_matches), default=None)
-        rank_updated_ts = summary.rank.start_time if summary.rank else None
+        if summary.ranked_match is not None:
+            rank_source_text = "Badge from the player's most recent ranked match."
+            rank_updated_ts = summary.ranked_match.start_time
+        else:
+            rank_source_text = "Estimated from recent matches. Play ranked for an exact badge."
+            rank_updated_ts = summary.rank.start_time if summary.rank else None
         overview = ProfileOverviewView(
             account_id=summary.player.account_id,
             personaname=summary.player.personaname,
@@ -3262,6 +3263,7 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             rank_is_stale=bool(rank_updated_ts and latest_match_ts and rank_updated_ts < latest_match_ts),
             cache_updated_text=_relative_time_text(summary.player.last_updated),
             latest_match_text=_relative_time_text(latest_match_ts),
+            rank_source_text=rank_source_text,
         )
         refresh_url = f"{canonical_player_url}?{urlencode({'refresh': '1'})}"
 
@@ -3306,7 +3308,7 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
                         match_id=str(match.match_id),
                     )
                 ),
-                queue_name=_friendly_mode_label(match.game_mode) or "Match",
+                queue_name=_queue_name(match.game_mode, match.match_mode),
                 result=player_service.match_result_label(match),
                 duration=player_service.format_match_duration(match.match_duration_s),
                 played_text=_relative_time_text(match.start_time),
@@ -3326,6 +3328,13 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
                     viewed_account_id=summary.player.account_id,
                     player_service=player_service,
                 ),
+                ranked_badge_text=(
+                    friendly_rank_name(match.ranked_display_badge) if match.ranked_display_badge else None
+                ),
+                ranked_badge_image_url=_rank_badge_image_url(match.ranked_display_badge, rank_info),
+                ranked_delta_text=_ranked_delta_text(match.ranked_delta),
+                ranked_delta_direction=_ranked_delta_direction(match.ranked_delta),
+                ranked_notes=_ranked_match_notes(match),
             )
             for match in summary.recent_matches
         ]
@@ -3428,6 +3437,7 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
         metadata = await player_service.api.get_match_metadata(int(match_id))
         hero_info = await player_service.api.get_hero_info()
         item_info_map = await player_service.api.get_all_item_info()
+        rank_info = await player_service.api.get_rank_info()
         steam_profiles = await player_service.api.get_steam_profiles(
             [player.account_id for player in metadata.players if player.account_id]
         )
@@ -3438,7 +3448,7 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
         for item in metadata.players:
             profile = steam_profiles.get(item.account_id)
             hero = hero_info.get(item.hero_id)
-            result = "Win" if metadata.winning_team is not None and item.team == metadata.winning_team else "Loss"
+            result = _match_player_result(item, metadata.winning_team)
             if item.account_id == resolved.account_id:
                 viewed_player_result = result
             player_rows.append(
@@ -3480,16 +3490,27 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
         team_zero = [player for player in player_rows if player.team == 0]
         team_one = [player for player in player_rows if player.team == 1]
         matchup_rows = _build_matchup_rows(player_rows)
+        ranked_rows = _build_match_ranked_rows(
+            metadata,
+            hero_info,
+            steam_profiles,
+            rank_info,
+            viewed_account_id=resolved.account_id,
+        )
 
         overview = MatchDetailOverviewView(
             match_id=metadata.match_id,
-            queue_name=_friendly_mode_label(metadata.game_mode) or "Match",
+            queue_name=_queue_name(metadata.game_mode, metadata.match_mode),
             started_text=_relative_time_text(metadata.start_time),
             duration=player_service.format_match_duration(metadata.duration_s),
             winning_team_label=_team_label(metadata.winning_team),
             viewed_player_result=viewed_player_result,
             viewed_player_name=resolved.personaname,
             average_rank_text=_match_average_rank_text(metadata.average_badge_team0, metadata.average_badge_team1),
+            is_ranked=bool(metadata.ranked_type) or metadata.match_mode == RANKED_MATCH_MODE,
+            rank_interval_text=(
+                f"Rank interval {metadata.rank_interval}" if metadata.rank_interval else None
+            ),
         )
         canonical_match_url = _public_url(request, str(
             request.url_for(
@@ -3535,6 +3556,7 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
             player=resolved,
             overview=overview,
             matchup_rows=matchup_rows,
+            ranked_rows=ranked_rows,
             player_profile_url=canonical_player_url,
         ),
     ))
@@ -3769,6 +3791,135 @@ def _friendly_mode_label(game_mode: int | None) -> str | None:
     return mapping.get(game_mode)
 
 
+def _match_player_result(player: object, winning_team: int | None) -> str:
+    """Prefer the game's own scoring for the player, which also covers abandons
+    and unscored matches, and fall back to the winning team."""
+    outcome_label = PLAYER_MATCH_OUTCOME_NAME_BY_CODE.get(getattr(player, "player_match_outcome", None))
+    if outcome_label is not None:
+        return outcome_label
+    team = getattr(player, "team", None)
+    if winning_team is None or team is None:
+        return "Unknown"
+    return "Win" if team == winning_team else "Loss"
+
+
+def _build_match_ranked_rows(
+    metadata: object,
+    hero_info: dict[int, object],
+    steam_profiles: dict[int, object],
+    rank_info: list,
+    *,
+    viewed_account_id: int,
+) -> list[MatchRankedRowView]:
+    """One row per player the game reported ranked movement for. Unranked
+    matches carry no rank data, so this comes back empty for them."""
+    rows: list[MatchRankedRowView] = []
+    for player in getattr(metadata, "players", []):
+        rank_data = getattr(player, "rank_data", None)
+        hero_xp_text = _hero_xp_text(getattr(player, "hero_xp_rewards", []))
+        if rank_data is None and hero_xp_text is None:
+            continue
+
+        profile = steam_profiles.get(player.account_id)
+        hero = hero_info.get(player.hero_id)
+        initial_rank = getattr(rank_data, "initial_display_rank", None)
+        initial_progress = getattr(rank_data, "initial_flat_progress", None)
+        final_progress = getattr(rank_data, "final_flat_progress", None)
+        delta = (
+            final_progress - initial_progress
+            if initial_progress is not None and final_progress is not None
+            else getattr(rank_data, "desired_progress_change", None)
+        )
+        rows.append(
+            MatchRankedRowView(
+                personaname=profile.personaname if profile else str(player.account_id),
+                hero_name=hero.name if hero else f"Hero {player.hero_id}",
+                hero_icon_url=hero.icon_small if hero else None,
+                is_viewed_player=player.account_id == viewed_account_id,
+                result=_match_player_result(player, getattr(metadata, "winning_team", None)),
+                badge_text=friendly_rank_name(initial_rank) if initial_rank else "Unranked",
+                badge_image_url=_rank_badge_image_url(initial_rank, rank_info) if initial_rank else None,
+                progress_text=(
+                    f"{initial_progress:,} → {final_progress:,}"
+                    if initial_progress is not None and final_progress is not None
+                    else None
+                ),
+                delta_text=_ranked_delta_text(delta),
+                delta_direction=_ranked_delta_direction(delta),
+                notes=_player_rank_notes(rank_data),
+                hero_xp_text=hero_xp_text,
+            )
+        )
+    rows.sort(key=lambda row: (not row.is_viewed_player, row.personaname.casefold()))
+    return rows
+
+
+def _player_rank_notes(rank_data: object | None) -> list[str]:
+    if rank_data is None:
+        return []
+    notes: list[str] = []
+    calibration_games = getattr(rank_data, "initial_calibration_games", None)
+    if calibration_games:
+        notes.append(f"{calibration_games} calibration games left")
+    win_streak = getattr(rank_data, "initial_win_streak", None)
+    if win_streak:
+        notes.append(f"{win_streak} win streak")
+    protection_games = getattr(rank_data, "initial_demotion_protection_games", None)
+    if protection_games:
+        notes.append(f"{protection_games} demotion protection games")
+    if getattr(rank_data, "consumed_demotion_protection", None):
+        notes.append("Demotion protection used")
+    return notes
+
+
+def _hero_xp_text(rewards: list) -> str | None:
+    total = sum(reward.xp_grant or 0 for reward in rewards if getattr(reward, "xp_grant", None))
+    if total <= 0:
+        return None
+    return f"+{total:,} hero XP"
+
+
+def _ranked_delta_text(ranked_delta: int | None) -> str | None:
+    """Ranked progress change, signed. Zero is real information in ranked (the
+    match was played but moved nothing), so it is not treated as missing."""
+    if ranked_delta is None:
+        return None
+    if ranked_delta > 0:
+        return f"+{ranked_delta:,}"
+    return f"{ranked_delta:,}"
+
+
+def _ranked_delta_direction(ranked_delta: int | None) -> str:
+    if ranked_delta is None or ranked_delta == 0:
+        return "none"
+    return "up" if ranked_delta > 0 else "down"
+
+
+def _ranked_match_notes(match: object) -> list[str] | None:
+    notes: list[str] = []
+    if getattr(match, "ranked_calibration_match", None):
+        notes.append("Calibration match")
+    if getattr(match, "ranked_used_demotion_protection", None):
+        notes.append("Demotion protection used")
+    return notes or None
+
+
+def _friendly_match_mode_label(match_mode: int | None) -> str | None:
+    """Queue name for a match mode. Mode 8 was renamed from Calibration to
+    New Player Placement in the Matchmaking Update."""
+    return MATCH_MODE_NAME_BY_CODE.get(match_mode)
+
+
+def _queue_name(game_mode: int | None, match_mode: int | None) -> str:
+    """Street Brawl is a game mode rather than a queue, so it wins when set;
+    otherwise the match mode names the queue."""
+    if game_mode is not None and game_mode != 1:
+        mode_label = _friendly_mode_label(game_mode)
+        if mode_label:
+            return mode_label
+    return _friendly_match_mode_label(match_mode) or _friendly_mode_label(game_mode) or "Match"
+
+
 async def _load_recent_match_metadata(api: object, matches: list[object]) -> dict[int, object]:
     get_match_metadata = getattr(api, "get_match_metadata", None)
     if get_match_metadata is None:
@@ -3829,7 +3980,7 @@ def _build_recent_matchup_rows(
     for item in getattr(metadata, "players", []):
         profile = steam_profiles.get(item.account_id)
         hero = hero_info.get(item.hero_id)
-        result = "Win" if winning_team is not None and item.team == winning_team else "Loss"
+        result = _match_player_result(item, winning_team)
         players.append(
             MatchDetailPlayerView(
                 account_id=item.account_id,
@@ -4324,6 +4475,28 @@ BUILD_LANGUAGE_VALUES = frozenset(
 )
 
 
+def _window_options() -> list[FilterOptionView]:
+    return [
+        FilterOptionView(value="7", label="Last 7 days"),
+        FilterOptionView(value="30", label="Last 30 days"),
+        FilterOptionView(value="90", label="Last 90 days"),
+        FilterOptionView(value=MATCHMAKING_UPDATE_WINDOW, label=f"Since {MATCHMAKING_UPDATE_LABEL}"),
+    ]
+
+
+def _selected_window(raw: str | None) -> str:
+    value = (raw or "").strip()
+    if value == MATCHMAKING_UPDATE_WINDOW or value in ROLLING_WINDOW_DAYS:
+        return value
+    return DEFAULT_WINDOW
+
+
+def _window_min_timestamp(selected_window: str) -> int:
+    if selected_window == MATCHMAKING_UPDATE_WINDOW:
+        return MATCHMAKING_UPDATE_TIMESTAMP
+    return int(time()) - int(selected_window) * 86400
+
+
 def _rank_floor_options() -> list[FilterOptionView]:
     return [
         FilterOptionView(value="", label="All ranks"),
@@ -4342,20 +4515,22 @@ def _rank_floor_options() -> list[FilterOptionView]:
 
 
 def _rank_badge_image_url(rank: int | None, rank_info: list) -> str | None:
+    """The game dropped per-subrank badge art, so every sub-rank in a tier now
+    renders the one large badge for that tier."""
     if rank is None:
         return None
     tier = rank // 10
-    division = rank % 10
     for item in rank_info:
         if getattr(item, "tier", None) == tier:
-            by_division = getattr(item, "image_small_by_division", {}) or {}
-            return by_division.get(division) or getattr(item, "image_small", None)
+            return getattr(item, "image_large", None) or getattr(item, "image_chalk", None)
     return None
 
 
 def _match_average_rank_text(team0_badge: int | None, team1_badge: int | None) -> str:
-    team0_name = friendly_rank_name(team0_badge) if team0_badge is not None else None
-    team1_name = friendly_rank_name(team1_badge) if team1_badge is not None else None
+    # Ranked matches report an average badge of 0, which means "no badge data"
+    # rather than the Obscurus tier, so a zero average is not shown.
+    team0_name = friendly_rank_name(team0_badge) if team0_badge else None
+    team1_name = friendly_rank_name(team1_badge) if team1_badge else None
     if team0_name and team1_name:
         if team0_name == team1_name:
             return team0_name

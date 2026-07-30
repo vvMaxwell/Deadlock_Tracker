@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from deadlock_tracker.clients.deadlock_api import DeadlockAPI, DeadlockError, friendly_rank_name
+from deadlock_tracker.clients.deadlock_api import (
+    PLAYER_MATCH_OUTCOME_NAME_BY_CODE,
+    PLAYER_MATCH_OUTCOME_WIN,
+    DeadlockAPI,
+    DeadlockError,
+    friendly_rank_name,
+)
 from deadlock_tracker.models import DeadlockHeroStat, DeadlockMatch, DeadlockPlayer, PlayerSummary
 
 
@@ -75,6 +81,7 @@ class PlayerService:
             hero_stats=hero_stats,
             recent_matches=recent_matches,
             hero_info=hero_info,
+            ranked_match=self.latest_ranked_match(match_history),
         )
 
     @staticmethod
@@ -89,13 +96,32 @@ class PlayerService:
 
     @staticmethod
     def is_match_win(match: DeadlockMatch) -> bool:
+        # player_match_outcome is how the game scored the match for this player,
+        # so it beats comparing the team against the winning team.
+        if match.player_match_outcome is not None:
+            if match.player_match_outcome == PLAYER_MATCH_OUTCOME_WIN:
+                return True
+            if match.player_match_outcome in PLAYER_MATCH_OUTCOME_NAME_BY_CODE:
+                return False
         if match.player_team is not None and match.match_result is not None:
             return match.player_team == match.match_result
         return False
 
     @staticmethod
     def match_result_label(match: DeadlockMatch) -> str:
+        label = PLAYER_MATCH_OUTCOME_NAME_BY_CODE.get(match.player_match_outcome)
+        if label is not None:
+            return label
         return "Win" if PlayerService.is_match_win(match) else "Loss"
+
+    @staticmethod
+    def latest_ranked_match(matches: list[DeadlockMatch]) -> DeadlockMatch | None:
+        """Most recent match the game attached a ranked badge to. This is real
+        rank data, unlike the MMR estimate, so profiles prefer it."""
+        ranked = [match for match in matches if match.ranked_display_badge]
+        if not ranked:
+            return None
+        return max(ranked, key=lambda match: match.start_time)
 
     @staticmethod
     def format_kda(kills: float | int | None, deaths: float | int | None, assists: float | int | None) -> str:
@@ -109,8 +135,16 @@ class PlayerService:
         return f"{minutes}:{secs:02d}"
 
     @staticmethod
+    def displayed_rank(player_summary: PlayerSummary) -> int | None:
+        """The badge shown on a profile: the game's own ranked badge when the
+        player has played ranked, otherwise the MMR estimate."""
+        if player_summary.ranked_match is not None:
+            return player_summary.ranked_match.ranked_display_badge
+        return player_summary.rank.rank if player_summary.rank else None
+
+    @staticmethod
     def rank_name(player_summary: PlayerSummary) -> str:
-        return friendly_rank_name(player_summary.rank.rank) if player_summary.rank else "Unknown"
+        return friendly_rank_name(PlayerService.displayed_rank(player_summary))
 
     @staticmethod
     def hero_stats_from_matches(matches: list[DeadlockMatch]) -> list[DeadlockHeroStat]:

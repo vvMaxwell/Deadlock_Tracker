@@ -10,7 +10,7 @@
     </div>
     <p class="eyebrow">Regional Leaderboard</p>
     <h1>{{ region_name }} Deadlock Leaderboard</h1>
-    <p class="lede">Top Deadlock players in {{ region_name }}, with badge estimates, profile links when available, and hero leaderboard shortcuts for the same region.</p>
+    <p class="lede">Top Deadlock players in {{ region_name }}, with profile links when available and hero leaderboard shortcuts for the same region.</p>
 
     <section class="panel panel-matches">
         <div class="section-heading">
@@ -18,7 +18,7 @@
                 <h2>Top Players</h2>
                 <span class="section-badge">Top 50</span>
             </div>
-            <p>Player names link to profiles when available.</p>
+            <p>Player names link to profiles when available. Since the Matchmaking Update the game no longer sends rank badges with leaderboards, so only placement is shown.</p>
         </div>
         <div class="match-feed">
             {% for row in rows %}
@@ -32,18 +32,14 @@
                         {% endif %}
                         <div>
                             {% if row.player_url %}
-                            <p class="match-hero"><a class="text-link" href="{{ row.player_url }}">{{ row.player_name }}</a></p>
+                            <h3><a class="text-link" href="{{ row.player_url }}">{{ row.player_name }}</a></h3>
                             {% else %}
-                            <p class="match-hero">{{ row.player_name }}</p>
+                            <h3>{{ row.player_name }}</h3>
                             {% endif %}
-                            <h3>{{ row.rank_name }}</h3>
-                            <p class="match-played">Leaderboard rank #{{ row.rank_number }}</p>
                         </div>
                     </div>
                     <div class="match-top-right">
-                        {% if row.rank_badge_image_url %}
-                        <img class="hero-icon" src="{{ row.rank_badge_image_url }}" alt="{{ row.rank_name }}">
-                        {% endif %}
+                        <span class="section-badge">Rank #{{ row.rank_number }}</span>
                     </div>
                 </div>
                 <div class="match-summary">
