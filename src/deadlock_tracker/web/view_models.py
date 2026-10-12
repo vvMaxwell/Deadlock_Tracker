@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from deadlock_tracker.models import DeadlockGoldSource
 
 
 @dataclass(slots=True)
@@ -224,6 +226,7 @@ class MatchDetailPlayerView:
     leads_objective_damage: bool = False
     leads_healing: bool = False
     leads_last_hits: bool = False
+    gold_sources: list[DeadlockGoldSource] = field(default_factory=list)
 
 
 @dataclass(slots=True)

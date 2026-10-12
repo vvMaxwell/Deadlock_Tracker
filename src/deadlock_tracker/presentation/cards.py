@@ -161,7 +161,7 @@ async def render_deadlock_profile_card(
     *,
     player: DeadlockPlayer,
     rank_name: str,
-    internal_rating: str,
+    rank_detail: str,
     top_heroes: list[DeadlockHeroStat],
     hero_info: dict[int, DeadlockHeroInfo],
     accent_art_path: Path | None = None,
@@ -204,7 +204,7 @@ async def render_deadlock_profile_card(
 
     draw.text((56, 252), "Rank Snapshot", font=heading_font, fill=TEXT)
     draw.text((56, 284), rank_name, font=body_font, fill=TEXT)
-    draw.text((56, 317), f"MMR Score: {internal_rating}", font=body_font, fill=TEXT)
+    draw.text((56, 317), rank_detail, font=body_font, fill=TEXT)
 
     draw.rounded_rectangle((56, 360, 324, 398), radius=19, fill=PANEL_ALT, outline="#5a4b3f", width=1)
     draw.text((74, 368), "Top Heroes by Matches", font=small_font, fill=TEXT)

@@ -13,6 +13,9 @@ import aiohttp
 
 from deadlock_tracker.config import get_settings
 from deadlock_tracker.models import (
+    DeadlockConvar,
+    DeadlockGoldSource,
+    DeadlockHeroSwapStat,
     DeadlockAbilityOrderStat,
     DeadlockBadgeDistribution,
     DeadlockHeroAnalytics,
@@ -305,21 +308,26 @@ class DeadlockAPI:
         raise DeadlockError("Unsupported Steam profile URL format.")
 
     async def get_player_rank(self, account_id: int) -> DeadlockRank | None:
-        payload = await self._get_json(
-            f"{self.base_url}/v1/players/mmr",
-            params={"account_ids": str(account_id)},
-        )
+        # /v1/players/mmr is deprecated now the MMR estimate is gone. This
+        # endpoint reports the rank Valve attached to the account's latest
+        # ranked match, plus that match's rank metadata.
+        payload = await self._get_json(f"{self.base_url}/v1/players/{account_id}/rank")
         if not payload:
             return None
-        item = payload[0]
+        last_match = payload.get("last_match") or {}
         return DeadlockRank(
-            account_id=item["account_id"],
-            match_id=item.get("match_id"),
-            start_time=item.get("start_time"),
-            player_score=item.get("player_score"),
-            rank=item.get("rank"),
-            division=item.get("division"),
-            division_tier=item.get("division_tier"),
+            account_id=account_id,
+            badge=payload.get("badge") or 0,
+            tier=payload.get("rank") or 0,
+            subrank=payload.get("subrank") or 0,
+            match_id=last_match.get("match_id"),
+            start_time=last_match.get("start_time"),
+            progress=last_match.get("player_rank_final_flat_progress"),
+            progress_change=last_match.get("player_rank_desired_progress_change"),
+            calibration_games_remaining=last_match.get("player_rank_initial_calibration_games"),
+            demotion_protection_games=last_match.get("player_rank_initial_demotion_protection_games"),
+            used_demotion_protection=last_match.get("player_rank_consumed_demotion_protection"),
+            win_streak=last_match.get("player_rank_initial_win_streak"),
         )
 
     async def get_hero_stats(self, account_id: int) -> list[DeadlockHeroStat]:
@@ -636,22 +644,32 @@ class DeadlockAPI:
             DeadlockBadgeDistribution(
                 badge_level=item["badge_level"],
                 total_matches=item["total_matches"],
+                unique_players=item.get("unique_players") or 0,
             )
             for item in payload
         ]
 
     async def get_player_rank_distribution(self) -> list[DeadlockPlayerRankDistribution]:
-        payload = await self._get_json(f"{self.base_url}/v1/players/mmr/distribution")
+        # /v1/players/mmr/distribution is deprecated; unique_players on the
+        # badge distribution is the same count of players by the rank Valve
+        # reported on their latest ranked match. That endpoint only returned
+        # populated ranks, and this one also reports badge levels no player can
+        # hold (a sub-rank above 6 is only ever a match average), so empty
+        # levels are dropped to keep the distribution bars unchanged.
         return [
             DeadlockPlayerRankDistribution(
-                rank=item["rank"],
-                players=item["players"],
+                rank=item.badge_level,
+                players=item.unique_players,
             )
-            for item in payload
-            if item.get("rank") is not None and item.get("players") is not None
+            for item in await self.get_badge_distribution()
+            if item.unique_players > 0
         ]
 
     async def get_hero_rank_distribution(self, hero_id: int) -> list[DeadlockPlayerRankDistribution]:
+        # Deprecated upstream, because Valve reports one account-wide rank
+        # rather than a per-hero one, so this counts players by the rank they
+        # held on their latest ranked match on this hero. The badge
+        # distribution has no hero filter, so there is nothing to move to yet.
         payload = await self._get_json(f"{self.base_url}/v1/players/mmr/distribution/{hero_id}")
         return [
             DeadlockPlayerRankDistribution(
@@ -797,6 +815,45 @@ class DeadlockAPI:
             if item.get("abilities")
         ]
 
+    async def get_hero_swap_stats(
+        self,
+        *,
+        bucket: str = "no_bucket",
+        match_mode: str | None = None,
+        min_unix_timestamp: int | None = None,
+        max_unix_timestamp: int | None = None,
+        min_average_badge: int | None = None,
+        max_average_badge: int | None = None,
+    ) -> list[DeadlockHeroSwapStat]:
+        params = {"bucket": bucket}
+        for name, value in {
+            "match_mode": match_mode,
+            "min_unix_timestamp": min_unix_timestamp,
+            "max_unix_timestamp": max_unix_timestamp,
+            "min_average_badge": min_average_badge,
+            "max_average_badge": max_average_badge,
+        }.items():
+            if value is not None:
+                params[name] = str(value)
+        payload = await self._get_json(f"{self.base_url}/v1/analytics/hero-swap-stats", params=params)
+        return [DeadlockHeroSwapStat(
+            hero_id=item["hero_id"], bucket=item["bucket"], matches=item["matches"],
+            swapped_in=item["swapped_in"], swapped_in_wins=item["swapped_in_wins"],
+            pregame_picks=item["pregame_picks"], swapped_away=item["swapped_away"],
+        ) for item in payload]
+
+    async def get_convars(self, *, client_version: int | None = None) -> dict[str, DeadlockConvar]:
+        params = {"client_version": str(client_version)} if client_version is not None else None
+        payload = await self._get_json(f"{self.base_url}/v1/assets/convars", params=params)
+        return {name: _parse_convar(item) for name, item in payload.items()}
+
+    async def get_convar(self, name: str, *, client_version: int | None = None) -> DeadlockConvar:
+        params = {"client_version": str(client_version)} if client_version is not None else None
+        payload = await self._get_json(
+            f"{self.base_url}/v1/assets/convars/{quote(name, safe='')}", params=params,
+        )
+        return _parse_convar(payload)
+
     async def get_match_metadata(self, match_id: int) -> DeadlockMatchMetadata:
         payload = await self._get_json(f"{self.base_url}/v1/matches/{match_id}/metadata")
         match_info = payload.get("match_info") or {}
@@ -829,6 +886,7 @@ class DeadlockAPI:
                 player_match_outcome=item.get("player_match_outcome"),
                 rank_data=_parse_player_rank_data(item.get("player_rank_data")),
                 hero_xp_rewards=_parse_hero_xp_rewards(item.get("hero_xp_rewards")),
+                gold_sources=_parse_gold_sources(item.get("stats")),
             )
             for item in match_info.get("players", [])
         ]
@@ -1238,6 +1296,27 @@ def _parse_build_hero(payload: dict[str, Any]) -> DeadlockHeroBuild:
         mod_categories=mod_categories,
         ability_order=ability_order,
     )
+
+
+def _parse_convar(payload: dict[str, Any]) -> DeadlockConvar:
+    return DeadlockConvar(
+        type=payload["type"], default=payload["default"], flags=payload["flags"],
+        description=payload.get("description"),
+    )
+
+
+def _parse_gold_sources(stats: Any) -> list[DeadlockGoldSource]:
+    # REST metadata still contains cumulative snapshots. The delta encoding
+    # announced for Parquet custom_user_stats does not apply to this endpoint.
+    if not isinstance(stats, list) or not stats or not isinstance(stats[-1], dict):
+        return []
+    sources = stats[-1].get("gold_sources")
+    if not isinstance(sources, list):
+        return []
+    return [DeadlockGoldSource(
+        source=entry["source"], kills=entry.get("kills"), damage=entry.get("damage"),
+        gold=entry.get("gold"), gold_orbs=entry.get("gold_orbs"),
+    ) for entry in sources if isinstance(entry, dict) and isinstance(entry.get("source"), int)]
 
 
 def _final_stat_value(stats: Any, field: str) -> int | None:

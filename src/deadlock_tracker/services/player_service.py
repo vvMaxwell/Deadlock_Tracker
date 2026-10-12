@@ -136,15 +136,35 @@ class PlayerService:
 
     @staticmethod
     def displayed_rank(player_summary: PlayerSummary) -> int | None:
-        """The badge shown on a profile: the game's own ranked badge when the
-        player has played ranked, otherwise the MMR estimate."""
+        """The badge shown on a profile. The rank endpoint reports the badge
+        Valve attached to the account's latest ranked match anywhere in the
+        API's match database, so it beats the badge on the match history the
+        profile happens to have loaded; that badge is the fallback."""
+        if player_summary.rank is not None and player_summary.rank.badge:
+            return player_summary.rank.badge
         if player_summary.ranked_match is not None:
             return player_summary.ranked_match.ranked_display_badge
-        return player_summary.rank.rank if player_summary.rank else None
+        return None
 
     @staticmethod
     def rank_name(player_summary: PlayerSummary) -> str:
         return friendly_rank_name(PlayerService.displayed_rank(player_summary))
+
+    @staticmethod
+    def rank_detail_text(player_summary: PlayerSummary) -> str:
+        """One line about how the badge last moved, in place of the retired MMR
+        score. Rank progress is a running total across the whole ladder rather
+        than a position inside the sub-rank, so the change the match awarded is
+        what gets shown."""
+        rank = player_summary.rank
+        if rank is None or rank.match_id is None:
+            return "No ranked match on record"
+        if rank.calibration_games_remaining:
+            games = rank.calibration_games_remaining
+            return f"Placement: {games} game{'s' if games != 1 else ''} left"
+        if rank.progress_change is None:
+            return "Last Ranked Match: Unknown"
+        return f"Last Ranked Match: {rank.progress_change:+,} progress"
 
     @staticmethod
     def hero_stats_from_matches(matches: list[DeadlockMatch]) -> list[DeadlockHeroStat]:

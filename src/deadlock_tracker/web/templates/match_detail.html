@@ -76,6 +76,9 @@
                         <span class="{% if row.left_player.leads_healing %}stat-leader{% endif %}">Heal {{ "{:,}".format(row.left_player.healing) }}</span>
                         <span class="{% if row.left_player.leads_last_hits %}stat-leader{% endif %}">Last Hits {{ row.left_player.last_hits }}</span>
                     </div>
+                    {% with gold_sources = row.left_player.gold_sources %}
+                    {% include "gold_sources.html" %}
+                    {% endwith %}
                     {% if row.left_player.items %}
                     <details class="lane-player-items">
                         <summary>
@@ -136,6 +139,9 @@
                         <span class="{% if row.right_player.leads_healing %}stat-leader{% endif %}">Heal {{ "{:,}".format(row.right_player.healing) }}</span>
                         <span class="{% if row.right_player.leads_last_hits %}stat-leader{% endif %}">Last Hits {{ row.right_player.last_hits }}</span>
                     </div>
+                    {% with gold_sources = row.right_player.gold_sources %}
+                    {% include "gold_sources.html" %}
+                    {% endwith %}
                     {% if row.right_player.items %}
                     <details class="lane-player-items">
                         <summary>

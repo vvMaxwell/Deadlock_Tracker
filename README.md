@@ -39,6 +39,22 @@ python apps/discord_bot.py
 
 Set `DEADLOCK_API_KEY` in `.env` or `deploy/app.env` to unlock protected Deadlock API endpoints like player match history. The app sends it as the `X-API-KEY` header and does not expose it in URLs.
 
+## October 2026 API compatibility
+
+- Match details preserve all 13 `stats[].gold_sources` categories (kills, damage,
+  souls, and orb souls) and show the final recorded breakdown for each player.
+  Missing values remain unavailable rather than becoming zero. Unknown future
+  source IDs are retained. These are cumulative REST snapshots, not deltas.
+- The shared client supports `/v1/analytics/hero-swap-stats` and the list/single
+  `/v1/assets/convars` endpoints, including optional `client_version` selection.
+  Convar defaults retain their native JSON types; they are compiled defaults,
+  not necessarily the values active on a game server.
+- This app does not ingest Parquet data dumps. For a future importer, the removed
+  `stats.custom_user_stats` column is replaced by `custom_user_stats_deltas`
+  (`Map(String, Array(Int32))`). Reconstruct each stat independently with a running
+  sum, including negative deltas. Dumps now use zstd level 9. Do not apply this
+  conversion to REST match metadata, which still returns absolute snapshots.
+
 ## Stack
 
 - Website: FastAPI with Jinja templates and custom CSS

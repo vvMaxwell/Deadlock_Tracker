@@ -258,6 +258,25 @@ def test_latest_ranked_match_is_none_without_ranked_play() -> None:
     assert PlayerService.latest_ranked_match([_match(ranked_display_badge=None)]) is None
 
 
+def _rank(**overrides: object) -> DeadlockRank:
+    values: dict[str, object] = {
+        "account_id": 1,
+        "badge": 81,
+        "tier": 8,
+        "subrank": 1,
+        "match_id": 1,
+        "start_time": 1,
+        "progress": 175,
+        "progress_change": 175,
+        "calibration_games_remaining": None,
+        "demotion_protection_games": None,
+        "used_demotion_protection": None,
+        "win_streak": None,
+    }
+    values.update(overrides)
+    return DeadlockRank(**values)  # type: ignore[arg-type]
+
+
 def _summary(**overrides: object) -> PlayerSummary:
     values: dict[str, object] = {
         "player": DeadlockPlayer(
@@ -268,15 +287,7 @@ def _summary(**overrides: object) -> PlayerSummary:
             countrycode=None,
             last_updated=None,
         ),
-        "rank": DeadlockRank(
-            account_id=1,
-            match_id=1,
-            start_time=1,
-            player_score=1.0,
-            rank=81,
-            division=8,
-            division_tier=1,
-        ),
+        "rank": _rank(),
         "hero_stats": [],
         "recent_matches": [],
         "hero_info": {},
@@ -285,18 +296,18 @@ def _summary(**overrides: object) -> PlayerSummary:
     return PlayerSummary(**values)  # type: ignore[arg-type]
 
 
-def test_displayed_rank_prefers_the_games_ranked_badge() -> None:
+def test_displayed_rank_prefers_the_rank_endpoint_badge() -> None:
     summary = _summary(ranked_match=_match(ranked_display_badge=113))
-
-    assert PlayerService.displayed_rank(summary) == 113
-    assert PlayerService.rank_name(summary) == "Eternus 3"
-
-
-def test_displayed_rank_falls_back_to_the_mmr_estimate() -> None:
-    summary = _summary()
 
     assert PlayerService.displayed_rank(summary) == 81
     assert PlayerService.rank_name(summary) == "Oracle 1"
+
+
+def test_displayed_rank_falls_back_to_the_match_history_badge() -> None:
+    summary = _summary(rank=_rank(badge=0, tier=0, subrank=0), ranked_match=_match(ranked_display_badge=113))
+
+    assert PlayerService.displayed_rank(summary) == 113
+    assert PlayerService.rank_name(summary) == "Eternus 3"
 
 
 def test_displayed_rank_is_unknown_without_any_rank() -> None:

@@ -25,13 +25,23 @@ class DeadlockSteamProfile:
 
 @dataclass(slots=True)
 class DeadlockRank:
+    """Valve's own rank for an account, as of the end of its latest ranked
+    match. The MMR estimate the site used to show is gone, so a badge of 0 is
+    the Obscurus (unranked) tier rather than missing data, and the match fields
+    are None until the account has a ranked match carrying a rank."""
+
     account_id: int
+    badge: int
+    tier: int
+    subrank: int
     match_id: int | None
     start_time: int | None
-    player_score: float | None
-    rank: int | None
-    division: int | None
-    division_tier: int | None
+    progress: int | None
+    progress_change: int | None
+    calibration_games_remaining: int | None
+    demotion_protection_games: int | None
+    used_demotion_protection: bool | None
+    win_streak: int | None
 
 
 @dataclass(slots=True)
@@ -116,6 +126,7 @@ class DeadlockHeroSynergyStat:
 class DeadlockBadgeDistribution:
     badge_level: int
     total_matches: int
+    unique_players: int
 
 
 @dataclass(slots=True)
@@ -291,6 +302,51 @@ class DeadlockHeroXpReward:
 
 
 @dataclass(slots=True)
+class DeadlockHeroSwapStat:
+    hero_id: int
+    bucket: int
+    matches: int
+    swapped_in: int
+    swapped_in_wins: int
+    pregame_picks: int
+    swapped_away: int
+
+
+@dataclass(slots=True)
+class DeadlockConvar:
+    type: str
+    default: object
+    flags: int
+    description: str | None = None
+
+
+# CMsgMatchMetaDataContents.EGoldSource, also used by the flat dump columns.
+GOLD_SOURCE_NAMES = {
+    1: "players", 2: "lane_creeps", 3: "neutrals", 4: "bosses",
+    5: "treasure", 6: "assists", 7: "denies", 8: "team_bonus",
+    9: "ability_assassinate", 10: "item_trophy_collector",
+    11: "item_cultist_sacrifice", 12: "breakable", 13: "item_goose_egg",
+}
+
+
+@dataclass(slots=True)
+class DeadlockGoldSource:
+    source: int
+    kills: int | None = None
+    damage: int | None = None
+    gold: int | None = None
+    gold_orbs: int | None = None
+
+    @property
+    def name(self) -> str:
+        return GOLD_SOURCE_NAMES.get(self.source, f"source_{self.source}")
+
+    @property
+    def label(self) -> str:
+        return self.name.removeprefix("item_").removeprefix("ability_").replace("_", " ").title()
+
+
+@dataclass(slots=True)
 class DeadlockMatchPlayer:
     account_id: int
     team: int | None
@@ -311,6 +367,7 @@ class DeadlockMatchPlayer:
     player_match_outcome: int | None = None
     rank_data: DeadlockPlayerRankData | None = None
     hero_xp_rewards: list[DeadlockHeroXpReward] = field(default_factory=list)
+    gold_sources: list[DeadlockGoldSource] = field(default_factory=list)
 
 
 @dataclass(slots=True)

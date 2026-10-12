@@ -1545,7 +1545,7 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
             return stat.wins / stat.matches_played
 
         def displayed_rank(self, summary: PlayerSummary) -> int | None:
-            return summary.rank.rank if summary.rank else None
+            return summary.rank.badge if summary.rank else None
 
         def rank_name(self, summary: PlayerSummary) -> str:
             return "Oracle 1"
@@ -1576,12 +1576,17 @@ def test_player_refresh_falls_back_to_cached_history(monkeypatch) -> None:
                 player=player,
                 rank=DeadlockRank(
                     account_id=123,
+                    badge=81,
+                    tier=8,
+                    subrank=1,
                     match_id=1,
                     start_time=1,
-                    player_score=1.0,
-                    rank=81,
-                    division=1,
-                    division_tier=1,
+                    progress=175,
+                    progress_change=175,
+                    calibration_games_remaining=None,
+                    demotion_protection_games=None,
+                    used_demotion_protection=None,
+                    win_streak=None,
                 ),
                 hero_stats=[
                     DeadlockHeroStat(
@@ -1707,7 +1712,7 @@ def test_legacy_player_url_redirects_to_canonical_slug(monkeypatch) -> None:
         api = FakeApi()
 
         def displayed_rank(self, summary: PlayerSummary) -> int | None:
-            return summary.rank.rank if summary.rank else None
+            return summary.rank.badge if summary.rank else None
 
         def rank_name(self, summary: PlayerSummary) -> str:
             return "Unknown"
@@ -1761,7 +1766,7 @@ def test_canonical_player_url_does_not_redirect_forever_on_public_host(monkeypat
         api = FakeApi()
 
         def displayed_rank(self, summary: PlayerSummary) -> int | None:
-            return summary.rank.rank if summary.rank else None
+            return summary.rank.badge if summary.rank else None
 
         def rank_name(self, summary: PlayerSummary) -> str:
             return "Unknown"
@@ -1971,7 +1976,7 @@ def test_player_page_does_not_render_api_key(monkeypatch) -> None:
         api = FakeApi()
 
         def displayed_rank(self, summary: PlayerSummary) -> int | None:
-            return summary.rank.rank if summary.rank else None
+            return summary.rank.badge if summary.rank else None
 
         def rank_name(self, summary: PlayerSummary) -> str:
             return "Unknown"

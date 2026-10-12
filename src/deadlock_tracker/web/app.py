@@ -103,7 +103,11 @@ RANKED_MATCH_MODE = 4
 # is what appears in ?window_days=, so it has to stay stable once shipped.
 MATCHMAKING_UPDATE_WINDOW = "matchmaking-update"
 MATCHMAKING_UPDATE_LABEL = "Matchmaking Update (2026-07-30)"
-MATCHMAKING_UPDATE_TIMESTAMP = int(datetime(2026, 7, 30, tzinfo=UTC).timestamp())
+# Start of the first ranked season, as reported by
+# https://api.deadlock-api.com/v1/assets/ranked-seasons. Ranks only exist from
+# here on, and the badge distribution clamps min_unix_timestamp to it, so the
+# window is pinned to the exact interval start rather than to midnight.
+MATCHMAKING_UPDATE_TIMESTAMP = 1785430800
 ROLLING_WINDOW_DAYS = ("7", "30", "90")
 DEFAULT_WINDOW = "7"
 
@@ -3245,11 +3249,14 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
         displayed_rank = player_service.displayed_rank(summary)
         rank_badge_image_url = _rank_badge_image_url(displayed_rank, rank_info)
         latest_match_ts = max((match.start_time for match in summary.recent_matches), default=None)
-        if summary.ranked_match is not None:
+        if summary.rank is not None and summary.rank.badge:
+            rank_source_text = "Badge the game reported at the end of the player's most recent ranked match."
+            rank_updated_ts = summary.rank.start_time
+        elif summary.ranked_match is not None:
             rank_source_text = "Badge from the player's most recent ranked match."
             rank_updated_ts = summary.ranked_match.start_time
         else:
-            rank_source_text = "Estimated from recent matches. Play ranked for an exact badge."
+            rank_source_text = "No ranked match on record yet. Play ranked for a badge."
             rank_updated_ts = summary.rank.start_time if summary.rank else None
         overview = ProfileOverviewView(
             account_id=summary.player.account_id,
@@ -3476,6 +3483,7 @@ async def match_detail(request: Request, player_input: str, match_id: str) -> HT
                     lane_number=item.assigned_lane,
                     lane_text=_lane_text(item.assigned_lane),
                     items=_build_match_item_views(item.items, item_info_map),
+                    gold_sources=getattr(item, "gold_sources", []),
                     leads_souls=(item.net_worth or 0) == stat_leaders["souls"] and stat_leaders["souls"] > 0,
                     leads_kills=(item.kills or 0) == stat_leaders["kills"] and stat_leaders["kills"] > 0,
                     leads_assists=(item.assists or 0) == stat_leaders["assists"] and stat_leaders["assists"] > 0,
@@ -4010,6 +4018,7 @@ def _build_recent_matchup_rows(
                 lane_number=item.assigned_lane,
                 lane_text=_lane_text(item.assigned_lane),
                 items=_build_match_item_views(item.items, item_info_map),
+                gold_sources=getattr(item, "gold_sources", []),
             )
         )
     return _build_matchup_rows(players)

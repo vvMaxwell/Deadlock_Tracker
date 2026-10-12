@@ -158,11 +158,10 @@ class StatsCog(commands.Cog):
     async def send_profile(self, interaction: discord.Interaction, player) -> None:
         summary = await self.player_service.build_player_summary(player)
         rank_name = self.player_service.rank_name(summary)
-        rating_text = f"{(summary.rank.player_score or 0):.2f}" if summary.rank else "0.00"
         card_buffer = await render_deadlock_profile_card(
             player=summary.player,
             rank_name=rank_name,
-            internal_rating=rating_text,
+            rank_detail=self.player_service.rank_detail_text(summary),
             top_heroes=self.player_service.top_heroes(summary.hero_stats, limit=3),
             hero_info=summary.hero_info,
             accent_art_path=ACCENT_ART_PATH,

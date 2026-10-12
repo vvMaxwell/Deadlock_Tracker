@@ -1,0 +1,17 @@
+{% if gold_sources %}
+<details class="lane-player-items">
+    <summary>
+        <span class="lane-player-items-arrow" aria-hidden="true">▾</span>
+        <span>Show soul sources</span>
+    </summary>
+    <p>Final recorded totals. — means unavailable.</p>
+    {% for source in gold_sources %}
+    <div class="lane-player-stats">
+        <strong>{{ source.label }}</strong>
+        {% for label, value in [('Kills', source.kills), ('Damage', source.damage), ('Souls', source.gold), ('Orb souls', source.gold_orbs)] %}
+        <span>{{ label }} {{ "{:,}".format(value) if value is not none else '—' }}</span>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</details>
+{% endif %}
