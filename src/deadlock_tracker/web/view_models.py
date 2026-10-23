@@ -25,8 +25,8 @@ class MatchView:
     duration: str
     played_text: str
     kda: str
-    net_worth: int
-    last_hits: int
+    net_worth: int | None
+    last_hits: int | None
     winning_team_label: str
     matchup_rows: list[MatchupRowView]
     ranked_badge_text: str | None = None

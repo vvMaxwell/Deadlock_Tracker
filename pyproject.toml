@@ -34,7 +34,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-"deadlock_tracker.web" = ["templates/*.html", "static/*.css"]
+"deadlock_tracker.web" = ["templates/*.html", "static/*.css", "static/branding/*", "static/community-assets/hero-signatures/*.svg"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

@@ -249,7 +249,7 @@ def test_home_menu_drawer_renders_outside_header() -> None:
 
     assert 'id="site-drawer-backdrop"' in response.text
     assert '<nav class="site-side-rail" aria-label="Primary navigation">' in response.text
-    assert '<aside class="site-drawer" id="site-drawer">' in response.text
+    assert '<aside class="site-drawer" id="site-drawer" inert aria-hidden="true">' in response.text
     assert 'class="menu-button side-rail-menu" type="button" aria-label="Toggle menu"' in response.text
     assert "data-site-menu-toggle" in response.text
     assert "data-site-menu-close" in response.text
@@ -1894,7 +1894,7 @@ def test_hero_analytics_accepts_current_payload_without_players(monkeypatch) -> 
     api = DeadlockAPI()
     monkeypatch.setattr(api, "_get_json", fake_get_json)
 
-    stats = asyncio.run(api.get_hero_analytics())
+    stats = asyncio.run(api.get_hero_analytics(min_matches=100))
 
     assert len(stats) == 1
     assert stats[0].players is None
@@ -2064,7 +2064,7 @@ def test_pages_survive_upstream_dropping_the_players_field(monkeypatch) -> None:
     item_stats = asyncio.run(api.get_item_stats(hero_id=1))
     build_stats = asyncio.run(api.get_hero_build_stats(hero_id=1))
     ability_stats = asyncio.run(api.get_ability_order_stats(hero_id=1))
-    hero_stats = asyncio.run(api.get_hero_analytics())
+    hero_stats = asyncio.run(api.get_hero_analytics(min_matches=1))
 
     # Parsing must succeed with players simply absent, not raise KeyError.
     assert item_stats[0].players is None

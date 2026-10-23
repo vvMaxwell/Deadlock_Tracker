@@ -8,6 +8,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
+from xml.etree import ElementTree
 
 import aiohttp
 
@@ -71,74 +72,16 @@ def _api_error_logger() -> logging.Logger:
     return logger
 
 
-RANK_NAME_BY_CODE = {
-    0: "Obscurus",
-    11: "Initiate 1",
-    12: "Initiate 2",
-    13: "Initiate 3",
-    14: "Initiate 4",
-    15: "Initiate 5",
-    16: "Initiate 6",
-    21: "Seeker 1",
-    22: "Seeker 2",
-    23: "Seeker 3",
-    24: "Seeker 4",
-    25: "Seeker 5",
-    26: "Seeker 6",
-    31: "Alchemist 1",
-    32: "Alchemist 2",
-    33: "Alchemist 3",
-    34: "Alchemist 4",
-    35: "Alchemist 5",
-    36: "Alchemist 6",
-    41: "Arcanist 1",
-    42: "Arcanist 2",
-    43: "Arcanist 3",
-    44: "Arcanist 4",
-    45: "Arcanist 5",
-    46: "Arcanist 6",
-    51: "Ritualist 1",
-    52: "Ritualist 2",
-    53: "Ritualist 3",
-    54: "Ritualist 4",
-    55: "Ritualist 5",
-    56: "Ritualist 6",
-    61: "Emissary 1",
-    62: "Emissary 2",
-    63: "Emissary 3",
-    64: "Emissary 4",
-    65: "Emissary 5",
-    66: "Emissary 6",
-    71: "Archon 1",
-    72: "Archon 2",
-    73: "Archon 3",
-    74: "Archon 4",
-    75: "Archon 5",
-    76: "Archon 6",
-    81: "Oracle 1",
-    82: "Oracle 2",
-    83: "Oracle 3",
-    84: "Oracle 4",
-    85: "Oracle 5",
-    86: "Oracle 6",
-    91: "Phantom 1",
-    92: "Phantom 2",
-    93: "Phantom 3",
-    94: "Phantom 4",
-    95: "Phantom 5",
-    96: "Phantom 6",
-    101: "Ascendant 1",
-    102: "Ascendant 2",
-    103: "Ascendant 3",
-    104: "Ascendant 4",
-    105: "Ascendant 5",
-    106: "Ascendant 6",
-    111: "Eternus 1",
-    112: "Eternus 2",
-    113: "Eternus 3",
-    114: "Eternus 4",
-    115: "Eternus 5",
-    116: "Eternus 6",
+# Current tier names from /v1/assets/ranks (October 2026).
+RANK_TIER_NAMES = {
+    1: "Initiate", 2: "Seeker", 3: "Acolyte", 4: "Sentinel",
+    5: "Mystic", 6: "Ritualist", 7: "Emissary", 8: "Oracle",
+    9: "Phantom", 10: "Ascendant", 11: "Eternus",
+}
+RANK_NAME_BY_CODE = {0: "Obscurus"} | {
+    tier * 10 + division: f"{name} {division}"
+    for tier, name in RANK_TIER_NAMES.items()
+    for division in range(1, 7)
 }
 
 
@@ -280,12 +223,14 @@ class DeadlockAPI:
     async def resolve_player_input(self, raw: str) -> str | int:
         cleaned = raw.strip()
         if cleaned.isdigit():
-            return int(cleaned)
+            return _account_id(int(cleaned))
 
         if "steamcommunity.com/" not in cleaned:
             return cleaned
 
-        parsed = urlparse(cleaned)
+        parsed = urlparse(cleaned if "://" in cleaned else f"https://{cleaned}")
+        if parsed.hostname not in {"steamcommunity.com", "www.steamcommunity.com"}:
+            raise DeadlockError("Use a valid steamcommunity.com profile URL.")
         path_parts = [part for part in parsed.path.split("/") if part]
         if len(path_parts) < 2:
             raise DeadlockError("That Steam profile URL could not be parsed.")
@@ -294,16 +239,22 @@ class DeadlockAPI:
         if kind == "profiles":
             if not value.isdigit():
                 raise DeadlockError("That Steam profile URL does not contain a valid Steam64 ID.")
-            return int(value) - 76561197960265728
+            return _account_id(int(value))
 
         if kind == "id":
-            profiles = await self.search_players(value)
-            if not profiles:
-                raise DeadlockError("No Steam profile matched that vanity URL.")
-            exact = [profile for profile in profiles if profile.personaname.casefold() == value.casefold()]
-            if len(exact) == 1:
-                return exact[0].account_id
-            return value
+            # A vanity slug is not a display name: searching it can silently
+            # select a different person. Resolve the identity from Steam.
+            document = await self._get_text(
+                f"https://steamcommunity.com/id/{quote(value, safe='')}/",
+                params={"xml": "1"},
+            )
+            try:
+                steam_id = ElementTree.fromstring(document).findtext("steamID64")
+            except ElementTree.ParseError:
+                steam_id = None
+            if steam_id and steam_id.isdigit():
+                return _account_id(int(steam_id))
+            raise DeadlockError("Steam could not resolve that vanity URL. Try the numeric Steam64 ID.")
 
         raise DeadlockError("Unsupported Steam profile URL format.")
 
@@ -331,7 +282,10 @@ class DeadlockAPI:
         )
 
     async def get_hero_stats(self, account_id: int) -> list[DeadlockHeroStat]:
-        payload = await self._get_json(f"{self.base_url}/v1/players/{account_id}/hero-stats")
+        payload = await self._get_json(
+            f"{self.base_url}/v1/players/hero-stats",
+            params={"account_ids": str(account_id), "game_mode": "normal", "match_mode": "ranked,unranked"},
+        )
         stats = [
             DeadlockHeroStat(
                 hero_id=item["hero_id"],
@@ -343,6 +297,7 @@ class DeadlockAPI:
                 last_played=item.get("last_played"),
             )
             for item in payload
+            if item.get("account_id", account_id) == account_id
         ]
         return sorted(stats, key=lambda item: item.matches_played, reverse=True)
 
@@ -382,7 +337,11 @@ class DeadlockAPI:
                 ranked_calibration_match=item.get("ranked_calibration_match"),
                 ranked_used_demotion_protection=item.get("ranked_used_demotion_protection"),
             )
-            for item in payload[:limit]
+            for item in sorted(
+                {item["match_id"]: item for item in payload}.values(),
+                key=lambda item: (item["start_time"], item["match_id"]),
+                reverse=True,
+            )[:limit]
         ]
 
     async def get_hero_info(self) -> dict[int, DeadlockHeroInfo]:
@@ -532,7 +491,6 @@ class DeadlockAPI:
         params: dict[str, str] = {
             "bucket": "no_bucket",
             "game_mode": game_mode,
-            "min_matches": str(min_matches),
         }
         if min_average_badge is not None:
             params["min_average_badge"] = str(min_average_badge)
@@ -550,6 +508,7 @@ class DeadlockAPI:
             )
             for item in payload
             if item.get("hero_id") not in {None, 0}
+            and item["matches"] >= min_matches
         ]
 
     async def get_hero_counter_stats(
@@ -999,12 +958,16 @@ class DeadlockAPI:
         except TimeoutError:
             _log_api_error("deadlock_json_timeout", url=url, params=params)
             raise DeadlockError("Deadlock API took too long to respond. Try again in a moment.") from None
+        except ValueError:
+            _log_api_error("deadlock_json_invalid", url=url, params=params)
+            raise DeadlockError("Deadlock API returned invalid data. Try again shortly.") from None
         except aiohttp.ClientError as error:
             _log_api_error("deadlock_json_client_error", url=url, params=params, error=error)
             raise DeadlockError(f"Deadlock API request failed: {error}") from error
 
     async def _get_text(self, url: str, params: dict[str, str] | None = None) -> str:
-        headers = self._request_headers()
+        # Forum pages are external to the API and must never receive its key.
+        headers = {"User-Agent": "DeadlockTracker/1.0"}
         timeout = aiohttp.ClientTimeout(total=20)
         try:
             async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
@@ -1052,6 +1015,14 @@ class DeadlockAPI:
         if self.api_key:
             headers["X-API-KEY"] = self.api_key
         return headers
+
+
+def _account_id(value: int) -> int:
+    if value >= 76561197960265728:
+        value -= 76561197960265728
+    if not 0 < value <= 4294967295:
+        raise DeadlockError("Enter a valid Steam account ID or Steam64 ID.")
+    return value
 
 
 def _parse_last_updated(raw: Any) -> int | None:

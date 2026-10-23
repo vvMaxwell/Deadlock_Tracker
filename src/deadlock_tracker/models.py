@@ -406,3 +406,5 @@ class PlayerSummary:
     recent_matches: list[DeadlockMatch]
     hero_info: dict[int, DeadlockHeroInfo]
     ranked_match: DeadlockMatch | None = None
+    hero_stats_scope: str = "Recent Matches"
+    notices: list[str] = field(default_factory=list)

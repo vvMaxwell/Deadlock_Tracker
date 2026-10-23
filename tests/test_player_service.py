@@ -45,6 +45,9 @@ async def test_build_player_summary_uses_default_match_history_mode() -> None:
         async def get_player_rank(self, account_id: int):
             return None
 
+        async def get_hero_stats(self, account_id: int):
+            return []
+
         async def get_match_history(self, account_id: int, **kwargs: object) -> list[DeadlockMatch]:
             self.calls.append({"account_id": account_id, **kwargs})
             return [
@@ -93,6 +96,9 @@ async def test_build_player_summary_refresh_uses_force_refetch_mode() -> None:
 
         async def get_player_rank(self, account_id: int):
             return None
+
+        async def get_hero_stats(self, account_id: int):
+            return []
 
         async def get_steam_profile(self, account_id: int) -> DeadlockPlayer | None:
             return None

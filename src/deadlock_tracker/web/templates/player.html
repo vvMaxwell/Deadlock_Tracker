@@ -59,14 +59,18 @@
     </article>
 </section>
 
+{% for notice in data_notices %}
+<section class="status-banner" role="status">{{ notice }}</section>
+{% endfor %}
+
 <section class="content-grid">
     <div class="panel panel-heroes">
         <div class="section-heading">
             <div class="section-heading-top">
                 <h2>Top Heroes</h2>
-                <span class="section-badge">Recent Matches</span>
+                <span class="section-badge">{{ hero_stats_scope }}</span>
             </div>
-            <p>Most-played heroes.</p>
+            <p>Most-played heroes. Tracked totals cover normal ranked and unranked matches available to the API; newly refreshed matches may take time to appear.</p>
         </div>
         <div class="hero-stack">
             {% for hero in top_heroes %}
@@ -90,6 +94,8 @@
                     <span>KDA {{ hero.kda }}</span>
                 </div>
             </article>
+            {% else %}
+            <p>No hero statistics are available yet.</p>
             {% endfor %}
         </div>
     </div>
@@ -109,6 +115,7 @@
             <p>Hero, result, KDA, and match length.</p>
         </div>
         <div class="match-feed">
+            {% if not recent_matches %}<p>No match history is available yet.</p>{% endif %}
             {% for match in recent_matches %}
             <a class="match-card-link" href="{{ match.detail_url }}">
             <article class="match-card">
@@ -134,8 +141,8 @@
                     <span>KDA {{ match.kda }}</span>
                 </div>
                 <div class="match-metrics">
-                    <span class="metric-pill metric-pill-souls">Souls Collected {{ match.net_worth }}</span>
-                    <span class="metric-pill">Last Hits {{ match.last_hits }}</span>
+                    <span class="metric-pill metric-pill-souls">Souls Collected {{ match.net_worth if match.net_worth is not none else '—' }}</span>
+                    <span class="metric-pill">Last Hits {{ match.last_hits if match.last_hits is not none else '—' }}</span>
                 </div>
                 {% if match.ranked_badge_text or match.ranked_delta_text or match.ranked_notes %}
                 <div class="match-ranked-row">

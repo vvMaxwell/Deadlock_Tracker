@@ -2478,7 +2478,7 @@ async def best_heroes(
             request,
             page_title="Best Deadlock Heroes | Deadlock Stats Tracker",
             meta_description=(
-                "Browse Deadlock heroes by win rate, pick rate, rank range, mode, and time window."
+                "Browse Deadlock heroes by win rate, pick share, rank range, mode, and time window."
             ),
             meta_robots="index,follow" if is_default_view else "noindex,follow",
             structured_data=[
@@ -2487,7 +2487,7 @@ async def best_heroes(
                     "@type": "CollectionPage",
                     "name": "Best Deadlock Heroes",
                     "url": _public_url(request, str(request.url_for("best_heroes"))),
-                    "description": "Browse Deadlock heroes by win rate, pick rate, rank range, and mode.",
+                    "description": "Browse Deadlock heroes by win rate, pick share, rank range, and mode.",
                 },
                 _breadcrumb_structured_data(
                     request,
@@ -2504,7 +2504,7 @@ async def best_heroes(
                     [
                         (
                             "How are the best Deadlock heroes ranked?",
-                            "Heroes are sorted by recent win rate, then pick rate and match count to keep the ranking useful for active play.",
+                            "Heroes are sorted by recent win rate, then pick share and match count to keep the ranking useful for active play.",
                         ),
                         (
                             "Why do filtered hero ranking pages use noindex?",
@@ -3221,6 +3221,18 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
                 status_code=400,
             ))
 
+        # Resolve the canonical URL before loading stats or spending a force
+        # refresh quota. Redirects must not repeat that upstream operation.
+        resolved_url = _public_url(request, str(request.url_for(
+            "player_profile_canonical",
+            account_id=str(resolved.account_id),
+            player_slug=_slugify(resolved.personaname),
+        )))
+        if request.url.path != _url_path(resolved_url):
+            if refresh_requested:
+                resolved_url = f"{resolved_url}?{urlencode({'refresh': '1'})}"
+            return RedirectResponse(url=resolved_url, status_code=308)
+
         try:
             summary = await player_service.build_player_summary(resolved, refresh_matches=refresh_requested)
             if refresh_requested:
@@ -3240,12 +3252,13 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
         ))
         if request.url.path != _url_path(canonical_player_url):
             redirect_url = canonical_player_url
-            if refresh_requested:
-                redirect_url = f"{redirect_url}?{urlencode({'refresh': '1'})}"
             return RedirectResponse(url=redirect_url, status_code=308)
 
         rank_name = player_service.rank_name(summary)
-        rank_info = await player_service.api.get_rank_info()
+        try:
+            rank_info = await player_service.api.get_rank_info()
+        except DeadlockError:
+            rank_info = []
         displayed_rank = player_service.displayed_rank(summary)
         rank_badge_image_url = _rank_badge_image_url(displayed_rank, rank_info)
         latest_match_ts = max((match.start_time for match in summary.recent_matches), default=None)
@@ -3320,8 +3333,8 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
                 duration=player_service.format_match_duration(match.match_duration_s),
                 played_text=_relative_time_text(match.start_time),
                 kda=player_service.format_kda(match.player_kills, match.player_deaths, match.player_assists),
-                net_worth=match.net_worth or 0,
-                last_hits=match.last_hits or 0,
+                net_worth=match.net_worth,
+                last_hits=match.last_hits,
                 winning_team_label=_team_label(
                     getattr(recent_match_metadata[match.match_id], "winning_team", None)
                     if match.match_id in recent_match_metadata
@@ -3407,6 +3420,8 @@ async def player_profile(request: Request, player_input: str, refresh: int = 0) 
             player_refresh_url=refresh_url,
             refresh_requested=refresh_requested,
             refresh_status=refresh_status,
+            hero_stats_scope=summary.hero_stats_scope,
+            data_notices=summary.notices,
         ),
     ))
 
@@ -3933,16 +3948,19 @@ async def _load_recent_match_metadata(api: object, matches: list[object]) -> dic
     if get_match_metadata is None:
         return {}
 
-    metadata_by_match_id: dict[int, object] = {}
-    for match in matches:
+    semaphore = asyncio.Semaphore(3)
+
+    async def load(match: object) -> tuple[int, object] | None:
         match_id = getattr(match, "match_id", None)
         if match_id is None:
-            continue
+            return None
         try:
-            metadata_by_match_id[int(match_id)] = await get_match_metadata(int(match_id))
+            async with semaphore:
+                return int(match_id), await get_match_metadata(int(match_id))
         except DeadlockError:
-            continue
-    return metadata_by_match_id
+            return None
+
+    return dict(result for result in await asyncio.gather(*(load(match) for match in matches)) if result is not None)
 
 
 async def _load_steam_profiles(api: object, account_ids: list[int]) -> dict[int, object]:
@@ -4511,11 +4529,11 @@ def _rank_floor_options() -> list[FilterOptionView]:
         FilterOptionView(value="", label="All ranks"),
         FilterOptionView(value="11", label="Initiate+"),
         FilterOptionView(value="21", label="Seeker+"),
-        FilterOptionView(value="31", label="Alchemist+"),
-        FilterOptionView(value="41", label="Arcanist+"),
-        FilterOptionView(value="51", label="Ritualist+"),
-        FilterOptionView(value="61", label="Emissary+"),
-        FilterOptionView(value="71", label="Archon+"),
+        FilterOptionView(value="31", label="Acolyte+"),
+        FilterOptionView(value="41", label="Sentinel+"),
+        FilterOptionView(value="51", label="Mystic+"),
+        FilterOptionView(value="61", label="Ritualist+"),
+        FilterOptionView(value="71", label="Emissary+"),
         FilterOptionView(value="81", label="Oracle+"),
         FilterOptionView(value="91", label="Phantom+"),
         FilterOptionView(value="101", label="Ascendant+"),

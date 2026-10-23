@@ -137,7 +137,7 @@
             </button>
         </form>
     </nav>
-    <aside class="site-drawer" id="site-drawer">
+    <aside class="site-drawer" id="site-drawer" inert aria-hidden="true">
         <div class="site-drawer-head">
             <div>
                 <p class="site-header-eyebrow">Browse</p>
@@ -166,7 +166,7 @@
         </div>
         {% endfor %}
     </aside>
-    <button class="site-drawer-backdrop" id="site-drawer-backdrop" type="button" aria-label="Close menu" data-site-menu-backdrop></button>
+    <button class="site-drawer-backdrop" id="site-drawer-backdrop" type="button" aria-label="Close menu" tabindex="-1" aria-hidden="true" data-site-menu-backdrop></button>
     <div class="page-shell">
         {% block content %}{% endblock %}
         <section class="site-cookie-notice" aria-label="Cookie notice">
@@ -214,6 +214,8 @@
         }
 
         const setMenuOpen = (isOpen) => {
+            drawer.inert = !isOpen;
+            drawer.setAttribute("aria-hidden", String(!isOpen));
             drawer.classList.toggle("is-open", isOpen);
             document.body.classList.toggle("site-menu-open", isOpen);
             menuButton.setAttribute("aria-expanded", String(isOpen));
@@ -234,6 +236,18 @@
 
         document.addEventListener("keydown", (event) => {
             if (event.key === "Escape" && drawer.classList.contains("is-open")) setMenuOpen(false);
+            if (event.key === "Tab" && drawer.classList.contains("is-open")) {
+                const controls = [...drawer.querySelectorAll("a[href], button")];
+                const first = controls[0];
+                const last = controls[controls.length - 1];
+                if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
+            }
         });
     })();
 
@@ -342,6 +356,8 @@
             const runSearch = async () => {
                 const query = input.value.trim();
                 if (query.length < 2) {
+                    if (activeController) activeController.abort();
+                    activeController = null;
                     hideResults();
                     setLoading(false);
                     return;
@@ -358,7 +374,8 @@
                         signal: controller.signal,
                     });
                     if (!response.ok) throw new Error("Search failed");
-                    renderResults(await response.json());
+                    const payload = await response.json();
+                    if (activeController === controller && input.value.trim() === query) renderResults(payload);
                 } catch (error) {
                     if (error.name !== "AbortError") hideResults();
                 } finally {
@@ -368,6 +385,8 @@
 
             input.addEventListener("input", () => {
                 window.clearTimeout(debounceTimer);
+                if (activeController) activeController.abort();
+                hideResults();
                 debounceTimer = window.setTimeout(runSearch, 220);
             });
 

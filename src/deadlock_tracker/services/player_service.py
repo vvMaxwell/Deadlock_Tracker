@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from deadlock_tracker.clients.deadlock_api import (
+    _account_id,
     PLAYER_MATCH_OUTCOME_NAME_BY_CODE,
     PLAYER_MATCH_OUTCOME_WIN,
     DeadlockAPI,
@@ -21,7 +22,7 @@ class PlayerService:
         if not cleaned:
             return []
         if cleaned.isdigit():
-            profile = await self.api.get_steam_profile(int(cleaned))
+            profile = await self.api.get_steam_profile(_account_id(int(cleaned)))
             return [profile] if profile is not None else []
         return await self.api.search_players(cleaned)
 
@@ -57,12 +58,19 @@ class PlayerService:
         return profiles[:5]
 
     async def build_player_summary(self, player: DeadlockPlayer, *, refresh_matches: bool = False) -> PlayerSummary:
-        hero_info = await self.api.get_hero_info()
-        rank = await self.api.get_player_rank(player.account_id)
+        notices: list[str] = []
+        try:
+            hero_info = await self.api.get_hero_info()
+        except DeadlockError:
+            hero_info = {}
+            notices.append("Hero images and names are temporarily unavailable.")
         effective_player = player
 
         if refresh_matches:
-            steam_profile = await self.api.get_steam_profile(player.account_id)
+            try:
+                steam_profile = await self.api.get_steam_profile(player.account_id)
+            except DeadlockError:
+                steam_profile = None
             if steam_profile is not None:
                 effective_player = steam_profile
             match_history = await self.api.get_match_history(
@@ -71,9 +79,26 @@ class PlayerService:
                 force_refetch=True,
             )
         else:
-            match_history = await self.api.get_match_history(player.account_id, limit=50)
+            try:
+                match_history = await self.api.get_match_history(player.account_id, limit=50)
+            except DeadlockError:
+                match_history = []
+                notices.append("Recent match history is temporarily unavailable. Tracked hero totals may still be available.")
 
-        hero_stats = self.hero_stats_from_matches(match_history)
+        # Rank must be read after a refresh, which can ingest newer ranked matches.
+        try:
+            rank = await self.api.get_player_rank(player.account_id)
+        except DeadlockError:
+            rank = None
+            notices.append("Current rank is temporarily unavailable; showing a match badge when available.")
+
+        hero_stats_scope = "Tracked Matches"
+        try:
+            hero_stats = await self.api.get_hero_stats(player.account_id)
+        except DeadlockError:
+            hero_stats = self.hero_stats_from_matches(match_history)
+            hero_stats_scope = "Recent Matches"
+            notices.append("Hero totals are temporarily unavailable. Showing only the loaded recent matches.")
         recent_matches = match_history[:10]
         return PlayerSummary(
             player=effective_player,
@@ -82,6 +107,8 @@ class PlayerService:
             recent_matches=recent_matches,
             hero_info=hero_info,
             ranked_match=self.latest_ranked_match(match_history),
+            hero_stats_scope=hero_stats_scope,
+            notices=notices,
         )
 
     @staticmethod
@@ -112,7 +139,9 @@ class PlayerService:
         label = PLAYER_MATCH_OUTCOME_NAME_BY_CODE.get(match.player_match_outcome)
         if label is not None:
             return label
-        return "Win" if PlayerService.is_match_win(match) else "Loss"
+        if match.player_team in {0, 1} and match.match_result in {0, 1}:
+            return "Win" if PlayerService.is_match_win(match) else "Loss"
+        return "Unknown"
 
     @staticmethod
     def latest_ranked_match(matches: list[DeadlockMatch]) -> DeadlockMatch | None:
@@ -125,7 +154,7 @@ class PlayerService:
 
     @staticmethod
     def format_kda(kills: float | int | None, deaths: float | int | None, assists: float | int | None) -> str:
-        return f"{int(kills or 0)}/{int(deaths or 0)}/{int(assists or 0)}"
+        return "/".join("—" if value is None else str(int(value)) for value in (kills, deaths, assists))
 
     @staticmethod
     def format_match_duration(seconds: int | None) -> str:

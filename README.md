@@ -37,7 +37,15 @@ python apps/web.py
 python apps/discord_bot.py
 ```
 
-Set `DEADLOCK_API_KEY` in `.env` or `deploy/app.env` to unlock protected Deadlock API endpoints like player match history. The app sends it as the `X-API-KEY` header and does not expose it in URLs.
+Set `DEADLOCK_API_KEY` in `.env` or `deploy/app.env` when required for your API access and quotas. Public player history worked without a key during the October 23 audit; protected player data remains subject to upstream access restrictions. The app sends the key as `X-API-KEY` to API requests, never in URLs or external Steam/forum requests.
+
+## Stat tracking
+
+Player hero totals use `/v1/players/hero-stats?account_ids=...` for tracked normal ranked and unranked matches. They are independent of the 50-match history sample used for recent games. If the totals request fails, the profile labels its calculated totals as **Recent Matches** and displays a notice. Missing recent-match values stay unavailable rather than becoming zero.
+
+Tracking depends on the Deadlock API's ingestion and cache; this app does not maintain its own match database or background collector. Refresh requests ask the upstream service to refetch history and are subject to its quotas. Newly ingested matches can take time to reach aggregate statistics.
+
+The site audit and its verification coverage are recorded in [SITE_AUDIT.md](SITE_AUDIT.md).
 
 ## October 2026 API compatibility
 
