@@ -9,7 +9,7 @@
         <a class="back-link" href="/leaderboards">Leaderboards</a>
     </div>
     <h1>Deadlock Rank Distribution</h1>
-    <p class="lede">A visible-player snapshot of Deadlock ranks, badge ranges, and hero-specific rank distribution pages.</p>
+    <p class="lede">A snapshot of ranks and badge ranges for tracked Deadlock players. Hero-specific rank distributions are no longer available from the data provider.</p>
 
     <section class="overview-grid">
         {% for card in summary_cards %}
@@ -24,7 +24,7 @@
     <section class="results-section">
         <div class="section-heading">
             <h2>Ranks</h2>
-            <p>Each bar shows visible players in a badge division. Use the hero rank pages below to compare how individual heroes appear across the ranked population.</p>
+            <p>Each bar shows visible players in a badge division.</p>
         </div>
         <div class="rank-distribution-chart">
             {% for tier in rank_distribution %}
@@ -52,28 +52,6 @@
                     <p class="rank-tier-subtitle">{{ tier.top_percent_text }}</p>
                 </div>
             </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="results-section">
-        <div class="section-heading">
-            <h2>Hero Rank Pages</h2>
-            <p>Open a hero page to see which badge ranges that hero appears in most often.</p>
-        </div>
-        <div class="street-brawl-hero-grid">
-            {% for hero in hero_cards %}
-            <a class="street-brawl-hero-tile" href="{{ hero.build_url }}">
-                <div class="street-brawl-hero-tile-copy">
-                    <strong>{{ hero.hero_name }}</strong>
-                    <span>Open hero rank distribution</span>
-                </div>
-                {% if hero.hero_portrait_url %}
-                <img class="street-brawl-hero-tile-portrait" src="{{ hero.hero_portrait_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
-                {% elif hero.hero_icon_url %}
-                <img class="street-brawl-hero-tile-portrait street-brawl-hero-tile-portrait-fallback" src="{{ hero.hero_icon_url }}" alt="{{ hero.hero_name }}" loading="lazy" decoding="async" width="108" height="108">
-                {% endif %}
-            </a>
             {% endfor %}
         </div>
     </section>

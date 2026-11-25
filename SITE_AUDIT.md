@@ -1,5 +1,7 @@
 # Site audit — October 23, 2026
 
+Follow-up (November 24, 2026 CST): the deprecated per-hero endpoint now returns 404 and has no documented replacement. The follow-up patch directs old hero rank URLs to the overall rank distribution instead.
+
 Changes are in the local checkout. Production deployment was not performed.
 
 ## API review

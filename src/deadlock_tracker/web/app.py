@@ -171,6 +171,19 @@ async def cache_control_middleware(request: Request, call_next):
     return response
 
 
+# These public vhosts are HTTPS-only at the edge. The container may see HTTP
+# after TLS termination, so normalize generated URLs without trusting new proxy
+# headers or changing local and preview origins.
+@app.middleware("http")
+async def public_https_scheme_middleware(request: Request, call_next):
+    hostname = request.headers.get("host", "").partition(":")[0].lower()
+    if hostname in {
+        "deadlockstattracker.com", "www.deadlockstattracker.com",
+    }:
+        request.scope["scheme"] = "https"
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     rule = _rate_limit_rule_for(request)
@@ -554,20 +567,6 @@ async def sitemap_xml(request: Request) -> Response:
                         ),
                         changefreq="weekly",
                         priority="0.76",
-                    ),
-                    _sitemap_entry(
-                        _public_url(
-                            request,
-                            str(
-                                request.url_for(
-                                    "hero_rank_distribution",
-                                    hero_id=str(hero.hero_id),
-                                    hero_slug=hero_slug,
-                                )
-                            ),
-                        ),
-                        changefreq="weekly",
-                        priority="0.72",
                     ),
                 ]
             )
@@ -1593,13 +1592,6 @@ async def leaderboard_region_hero(
             hero_detail_url=str(
                 request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))
             ),
-            hero_rank_distribution_url=str(
-                request.url_for(
-                    "hero_rank_distribution",
-                    hero_id=str(hero.hero_id),
-                    hero_slug=_slugify(hero.name),
-                )
-            ),
         ),
     ))
 
@@ -1610,7 +1602,6 @@ async def rank_distribution(request: Request) -> HTMLResponse:
     try:
         distribution = await api.get_player_rank_distribution()
         rank_info = await api.get_rank_info()
-        hero_info = await api.get_hero_info()
     except DeadlockError as error:
         return _html_response(TEMPLATES.TemplateResponse(
             request,
@@ -1627,51 +1618,26 @@ async def rank_distribution(request: Request) -> HTMLResponse:
 
     tiers = _build_player_rank_distribution_views(distribution, rank_info)
     summary_cards = _build_rank_distribution_summary_views(distribution, rank_info)
-    hero_cards = [
-        StreetBrawlHeroCardView(
-            hero_id=hero.hero_id,
-            hero_name=hero.name,
-            hero_icon_url=hero.icon_small,
-            hero_portrait_url=hero.portrait_url,
-            hero_background_image_url=hero.background_image_url,
-            build_url=str(
-                request.url_for(
-                    "hero_rank_distribution",
-                    hero_id=str(hero.hero_id),
-                    hero_slug=_slugify(hero.name),
-                )
-            ),
-        )
-        for hero in sorted(hero_info.values(), key=lambda item: item.name.casefold())
-    ]
-
     return _html_response(TEMPLATES.TemplateResponse(
         request,
         "rank_distribution.html",
         _base_context(
             request,
             page_title="Deadlock Rank Distribution | Deadlock Stats Tracker",
-            meta_description="See a rough Deadlock rank distribution and open hero-specific rank pages.",
+            meta_description="See how tracked Deadlock players are distributed across ranks.",
             structured_data=[
                 {
                     "@context": "https://schema.org",
                     "@type": "CollectionPage",
                     "name": "Deadlock Rank Distribution",
                     "url": _public_url(request, str(request.url_for("rank_distribution"))),
-                    "description": "See a rough Deadlock rank distribution and open hero-specific rank pages.",
+                    "description": "See how tracked Deadlock players are distributed across ranks.",
                 },
                 _breadcrumb_structured_data(
                     request,
                     [
                         ("Home", str(request.url_for("home"))),
                         ("Rank Distribution", str(request.url_for("rank_distribution"))),
-                    ],
-                ),
-                _item_list_structured_data(
-                    "Deadlock Hero Rank Distribution Pages",
-                    [
-                        (hero.hero_name, _public_url(request, hero.build_url))
-                        for hero in hero_cards[:30]
                     ],
                 ),
                 _faq_structured_data(
@@ -1682,123 +1648,21 @@ async def rank_distribution(request: Request) -> HTMLResponse:
                         ),
                         (
                             "Can I view rank distribution by hero?",
-                            "Yes. Each hero has a rank distribution page showing where that hero appears most often across visible ranked players.",
+                            "No. The data provider no longer supplies hero-specific rank distributions.",
                         ),
                     ]
                 ),
             ],
             rank_distribution=tiers,
             summary_cards=summary_cards,
-            hero_cards=hero_cards,
         ),
     ))
 
 
-@app.get(
-    "/heroes/{hero_id}/{hero_slug}/rank-distribution",
-    response_class=HTMLResponse,
-    name="hero_rank_distribution",
-)
-async def hero_rank_distribution(request: Request, hero_id: str, hero_slug: str) -> HTMLResponse:
-    api = PlayerService().api
-    parsed_hero_id = _parse_optional_int(hero_id)
-    if parsed_hero_id is None:
-        return _html_response(TEMPLATES.TemplateResponse(
-            request,
-            "error.html",
-            _base_context(
-                request,
-                page_title="Hero Rank Distribution Not Found | Deadlock Stats Tracker",
-                meta_description="That Deadlock hero rank distribution page could not be loaded right now.",
-                meta_robots="noindex,follow",
-                message="That hero could not be found.",
-            ),
-            status_code=404,
-        ))
-
-    try:
-        hero_info = await api.get_hero_info()
-        hero = hero_info.get(parsed_hero_id)
-        if hero is None:
-            raise DeadlockError("That hero could not be found.")
-        distribution = await api.get_hero_rank_distribution(parsed_hero_id)
-        rank_info = await api.get_rank_info()
-    except DeadlockError as error:
-        return _html_response(TEMPLATES.TemplateResponse(
-            request,
-            "error.html",
-            _base_context(
-                request,
-                page_title="Hero Rank Distribution Not Found | Deadlock Stats Tracker",
-                meta_description="That Deadlock hero rank distribution page could not be loaded right now.",
-                meta_robots="noindex,follow",
-                message=str(error),
-            ),
-            status_code=404,
-        ))
-
-    canonical_url = _public_url(
-        request,
-        str(
-            request.url_for(
-                "hero_rank_distribution",
-                hero_id=str(hero.hero_id),
-                hero_slug=_slugify(hero.name),
-            )
-        ),
-    )
-    if request.url.path != _url_path(canonical_url):
-        return RedirectResponse(url=canonical_url, status_code=308)
-
-    tiers = _build_player_rank_distribution_views(distribution, rank_info)
-    summary_cards = _build_rank_distribution_summary_views(distribution, rank_info)
-
-    return _html_response(TEMPLATES.TemplateResponse(
-        request,
-        "hero_rank_distribution.html",
-        _base_context(
-            request,
-            page_title=f"{hero.name} Rank Distribution | Deadlock Stats Tracker",
-            meta_description=f"See a rough rank distribution for visible {hero.name} players in Deadlock.",
-            canonical_url=canonical_url,
-            og_image=hero.portrait_url or hero.background_image_url or _public_url(
-                request,
-                str(request.url_for("static", path="/branding/deadlock-stats-tracker-logo-transparent.webp")),
-            ),
-            structured_data=[
-                {
-                    "@context": "https://schema.org",
-                    "@type": "CollectionPage",
-                    "name": f"{hero.name} Rank Distribution",
-                    "url": canonical_url,
-                    "description": f"See a rough rank distribution for visible {hero.name} players in Deadlock.",
-                },
-                _breadcrumb_structured_data(
-                    request,
-                    [
-                        ("Home", str(request.url_for("home"))),
-                        ("Heroes", str(request.url_for("heroes_directory"))),
-                        (hero.name, str(request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name)))),
-                        ("Rank Distribution", canonical_url),
-                    ],
-                ),
-            ],
-            hero=hero,
-            rank_distribution=tiers,
-            summary_cards=summary_cards,
-            hero_detail_url=str(
-                request.url_for("hero_detail", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))
-            ),
-            global_leaderboard_url=str(
-                request.url_for(
-                    "leaderboard_region_hero",
-                    region_slug="north-america",
-                    hero_id=str(hero.hero_id),
-                    hero_slug=_slugify(hero.name),
-                )
-            ),
-        ),
-    ))
+@app.get("/heroes/{hero_id}/{hero_slug}/rank-distribution", include_in_schema=False)
+async def legacy_hero_rank_distribution(request: Request) -> RedirectResponse:
+    # The upstream per-hero endpoint was removed without a replacement.
+    return RedirectResponse(url=request.url_for("rank_distribution").path, status_code=308)
 
 
 @app.get("/help/steam-account-url", response_class=HTMLResponse)
@@ -2699,13 +2563,6 @@ async def hero_detail(request: Request, hero_id: str, hero_slug: str) -> HTMLRes
             hero_items_url=str(request.url_for("hero_items", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
             hero_matchups_url=str(request.url_for("hero_matchups", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
             hero_builds_url=str(request.url_for("hero_builds", hero_id=str(hero.hero_id), hero_slug=_slugify(hero.name))),
-            hero_rank_distribution_url=str(
-                request.url_for(
-                    "hero_rank_distribution",
-                    hero_id=str(hero.hero_id),
-                    hero_slug=_slugify(hero.name),
-                )
-            ),
             hero_global_leaderboard_url=str(
                 request.url_for(
                     "leaderboard_region_hero",

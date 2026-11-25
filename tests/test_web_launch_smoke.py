@@ -171,7 +171,7 @@ def test_sitemap_lists_hero_item_and_patch_detail_pages(monkeypatch) -> None:
     assert "<loc>http://testserver/builds/1/abrams</loc>" in response.text
     assert "<loc>http://testserver/heroes/1/abrams/items</loc>" in response.text
     assert "<loc>http://testserver/heroes/1/abrams/matchups</loc>" in response.text
-    assert "<loc>http://testserver/heroes/1/abrams/rank-distribution</loc>" in response.text
+    assert "<loc>http://testserver/heroes/1/abrams/rank-distribution</loc>" not in response.text
     assert "<loc>http://testserver/items/101/mystic-shot</loc>" in response.text
     assert "<loc>http://testserver/patch-notes/125825/04-10-2026-update</loc>" in response.text
 
@@ -1483,7 +1483,7 @@ def test_rank_distribution_page_renders(monkeypatch) -> None:
     assert response.status_code == 200
     assert "Deadlock Rank Distribution" in response.text
     assert "Visible Players" in response.text
-    assert "/heroes/1/abrams/rank-distribution" in response.text
+    assert "Hero-specific rank distributions are no longer available" in response.text
 
 
 def test_filtered_best_heroes_page_is_noindex(monkeypatch) -> None:

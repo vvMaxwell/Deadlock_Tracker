@@ -624,21 +624,6 @@ class DeadlockAPI:
             if item.unique_players > 0
         ]
 
-    async def get_hero_rank_distribution(self, hero_id: int) -> list[DeadlockPlayerRankDistribution]:
-        # Deprecated upstream, because Valve reports one account-wide rank
-        # rather than a per-hero one, so this counts players by the rank they
-        # held on their latest ranked match on this hero. The badge
-        # distribution has no hero filter, so there is nothing to move to yet.
-        payload = await self._get_json(f"{self.base_url}/v1/players/mmr/distribution/{hero_id}")
-        return [
-            DeadlockPlayerRankDistribution(
-                rank=item["rank"],
-                players=item["players"],
-            )
-            for item in payload
-            if item.get("rank") is not None and item.get("players") is not None
-        ]
-
     async def search_builds(
         self,
         *,
